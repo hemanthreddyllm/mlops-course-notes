@@ -3,7 +3,7 @@
 Study archive for the 12-hour **Ultimate MLOps Full Course** (YouTube `w71RHxAWxaM`): written notes for every
 chapter, plus working code for every chapter that involves code — all of it executed, with real outputs saved.
 
-📖 **Notes site:** published from `notes/` to GitHub Pages (see the repo's Pages settings for the URL).
+📖 **Notes site:** https://hemanthreddyllm.github.io/mlops-course-notes/ — *public, even though this repo is private* (see `docs/HANDOFF.md` § Publishing).
 🧭 **New machine? Start with [`docs/HANDOFF.md`](docs/HANDOFF.md).**
 
 ---
