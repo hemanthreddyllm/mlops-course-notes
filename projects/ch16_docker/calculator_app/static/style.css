@@ -1,0 +1,8 @@
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f7f6f2; font: 16px/1.5 -apple-system, "Segoe UI", sans-serif; color: #0b0b0b; }
+.card { background: #fff; border: 1px solid #dcdbd5; border-radius: 14px; padding: 28px 32px; width: min(360px, 90vw); }
+h1 { margin: 0 0 16px; font-size: 22px; }
+form { display: grid; gap: 10px; }
+input, select, button { font: inherit; padding: 9px 12px; border-radius: 8px; border: 1px solid #dcdbd5; }
+button { background: #2a78d6; color: #fff; border: 0; cursor: pointer; }
+.result { margin-top: 16px; font-weight: 600; color: #0f7b3f; }
+.error { margin-top: 16px; color: #b3261e; }

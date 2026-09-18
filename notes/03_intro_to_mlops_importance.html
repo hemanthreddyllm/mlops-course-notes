@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>03 · Introduction to MLOps & Importance — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 03</span></div>
+<div class="eyebrow">Chapter 03 · Introduction to MLOps & Importance</div>
+<h1>Why MLOps matters: a live cricket-score forecaster</h1>
+<p class="lede">This chapter is the technical version of the analogy. You build a live score forecast feature for a cricket website the traditional way, watch it break in production, and work through the 9 problems that show up. For each problem you see which MLOps practice and tool fixes it. The chapter ends with the benefits and challenges of MLOps.</p>
+<div class="meta">
+  <span class="chip">Video 00:41:07 – 01:14:11</span>
+  <span class="chip">Use case: ESPNcricinfo live forecast</span>
+  <span class="chip">Regression problem</span>
+  <span class="chip">9 problems → 9 fixes</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">The use case</a></li>
+    <li><a href="#s2">The traditional ML lifecycle</a></li>
+    <li><a href="#s3">Building it the traditional way</a></li>
+    <li><a href="#s4">What breaks in production</a></li>
+    <li><a href="#s5">The 9 problems at a glance</a></li>
+    <li><a href="#p1">P1 · Data problem</a></li>
+    <li><a href="#p2">P2 · Code implementation problem</a></li>
+    <li><a href="#p3">P3 · Version problem</a></li>
+    <li><a href="#p4">P4 · Experiment problem</a></li>
+    <li><a href="#p5">P5 · Deployment problem</a></li>
+    <li><a href="#p6">P6 · Data drift problem</a></li>
+    <li><a href="#p7">P7 · Infrastructure problem</a></li>
+    <li><a href="#p8">P8 · Automation problem</a></li>
+    <li><a href="#p9">P9 · Legal / governance problem</a></li>
+    <li><a href="#s6">Benefits of MLOps</a></li>
+    <li><a href="#s7">Challenges of MLOps</a></li>
+    <li><a href="#s8">Interview questions</a></li>
+    <li><a href="#s9">Recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>The use case <span class="ts">41:10</span></h2>
+<p>You're a data scientist at <strong>ESPNcricinfo</strong>, a website with cricket scores and stats. It has a <strong>Live Forecast</strong> feature: from the runs scored so far and the teams' past scores, it predicts the <strong>final score after 20 overs</strong>, in real time.</p>
+<p>Assume the feature <strong>doesn't exist yet</strong> and you've been asked to build it.</p>
+<div class="grid">
+  <div class="card"><h4>Problem type</h4><p><strong>Regression.</strong> The target is a number (runs after 20 overs).</p></div>
+  <div class="card"><h4>Inputs</h4><p>Historical scores for all teams, the live score, player run history and performance, and many more possible features.</p></div>
+  <div class="card"><h4>Domain</h4><p>Sports data. It changes <em>during</em> a match and from season to season.</p></div>
+</div>
+<div class="callout key"><span class="label">Plan of the chapter</span><p>First build it <strong>without MLOps</strong>. Then list what goes wrong. Then see how <strong>MLOps</strong> fixes each problem.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>The traditional ML lifecycle <span class="ts">43:14</span></h2>
+<p>The standard ML project lifecycle you should already know:</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 170" role="img" aria-label="ML project lifecycle: problem definition, data gathering, preprocessing, EDA, feature engineering, model building, evaluation, deployment">
+    <defs><marker id="b1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g class="t-sm">
+      <g data-tip="<b>Problem definition</b><br>Build a forecast that predicts runs after 20 overs from historical data."><rect x="10" y="20" width="170" height="46" rx="8" class="box"/><text x="95" y="48" text-anchor="middle" class="t-b">1 · Problem definition</text></g>
+      <g data-tip="<b>Data gathering</b><br>From the website itself and from ESPNcricinfo's databases."><rect x="200" y="20" width="170" height="46" rx="8" class="box"/><text x="285" y="48" text-anchor="middle" class="t-b">2 · Data gathering</text></g>
+      <g data-tip="<b>Preprocessing</b><br>Real data is never clean, so fix the issues."><rect x="390" y="20" width="170" height="46" rx="8" class="box"/><text x="475" y="48" text-anchor="middle" class="t-b">3 · Preprocessing</text></g>
+      <g data-tip="<b>EDA</b><br>Is the data biased? Does it have outliers? Understand it before modeling. The instructor calls this super important."><rect x="580" y="20" width="170" height="46" rx="8" class="box"/><text x="665" y="48" text-anchor="middle" class="t-b">4 · EDA</text></g>
+      <g data-tip="<b>Feature engineering</b><br>Pick important features; standardize and normalize."><rect x="580" y="104" width="170" height="46" rx="8" class="box"/><text x="665" y="132" text-anchor="middle" class="t-b">5 · Feature eng.</text></g>
+      <g data-tip="<b>Model building</b><br>Train the model."><rect x="390" y="104" width="170" height="46" rx="8" class="box"/><text x="475" y="132" text-anchor="middle" class="t-b">6 · Model building</text></g>
+      <g data-tip="<b>Evaluation</b><br>Score the model on test data."><rect x="200" y="104" width="170" height="46" rx="8" class="box"/><text x="285" y="132" text-anchor="middle" class="t-b">7 · Evaluation</text></g>
+      <g data-tip="<b>Deployment</b><br>Once evaluation is good, deploy so other users can use it."><rect x="10" y="104" width="170" height="46" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/><text x="95" y="132" text-anchor="middle" class="t-b">8 · Deployment</text></g>
+    </g>
+    <path d="M180,43 L198,43" class="edge" marker-end="url(#b1)"/><path d="M370,43 L388,43" class="edge" marker-end="url(#b1)"/><path d="M560,43 L578,43" class="edge" marker-end="url(#b1)"/>
+    <path d="M665,66 L665,102" class="edge" marker-end="url(#b1)"/>
+    <path d="M580,127 L562,127" class="edge" marker-end="url(#b1)"/><path d="M390,127 L372,127" class="edge" marker-end="url(#b1)"/><path d="M200,127 L182,127" class="edge" marker-end="url(#b1)"/>
+  </svg>
+  </div>
+  <figcaption>The traditional lifecycle <b>ends at deployment</b>. There is no loop back, so nothing happens after the model goes live. That gap is what the rest of the chapter is about. (Hover each step for detail.)</figcaption>
+</figure>
+<p>The course assumes you know this lifecycle. The focus here is on MLOps, not on teaching ML from scratch.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>Building it the traditional way <span class="ts">45:22</span></h2>
+<h3>Who is on the team?</h3>
+<div class="grid">
+  <div class="card"><h4>Front-end developer</h4><p>Builds the forecast widget on the page with HTML and CSS: the icon, the text, the predicted score.</p></div>
+  <div class="card"><h4>Data scientist (you) → back end</h4><p>Builds the model and an <strong>API</strong>. Live scores are sent to the model, and predictions go back to the front end.</p></div>
+</div>
+
+<h3>The traditional flow</h3>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 300" role="img" aria-label="Traditional flow: notebook to pickle to S3 to API to backend to frontend to user; code in GitHub, manual deploy">
+    <defs><marker id="b2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <rect x="10" y="20" width="190" height="186" rx="10" class="box-2"/>
+    <text x="105" y="42" text-anchor="middle" class="t-sm t-b">📓 Jupyter notebook</text>
+    <text x="30" y="68" class="t-xs">1. Load CSV data</text>
+    <text x="30" y="90" class="t-xs">2. EDA</text>
+    <text x="30" y="112" class="t-xs">3. Feature engineering</text>
+    <text x="30" y="134" class="t-xs">4. Model training</text>
+    <text x="30" y="156" class="t-xs">5. Evaluation</text>
+    <text x="30" y="178" class="t-xs">6. Save model → <tspan class="t-b">model.pkl</tspan></text>
+    <rect x="240" y="80" width="100" height="50" rx="8" class="box"/><text x="290" y="102" text-anchor="middle" class="t-sm t-b">AWS S3</text><text x="290" y="120" text-anchor="middle" class="t-xs">stores .pkl</text>
+    <path d="M200,172 Q225,140 240,118" class="edge" marker-end="url(#b2)"/><text x="206" y="202" class="t-xs">upload</text>
+    <rect x="380" y="80" width="110" height="50" rx="8" class="box"/><text x="435" y="102" text-anchor="middle" class="t-sm t-b">API</text><text x="435" y="120" text-anchor="middle" class="t-xs">Flask / FastAPI</text>
+    <path d="M340,105 L378,105" class="edge" marker-end="url(#b2)"/><text x="344" y="98" class="t-xs">read</text>
+    <rect x="530" y="80" width="100" height="50" rx="8" class="box"/><text x="580" y="110" text-anchor="middle" class="t-sm t-b">Back end</text>
+    <path d="M490,105 L528,105" class="edge" marker-end="url(#b2)"/>
+    <rect x="660" y="80" width="90" height="50" rx="8" class="box"/><text x="705" y="110" text-anchor="middle" class="t-sm t-b">Front end</text>
+    <path d="M630,105 L658,105" class="edge" marker-end="url(#b2)"/>
+    <text x="712" y="152" text-anchor="middle" class="t-xs">👤 user sees</text><text x="712" y="166" text-anchor="middle" class="t-xs">the forecast</text>
+    <rect x="240" y="226" width="390" height="56" rx="8" class="box"/>
+    <text x="435" y="248" text-anchor="middle" class="t-sm"><tspan class="t-b">GitHub</tspan>: app.py · backend code · frontend code</text>
+    <text x="435" y="268" text-anchor="middle" class="t-xs">→ deployed <tspan class="t-b">manually</tspan> so the app goes live</text>
+    <path d="M435,130 L435,224" class="edge" stroke-dasharray="4 4"/><path d="M580,130 L560,224" class="edge" stroke-dasharray="4 4"/><path d="M670,130 L610,224" class="edge" stroke-dasharray="4 4"/>
+  </svg>
+  </div>
+  <figcaption>Everything here is <b>manual</b>: one notebook, one pickle file, hand-written glue code and a hand-run deployment.</figcaption>
+</figure>
+
+<div class="callout beyond">
+  <span class="label">Beyond the video · what the "API" box looks like</span>
+  <p>A minimal version of the API step, so you can picture the serving layer. The course builds a proper version later.</p>
+<pre><code><span class="c"># app.py: load the pickled model once and serve predictions over HTTP</span>
+import pickle
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+app = FastAPI()
+with open("model.pkl", "rb") as f:          <span class="c"># traditional: file pulled from S3 by hand</span>
+    model = pickle.load(f)
+
+class MatchState(BaseModel):
+    current_runs: int
+    overs_done: float
+    wickets: int
+
+@app.post("/predict")
+def predict(s: MatchState):
+    pred = model.predict([[s.current_runs, s.overs_done, s.wickets]])[0]
+    return {"projected_score_20_overs": round(float(pred))}
+
+<span class="c"># run:  uvicorn app:app --host 0.0.0.0 --port 8000</span></code></pre>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>What breaks in production <span class="ts">48:32</span></h2>
+<p>The app is live. But the model was evaluated on <strong>historical test data</strong>, and <strong>live match data has a different distribution</strong>. Models do well on test data and then become biased on real-time data. The forecasts are badly off:</p>
+
+<figure>
+  <p class="fig-title">Actual vs predicted final score</p>
+  <p class="fig-sub">The instructor's example: actual 180, model says 210 or 160. Hover a bar.</p>
+  <div class="legend"><span><i style="background:var(--ink-3)"></i>Actual</span><span><i style="background:var(--s2)"></i>Model prediction</span></div>
+  <div class="scroll">
+  <svg viewBox="0 0 760 250" role="img" aria-label="Bar chart: actual 180, prediction A 210 (30 over), prediction B 160 (20 under)">
+    <line x1="120" y1="20" x2="120" y2="210" class="grid-line"/>
+    <line x1="120" y1="210" x2="740" y2="210" class="axis"/>
+    <!-- scale: 0..240 over 120..740 px (620px) -> 2.583 px/run -->
+    <g class="t-xs">
+      <text x="120" y="228" text-anchor="middle">0</text>
+      <text x="249" y="228" text-anchor="middle">50</text><line x1="249" y1="20" x2="249" y2="210" class="grid-line"/>
+      <text x="378" y="228" text-anchor="middle">100</text><line x1="378" y1="20" x2="378" y2="210" class="grid-line"/>
+      <text x="508" y="228" text-anchor="middle">150</text><line x1="508" y1="20" x2="508" y2="210" class="grid-line"/>
+      <text x="637" y="228" text-anchor="middle">200</text><line x1="637" y1="20" x2="637" y2="210" class="grid-line"/>
+      <text x="430" y="246" text-anchor="middle">runs after 20 overs</text>
+    </g>
+    <line x1="585" y1="20" x2="585" y2="210" stroke="var(--ink-3)" stroke-dasharray="4 3"/>
+    <text x="589" y="16" class="t-xs">actual = 180</text>
+    <g data-tip="<b>Actual final score</b><br>180 runs">
+      <rect x="120" y="36" width="465" height="30" rx="4" fill="var(--ink-3)"/>
+      <text x="110" y="56" text-anchor="end" class="t-sm">Actual</text>
+      <text x="595" y="56" class="t-sm t-b">180</text></g>
+    <g data-tip="<b>Prediction A</b><br>210 runs · <b>+30</b> over the actual">
+      <rect x="120" y="96" width="542" height="30" rx="4" fill="var(--s2)"/>
+      <text x="110" y="116" text-anchor="end" class="t-sm">Prediction A</text>
+      <text x="672" y="116" class="t-sm t-b">210 (+30)</text></g>
+    <g data-tip="<b>Prediction B</b><br>160 runs · <b>−20</b> under the actual">
+      <rect x="120" y="156" width="413" height="30" rx="4" fill="var(--s2)"/>
+      <text x="110" y="176" text-anchor="end" class="t-sm">Prediction B</text>
+      <text x="543" y="176" class="t-sm t-b">160 (−20)</text></g>
+  </svg>
+  </div>
+  <figcaption>A 20–30 run error in a 20-over match is huge, so the feature is not usable as shipped.</figcaption>
+</figure>
+
+<p>Your manager asks you to fix it. You decide the model needs <strong>richer, fresher data</strong>:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Data needed</th><th>Why</th><th>Where it comes from</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Historical data</strong></td><td>Still important as a base (e.g. everything up to 2024)</td><td>Database</td></tr>
+    <tr><td><strong>Real-time / current data</strong></td><td>Current season and month, plus live ball-by-ball scores</td><td>Streaming service</td></tr>
+    <tr><td><strong>Weather data</strong></td><td>Good weather tends to mean higher scores, bad weather lower</td><td>External APIs</td></tr>
+  </tbody>
+</table>
+</div>
+<p>The traditional build only read <strong>one CSV or database</strong>. Now both the data distribution <em>and</em> the ingestion process have changed. That leads to the first problem.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>The 9 problems at a glance</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>#</th><th>Problem (traditional approach)</th><th>MLOps fix</th><th>Tools named</th></tr></thead>
+  <tbody>
+    <tr><td>P1</td><td><a href="#p1">Data</a>: many sources, hand-written fetch code for each</td><td>ETL pipeline → common data warehouse</td><td>Kafka, Hadoop (big-data tools)</td></tr>
+    <tr><td>P2</td><td><a href="#p2">Code implementation</a>: everything in one notebook</td><td>Modular coding, project template</td><td>Python OOP, cookiecutter, <code>template.py</code></td></tr>
+    <tr><td>P3</td><td><a href="#p3">Version</a>: updates overwrite working code</td><td>Version control</td><td>Git, GitHub</td></tr>
+    <tr><td>P4</td><td><a href="#p4">Experiment</a>: runs not recorded, best model lost</td><td>Experiment tracking</td><td>MLflow</td></tr>
+    <tr><td>P5</td><td><a href="#p5">Deployment</a>: manual deploys, downtime, env mismatch</td><td>CI/CD + containerization</td><td>Jenkins, CircleCI, GitHub Actions, Docker, AWS ECR, AWS/GCP</td></tr>
+    <tr><td>P6</td><td><a href="#p6">Data drift</a>: live data differs from training data</td><td>Monitoring + retraining pipeline</td><td>Grafana, Evidently</td></tr>
+    <tr><td>P7</td><td><a href="#p7">Infrastructure</a>: hosting and cost</td><td>Know and manage cloud services</td><td>AWS, GCP, Azure</td></tr>
+    <tr><td>P8</td><td><a href="#p8">Automation</a>: steps run by hand</td><td>Ordered component pipeline with tracking</td><td>DVC</td></tr>
+    <tr><td>P9</td><td><a href="#p9">Legal</a>: misuse, compliance</td><td>Governance and security practices</td><td>—</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- P1 -->
+<h2 id="p1"><span class="num">P1</span>Data problem <span class="ts">52:08</span></h2>
+<div class="grid">
+  <div class="card"><h4 style="color:var(--bad)">Without MLOps</h4><p>Data now comes from a <strong>database</strong>, a <strong>streaming service</strong> and <strong>APIs</strong>. You write and maintain separate fetch code for each, by hand, every time something changes.</p></div>
+  <div class="card"><h4 style="color:var(--good)">With MLOps</h4><p>Build an <strong>ETL (Extract–Transform–Load) pipeline</strong> into one <strong>data warehouse</strong>, a <em>common point</em>. Wherever the data comes from, it ends up in the same place, and data scientists, analysts and anyone else read from there.</p></div>
+</div>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 200" role="img" aria-label="Database, streaming service and API feed an ETL pipeline into a data warehouse used by data scientists and analysts">
+    <defs><marker id="b3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <rect x="10" y="20" width="170" height="40" rx="8" class="box"/><text x="95" y="45" text-anchor="middle" class="t-sm">🗄 Historical DB</text>
+    <rect x="10" y="80" width="170" height="40" rx="8" class="box"/><text x="95" y="105" text-anchor="middle" class="t-sm">📡 Live scores (Kafka)</text>
+    <rect x="10" y="140" width="170" height="40" rx="8" class="box"/><text x="95" y="165" text-anchor="middle" class="t-sm">🌦 Weather API</text>
+    <rect x="240" y="60" width="150" height="80" rx="10" class="box-2" stroke="var(--s1)"/><text x="315" y="92" text-anchor="middle" class="t-sm t-b">ETL pipeline</text><text x="315" y="112" text-anchor="middle" class="t-xs">extract · transform · load</text>
+    <path d="M180,40 L238,80" class="edge" marker-end="url(#b3)"/><path d="M180,100 L238,100" class="edge" marker-end="url(#b3)"/><path d="M180,160 L238,120" class="edge" marker-end="url(#b3)"/>
+    <rect x="450" y="60" width="140" height="80" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="520" y="96" text-anchor="middle" class="t-sm t-b">Data warehouse</text><text x="520" y="114" text-anchor="middle" class="t-xs">single common point</text>
+    <path d="M390,100 L448,100" class="edge" marker-end="url(#b3)"/>
+    <rect x="640" y="30" width="110" height="36" rx="8" class="box"/><text x="695" y="53" text-anchor="middle" class="t-xs">Data scientists</text>
+    <rect x="640" y="82" width="110" height="36" rx="8" class="box"/><text x="695" y="105" text-anchor="middle" class="t-xs">Data analysts</text>
+    <rect x="640" y="134" width="110" height="36" rx="8" class="box"/><text x="695" y="157" text-anchor="middle" class="t-xs">ML pipeline</text>
+    <path d="M590,85 L638,50" class="edge" marker-end="url(#b3)"/><path d="M590,100 L638,100" class="edge" marker-end="url(#b3)"/><path d="M590,115 L638,150" class="edge" marker-end="url(#b3)"/>
+  </svg>
+  </div>
+  <figcaption>This is where the <b>data engineering</b> circle of the MLOps Venn diagram comes in. The instructor says data is everything, and the data problem is the first one you hit.</figcaption>
+</figure>
+<p><strong>Tools:</strong> for streaming, <strong>Apache Kafka</strong>. For big-data storage and processing, <strong>Hadoop</strong>, among others.</p>
+
+<!-- P2 -->
+<h2 id="p2"><span class="num">P2</span>Code implementation problem <span class="ts">54:14</span></h2>
+<p>Traditionally, one file does everything: imports → load data → preprocess → train/test split → train → evaluate → print accuracy. A real system has <strong>separate components</strong>, and putting them all in one file causes trouble:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Issue with a single file</th><th>What it means</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Hard to maintain</strong></td><td>The file becomes huge.</td></tr>
+    <tr><td><strong>Limited reusability</strong></td><td>A new feature means rewriting code from scratch.</td></tr>
+    <tr><td><strong>Harder collaboration</strong></td><td>In industry many developers each own a task, and they can't all work in one file.</td></tr>
+    <tr><td><strong>Poor scalability</strong></td><td>Adding new features later is painful.</td></tr>
+    <tr><td><strong>Testing challenges</strong></td><td>Finding and fixing bugs is hard.</td></tr>
+  </tbody>
+</table>
+</div>
+<p><strong>Fix: modular coding.</strong> Use <strong>Python OOP</strong> (classes) so each component lives in its own file. Generate the folder structure automatically, either with <strong>cookiecutter</strong> or with your own <code>template.py</code> script (the course writes its own). Then the person working on ingestion only touches the ingestion file, the person on training only touches the trainer, and so on.</p>
+
+<div class="grid">
+<div>
+<p class="fig-title">Typical modular project layout</p>
+<pre><code>project/
+├── src/
+│   ├── components/
+│   │   ├── data_ingestion.py
+│   │   ├── data_validation.py
+│   │   ├── data_transformation.py
+│   │   ├── model_trainer.py
+│   │   └── model_evaluation.py
+│   ├── pipeline/
+│   │   ├── training_pipeline.py
+│   │   └── prediction_pipeline.py
+│   ├── config/ · entity/ · utils/
+│   ├── logger/ · exception/
+├── notebooks/        <span class="c"># EDA lives here</span>
+├── app.py            <span class="c"># serving</span>
+├── requirements.txt
+├── Dockerfile
+└── template.py</code></pre>
+<p class="fig-sub">Beyond the video: a common layout for this style of project. The course builds its own version later.</p>
+</div>
+<div>
+<p class="fig-title">What <code>template.py</code> does</p>
+<pre><code><span class="c"># template.py: create the project skeleton in one go</span>
+from pathlib import Path
+
+files = [
+  "src/__init__.py",
+  "src/components/data_ingestion.py",
+  "src/components/data_validation.py",
+  "src/components/data_transformation.py",
+  "src/components/model_trainer.py",
+  "src/components/model_evaluation.py",
+  "src/pipeline/training_pipeline.py",
+  "src/pipeline/prediction_pipeline.py",
+  "app.py", "requirements.txt",
+]
+for f in map(Path, files):
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.touch(exist_ok=True)</code></pre>
+</div>
+</div>
+
+<div class="callout key"><span class="label">Important nuance from the instructor</span><p>MLOps does the <em>same</em> steps as ML (ingestion, preprocessing, training). The difference is that they are <strong>automated</strong> and structured instead of done by hand. You <em>can</em> build an app without MLOps, but it will be <strong>hard to maintain and hard to scale</strong>.</p></div>
+
+<!-- P3 -->
+<h2 id="p3"><span class="num">P3</span>Version problem <span class="ts">59:27</span></h2>
+<div class="grid">
+  <div class="card"><h4 style="color:var(--bad)">Without MLOps</h4><ul><li>You add a feature, overwrite the code, and <strong>lose the previous working version</strong>.</li><li>The new version has bugs and you can't <strong>roll back</strong>.</li><li>Many developers on different machines push changes that conflict.</li></ul></div>
+  <div class="card"><h4 style="color:var(--good)">With MLOps</h4><p><strong>Git + GitHub</strong> for code management. Every version is kept, and you can go back at any time. This matters most in <strong>big teams</strong> and on <strong>frequently updated</strong> projects.</p></div>
+</div>
+<p><strong>Real example: TensorFlow.</strong> The instructor opens TensorFlow's GitHub repo and shows many branches and release versions, with the last commit only 17 minutes earlier. The PyPI page shows a long release history. The package was never built "in one shot". It changes every day, and <strong>old versions stay available</strong>.</p>
+<figure>
+  <p class="fig-title">How versioned development looks</p>
+  <div class="scroll">
+  <svg viewBox="0 -20 760 170" role="img" aria-label="Git history: main branch with releases v1, v2, v3 and a feature branch merged in; v3 rollback to v2 possible">
+    <line x1="40" y1="60" x2="720" y2="60" stroke="var(--s1)" stroke-width="3"/>
+    <text x="30" y="40" class="t-xs t-b">main</text>
+    <g data-tip="<b>v1.0</b><br>First working release"><circle cx="80" cy="60" r="9" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/><text x="80" y="90" text-anchor="middle" class="t-xs">v1.0</text></g>
+    <circle cx="200" cy="60" r="6" fill="var(--s1)"/>
+    <path d="M200,60 Q240,120 290,120 L420,120 Q470,120 500,60" fill="none" stroke="var(--s2)" stroke-width="3"/>
+    <text x="300" y="142" class="t-xs t-b">feature/live-forecast</text>
+    <circle cx="320" cy="120" r="6" fill="var(--s2)"/><circle cx="400" cy="120" r="6" fill="var(--s2)"/>
+    <g data-tip="<b>v2.0</b><br>Stable release before the feature"><circle cx="330" cy="60" r="9" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/><text x="330" y="40" text-anchor="middle" class="t-xs">v2.0</text></g>
+    <g data-tip="<b>merge</b><br>Feature branch merged into main"><circle cx="500" cy="60" r="6" fill="var(--s1)"/></g>
+    <g data-tip="<b>v3.0 (buggy)</b><br>Roll back to v2.0 in one command, because nothing was lost"><circle cx="620" cy="60" r="9" fill="var(--s8)" stroke="var(--surface)" stroke-width="2"/><text x="620" y="40" text-anchor="middle" class="t-xs">v3.0 🐞</text></g>
+    <path d="M612,28 Q476,-20 342,28" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="476" y="-4" text-anchor="middle" class="t-xs">↩ rollback to v2.0</text>
+  </svg>
+  </div>
+  <figcaption>Hover the release dots. Branches let a feature be built without touching the stable version, and history lets you return to any earlier point.</figcaption>
+</figure>
+
+<!-- P4 -->
+<h2 id="p4"><span class="num">P4</span>Experiment problem <span class="ts">1:01:31</span></h2>
+<p>Recall the research room from the analogy: experiments are how you keep getting a <strong>better model</strong>. In ML this is mostly <strong>hyperparameter tuning</strong> (different parameters, different learning rates, different algorithms).</p>
+<div class="callout wrong"><span class="label">The trap</span><p>Run an experiment, overwrite the previous one, and <strong>lose the history</strong>. You can no longer tell which setting was best.</p></div>
+<div class="callout right"><span class="label">The fix: experiment tracking with MLflow</span><p>Record <strong>every</strong> experiment (Exp 1, Exp 2, Exp 3…): its parameters, metrics and model file. Then compare them and choose the best.</p></div>
+
+<figure>
+  <p class="fig-title">What a tracked experiment table looks like</p>
+  <p class="fig-sub">Illustrative runs for the score-forecast regressor. Lower RMSE is better.</p>
+  <div class="table-wrap" style="margin:0">
+  <table>
+    <thead><tr><th>Run</th><th>Model</th><th>Key params</th><th class="num">RMSE (runs)</th><th class="num">R²</th><th>Decision</th></tr></thead>
+    <tbody>
+      <tr><td>exp-1</td><td>Linear Regression</td><td>—</td><td class="num">24.1</td><td class="num">0.61</td><td>baseline</td></tr>
+      <tr><td>exp-2</td><td>Random Forest</td><td>n_estimators=100</td><td class="num">17.8</td><td class="num">0.74</td><td></td></tr>
+      <tr><td><strong>exp-3</strong></td><td><strong>Random Forest</strong></td><td><strong>n_estimators=300, max_depth=12</strong></td><td class="num"><strong>14.2</strong></td><td class="num"><strong>0.82</strong></td><td><strong>✓ promote</strong></td></tr>
+      <tr><td>exp-4</td><td>XGBoost</td><td>lr=0.3</td><td class="num">16.0</td><td class="num">0.78</td><td></td></tr>
+    </tbody>
+  </table>
+  </div>
+</figure>
+<div class="callout beyond"><span class="label">Beyond the video · the MLflow calls you'll use</span>
+<pre><code>import mlflow
+with mlflow.start_run(run_name="exp-3"):
+    mlflow.log_params({"n_estimators": 300, "max_depth": 12})
+    model.fit(X_train, y_train)
+    mlflow.log_metric("rmse", rmse)
+    mlflow.sklearn.log_model(model, "model")   <span class="c"># saved with the run and can be registered</span></code></pre>
+</div>
+
+<!-- P5 -->
+<h2 id="p5"><span class="num">P5</span>Deployment problem <span class="ts">1:03:37</span></h2>
+<h3>Manual deployment causes downtime</h3>
+<p>With the traditional setup, every change (such as adding the forecast feature) means: <strong>stop the server → update the code → start the server</strong>. While it's down, users see "site is down", have a bad experience and may not come back. Modern sites ship new features <em>while staying up</em>, and they do it with CI/CD.</p>
+
+<figure>
+  <p class="fig-title">Manual deploy vs CI/CD</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 230" role="img" aria-label="Manual deployment has a downtime window; CI/CD pipeline goes from git push to build, test, docker image, registry, cloud server without downtime">
+    <defs><marker id="b4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <text x="10" y="22" class="t-xs t-b" style="fill:var(--bad)">MANUAL</text>
+    <rect x="10" y="32" width="130" height="36" rx="6" class="box"/><text x="75" y="55" text-anchor="middle" class="t-xs">edit code</text>
+    <rect x="160" y="32" width="130" height="36" rx="6" fill="var(--bad-soft)" stroke="var(--bad)"/><text x="225" y="55" text-anchor="middle" class="t-xs t-b">stop server ⛔</text>
+    <rect x="310" y="32" width="130" height="36" rx="6" fill="var(--bad-soft)" stroke="var(--bad)"/><text x="375" y="55" text-anchor="middle" class="t-xs">copy/update code</text>
+    <rect x="460" y="32" width="130" height="36" rx="6" fill="var(--bad-soft)" stroke="var(--bad)"/><text x="525" y="55" text-anchor="middle" class="t-xs">restart server</text>
+    <rect x="610" y="32" width="140" height="36" rx="6" class="box"/><text x="680" y="55" text-anchor="middle" class="t-xs">live again</text>
+    <path d="M140,50 L158,50" class="edge" marker-end="url(#b4)"/><path d="M290,50 L308,50" class="edge" marker-end="url(#b4)"/><path d="M440,50 L458,50" class="edge" marker-end="url(#b4)"/><path d="M590,50 L608,50" class="edge" marker-end="url(#b4)"/>
+    <path d="M160,80 L590,80" stroke="var(--bad)" stroke-width="2"/><text x="375" y="98" text-anchor="middle" class="t-xs" style="fill:var(--bad)">downtime: users see "website is down"</text>
+
+    <text x="10" y="132" class="t-xs t-b" style="fill:var(--good)">CI/CD</text>
+    <g data-tip="<b>git push</b><br>Developer commits to GitHub"><rect x="10" y="142" width="100" height="40" rx="6" class="box"/><text x="60" y="167" text-anchor="middle" class="t-xs t-b">git push</text></g>
+    <g data-tip="<b>CI</b><br>GitHub Actions / Jenkins / CircleCI run tests and build"><rect x="130" y="142" width="130" height="40" rx="6" class="box"/><text x="195" y="160" text-anchor="middle" class="t-xs t-b">CI: test + build</text><text x="195" y="176" text-anchor="middle" class="t-xs" style="font-size:9.5px">Actions · Jenkins · Circle</text></g>
+    <g data-tip="<b>Docker image</b><br>App + exact dependencies packaged together"><rect x="280" y="142" width="120" height="40" rx="6" class="box"/><text x="340" y="167" text-anchor="middle" class="t-xs t-b">🐳 Docker image</text></g>
+    <g data-tip="<b>Registry</b><br>e.g. AWS ECR stores the image"><rect x="420" y="142" width="120" height="40" rx="6" class="box"/><text x="480" y="167" text-anchor="middle" class="t-xs t-b">AWS ECR</text></g>
+    <g data-tip="<b>CD</b><br>Cloud server (AWS/GCP) pulls the new image and rolls it out"><rect x="560" y="142" width="190" height="40" rx="6" fill="var(--good-soft)" stroke="var(--good)"/><text x="655" y="167" text-anchor="middle" class="t-xs t-b">CD: cloud server updated ✓</text></g>
+    <path d="M110,162 L128,162" class="edge" marker-end="url(#b4)"/><path d="M260,162 L278,162" class="edge" marker-end="url(#b4)"/><path d="M400,162 L418,162" class="edge" marker-end="url(#b4)"/><path d="M540,162 L558,162" class="edge" marker-end="url(#b4)"/>
+    <text x="380" y="210" text-anchor="middle" class="t-xs" style="fill:var(--good)">automatic on every commit, and the site stays up</text>
+  </svg>
+  </div>
+</figure>
+
+<h3>"It works on my machine": why Docker</h3>
+<p>Locally the code runs because every dependency is installed at the right version. On a cloud server, a package might be missing or at a different version, and the app fails. <strong>Docker</strong> packages the app and its environment into an <strong>image</strong> that runs the same way on <strong>any server</strong>. The course uses Docker to build the whole deployment pipeline.</p>
+<div class="callout beyond"><span class="label">Beyond the video · a minimal Dockerfile for the API above</span>
+<pre><code>FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+EXPOSE 8000
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]</code></pre>
+</div>
+<p><strong>Tools:</strong> CI/CD with <strong>Jenkins, CircleCI, GitHub Actions</strong>; cloud with <strong>AWS / GCP</strong> (for example <strong>ECR</strong> as the image registry); containers with <strong>Docker</strong>.</p>
+
+<!-- P6 -->
+<h2 id="p6"><span class="num">P6</span>Data drift problem <span class="ts">1:05:44</span></h2>
+<p><strong>Data drift</strong> means the data distribution the model was <strong>trained</strong> on differs from the distribution it sees in <strong>production</strong>, so performance drops. This is exactly what happened with the cricket model: it was trained on historical data and then received live data that looked different.</p>
+
+<figure>
+  <p class="fig-title">Training vs live distribution of first-innings scores</p>
+  <p class="fig-sub">Illustrative. Live matches score higher and vary more than the historical data. Hover the curves.</p>
+  <div class="legend"><span><i style="background:var(--s1)"></i>Training (historical)</span><span><i style="background:var(--s2)"></i>Production (live season)</span></div>
+  <div class="scroll"><svg id="drift" viewBox="0 0 760 280" role="img" aria-label="Two density curves: training centred at 160 runs, production centred at 185 runs and wider"></svg></div>
+  <figcaption>The model learned "typical score ≈ 160". Live matches centre near 185, so predictions are systematically off. <b>Monitoring detects this shift; retraining on new data fixes it.</b></figcaption>
+</figure>
+
+<div class="grid">
+  <div class="card"><h4>1 · Monitor</h4><p>Watch the live app and its input and prediction distributions with <strong>Grafana</strong> and <strong>Evidently</strong>.</p></div>
+  <div class="card"><h4>2 · Detect</h4><p>Is drift happening? Evidently compares training and live data statistically.</p></div>
+  <div class="card"><h4>3 · Update data</h4><p>Fix the data pipeline, for example by adding real-time and current-season data.</p></div>
+  <div class="card"><h4>4 · Retrain</h4><p>Run the <strong>retraining pipeline</strong> so the model learns the new distribution, then redeploy.</p></div>
+</div>
+
+<!-- P7 -->
+<h2 id="p7"><span class="num">P7</span>Infrastructure problem <span class="ts">1:07:49</span></h2>
+<p>The whole pipeline has to be <strong>hosted</strong> on a cloud platform: <strong>AWS, GCP or Azure</strong>. If you don't understand their services, you can end up with <strong>very large bills</strong>. The instructor points out that most companies spend a large share of their money on cloud servers, paid every month.</p>
+<div class="callout key"><span class="label">What to learn</span><p>Which cloud services exist, how to use them, and how to <strong>manage them properly to reduce cost</strong>: pick the right instance size, shut down what you don't use, and so on. The course covers cloud fundamentals at 3:09:31 and uses EC2, S3, ECR and SageMaker in the projects.</p></div>
+
+<!-- P8 -->
+<h2 id="p8"><span class="num">P8</span>Automation problem <span class="ts">1:08:51</span></h2>
+<p>Traditionally you work in notebooks or loose files and <strong>run and update each part by hand</strong>. With MLOps, the components run as a pipeline in a <strong>fixed order</strong>:</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 120" role="img" aria-label="Ordered pipeline: ingestion, validation, transformation, trainer, evaluation, prediction">
+    <defs><marker id="b5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g class="t-xs">
+      <rect x="5" y="30" width="110" height="50" rx="8" class="box"/><text x="60" y="52" text-anchor="middle" class="t-b">① Data</text><text x="60" y="68" text-anchor="middle">ingestion</text>
+      <rect x="130" y="30" width="110" height="50" rx="8" class="box"/><text x="185" y="52" text-anchor="middle" class="t-b">② Data</text><text x="185" y="68" text-anchor="middle">validation</text>
+      <rect x="255" y="30" width="120" height="50" rx="8" class="box"/><text x="315" y="52" text-anchor="middle" class="t-b">③ Data</text><text x="315" y="68" text-anchor="middle">transformation</text>
+      <rect x="390" y="30" width="110" height="50" rx="8" class="box"/><text x="445" y="52" text-anchor="middle" class="t-b">④ Model</text><text x="445" y="68" text-anchor="middle">trainer</text>
+      <rect x="515" y="30" width="110" height="50" rx="8" class="box"/><text x="570" y="52" text-anchor="middle" class="t-b">⑤ Model</text><text x="570" y="68" text-anchor="middle">evaluation</text>
+      <rect x="640" y="30" width="115" height="50" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="697" y="52" text-anchor="middle" class="t-b">⑥ Prediction</text><text x="697" y="68" text-anchor="middle">pipeline</text>
+    </g>
+    <path d="M115,55 L128,55" class="edge" marker-end="url(#b5)"/><path d="M240,55 L253,55" class="edge" marker-end="url(#b5)"/><path d="M375,55 L388,55" class="edge" marker-end="url(#b5)"/><path d="M500,55 L513,55" class="edge" marker-end="url(#b5)"/><path d="M625,55 L638,55" class="edge" marker-end="url(#b5)"/>
+    <text x="380" y="108" text-anchor="middle" class="t-xs">order is enforced and tracked by DVC (Data Version Control)</text>
+  </svg>
+  </div>
+</figure>
+<p><strong>Tool:</strong> <strong>DVC</strong> for pipeline tracking. It defines the stages and their order and re-runs only what changed, which automates the whole application.</p>
+<div class="callout beyond"><span class="label">Beyond the video · a peek at a DVC pipeline</span>
+<pre><code><span class="c"># dvc.yaml: each stage declares its command, inputs (deps) and outputs (outs)</span>
+stages:
+  ingest:
+    cmd: python src/components/data_ingestion.py
+    outs: [data/raw]
+  train:
+    cmd: python src/components/model_trainer.py
+    deps: [data/raw, src/components/model_trainer.py]
+    outs: [models/model.pkl]
+<span class="c"># run the whole thing:  dvc repro</span></code></pre>
+</div>
+
+<!-- P9 -->
+<h2 id="p9"><span class="num">P9</span>Legal / governance problem <span class="ts">1:09:53</span></h2>
+<p>An application also has to handle <strong>legal, security and governance</strong> concerns. The instructor gives two examples:</p>
+<div class="grid">
+  <div class="card"><h4>ChatGPT-style assistant</h4><p>If someone asks how to build something dangerous, the app should <strong>not</strong> answer, or it gets used for harm. Harmful requests need guardrails.</p></div>
+  <div class="card"><h4>Our sports forecaster</h4><p>People could use the predictions for <strong>illegal betting</strong>, a very large illegal business. If you ignore that, you could end up in court and spend a lot of money on the app.</p></div>
+</div>
+<p>The traditional approach doesn't address this. MLOps practice includes governance, security and compliance as part of the lifecycle.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>Benefits of MLOps <span class="ts">1:11:58</span></h2>
+<div class="grid">
+  <div class="card"><h4>📈 Scalability</h4><p>Handles a large audience instead of 10–15 users.</p></div>
+  <div class="card"><h4>⚡ Improved performance</h4><p>Experiments and retraining keep the model at its best.</p></div>
+  <div class="card"><h4>🔁 Reproducibility</h4><p>Versioned code, data and pipelines give the same results every run.</p></div>
+  <div class="card"><h4>🤝 Effective collaboration</h4><p>Modular code plus Git lets many developers work in parallel.</p></div>
+  <div class="card"><h4>🛡 Risk reduction</h4><p>Tested CI/CD, rollbacks and monitoring catch problems early.</p></div>
+  <div class="card"><h4>💰 Cost savings</h4><p>Automation and well-managed infrastructure cost less.</p></div>
+  <div class="card"><h4>🚀 Faster time to market</h4><p>Push to Git and the change is live with no downtime.</p></div>
+  <div class="card"><h4>📜 Better compliance &amp; governance</h4><p>Traceable models and data, and legal risks handled.</p></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>Challenges of MLOps <span class="ts">1:12:20</span></h2>
+<p>The instructor is clear that MLOps is not free. These are the challenges he lists:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Challenge</th><th>What it means</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Complexity of ML models</strong></td><td>Results vary between runs, and deep learning models are <strong>black boxes</strong>, which makes pipelines harder to build and debug.</td></tr>
+    <tr><td><strong>Data quality</strong></td><td>Pipelines are only as good as the data flowing through them.</td></tr>
+    <tr><td><strong>Cost &amp; resource constraints</strong></td><td>Cloud, GPUs and tooling are expensive.</td></tr>
+    <tr><td><strong>Handling scale</strong></td><td>More users and more data put load on every component.</td></tr>
+    <tr><td><strong>Security risks</strong></td><td>Data, models and endpoints all need protection.</td></tr>
+    <tr><td><strong>Compliance &amp; regulatory concerns</strong></td><td>Laws about data use and the application's domain.</td></tr>
+    <tr><td><strong>Integration with existing systems</strong></td><td>New ML pipelines have to fit into existing company software.</td></tr>
+    <tr><td><strong>Limited expertise / skill gap</strong></td><td>You need <strong>data engineering + ML + DevOps</strong> together. Few developers have all three, which is also why people who do are in demand.</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="callout key"><span class="label">Instructor's closing message</span><p>Learn all three skills and you become a strong MLOps engineer. The rest of the course teaches each tool mentioned here and ends with real-time projects so you can use MLOps in practice.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>Interview questions</h2>
+<details class="qa"><summary>Walk me through the problems of deploying an ML model without MLOps.</summary>
+<p>Use the 9-problem list: (1) data from many sources with no central store, (2) monolithic notebook code that is hard to maintain, reuse, test or scale, (3) no versioning, so no rollback, (4) experiments not tracked, (5) manual deployment with downtime and environment mismatch, (6) data drift nobody notices, (7) unmanaged cloud infrastructure and cost, (8) no pipeline automation, (9) legal and governance risks. Pair each with its fix: ETL + warehouse, modular OOP code, Git, MLflow, CI/CD + Docker, monitoring + retraining, cloud skills, DVC pipelines, governance.</p></details>
+<details class="qa"><summary>What is data drift and how do you handle it?</summary>
+<p>The input data distribution in production differs from the training distribution (for example, live scores trend higher than historical ones), so accuracy degrades even though the code is unchanged. Handle it by monitoring input and prediction distributions (Evidently, Grafana), alerting when statistical tests show a shift, updating the data pipeline to include fresh data, and running a retraining pipeline followed by a CI/CD redeploy.</p></details>
+<details class="qa"><summary>Why use Docker for ML deployment?</summary>
+<p>It packages code plus exact dependency versions into one image, so the model behaves the same on a laptop, a CI runner and a cloud server. It removes the "works on my machine" failures and is the unit that CI/CD builds, pushes to a registry (such as ECR) and deploys.</p></details>
+<details class="qa"><summary>Why write modular code instead of a notebook?</summary>
+<p>Maintainability, reusability, parallel collaboration, scalability and testability. Each component (ingestion, validation, transformation, trainer, evaluation, prediction) is a separate class or file, owned and tested on its own and wired together as a pipeline.</p></details>
+<details class="qa"><summary>How does CI/CD avoid downtime compared with manual deployment?</summary>
+<p>Manual deployment means stopping the server, updating it and restarting, so the site is down in between. With CI/CD, a git push triggers automated tests and an image build. The new version is rolled out while the old one keeps serving, and traffic moves over only when the new one is healthy.</p></details>
+<details class="qa"><summary>What are the benefits and challenges of MLOps?</summary>
+<p>Benefits: scalability, performance, reproducibility, collaboration, risk reduction, cost savings, faster time to market, compliance and governance. Challenges: model complexity (variability, black boxes), data quality, cost, scale, security, regulation, integration with existing systems, and the skill gap (ML + data engineering + DevOps).</p></details>
+<details class="qa"><summary>Is experiment tracking the same as hyperparameter tuning?</summary>
+<p>No. Tuning is the <em>search</em> over parameters. Tracking is <em>recording</em> every run's parameters, metrics and artifacts so you can compare them, reproduce them and promote the best one. You tune and track at the same time, and MLflow handles the tracking.</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>Recap</h2>
+<ul>
+  <li>Use case: a <strong>live 20-over score forecast</strong> (regression) for ESPNcricinfo.</li>
+  <li>Traditional build: notebook → <code>.pkl</code> → S3 → Flask/FastAPI → back end → front end → manual deploy. It <strong>fails in production</strong> because live data differs (180 actual vs 210/160 predicted).</li>
+  <li><strong>9 problems → fixes:</strong> Data → ETL/warehouse · Code → modular OOP · Version → Git · Experiment → MLflow · Deployment → CI/CD + Docker · Drift → monitoring + retraining · Infra → cloud skills · Automation → DVC · Legal → governance.</li>
+  <li><strong>Benefits:</strong> scale, performance, reproducibility, collaboration, less risk, lower cost, faster release, compliance.</li>
+  <li><strong>Challenges:</strong> complexity, data quality, cost, scale, security, regulation, integration, <strong>skill gap</strong>.</li>
+</ul>
+
+<div class="pager">
+  <a href="02_real_world_analogy.html"><small>← Previous</small>02 · MLOps through a real-world analogy</a>
+  <a class="next" href="04_why_linux_for_mlops.html"><small>Next →</small>04 · Why Linux for MLOps</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+<script>
+// Data-drift density chart (illustrative normal curves)
+(function () {
+  const svg = document.getElementById('drift');
+  const NS = 'http://www.w3.org/2000/svg';
+  const W = 760, H = 280, m = { l: 40, r: 20, t: 16, b: 40 };
+  const x0 = 100, x1 = 260;
+  const X = v => m.l + (v - x0) / (x1 - x0) * (W - m.l - m.r);
+  const pdf = (v, mu, sd) => Math.exp(-0.5 * ((v - mu) / sd) ** 2) / (sd * Math.sqrt(2 * Math.PI));
+  const dists = [
+    { name: 'Training (historical)', mu: 160, sd: 15, color: 'var(--s1)' },
+    { name: 'Production (live season)', mu: 185, sd: 20, color: 'var(--s2)' },
+  ];
+  const ymax = pdf(160, 160, 15) * 1.12;
+  const Y = d => H - m.b - d / ymax * (H - m.t - m.b);
+  const el = (n, a) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); svg.appendChild(e); return e; };
+  for (let v = 100; v <= 260; v += 20) {
+    el('line', { x1: X(v), x2: X(v), y1: m.t, y2: H - m.b, class: 'grid-line' });
+    el('text', { x: X(v), y: H - m.b + 16, 'text-anchor': 'middle', class: 't-xs' }).textContent = v;
+  }
+  el('line', { x1: m.l, x2: W - m.r, y1: H - m.b, y2: H - m.b, class: 'axis' });
+  el('text', { x: W / 2, y: H - 4, 'text-anchor': 'middle', class: 't-xs' }).textContent = 'first-innings score (runs)';
+  dists.forEach(d => {
+    let path = '';
+    for (let v = x0; v <= x1; v += 1) path += (v === x0 ? 'M' : 'L') + X(v).toFixed(1) + ',' + Y(pdf(v, d.mu, d.sd)).toFixed(1);
+    el('path', { d: path + `L${X(x1)},${H - m.b}L${X(x0)},${H - m.b}Z`, fill: d.color, 'fill-opacity': .12, stroke: 'none' });
+    el('path', { d: path, fill: 'none', stroke: d.color, 'stroke-width': 2 });
+    el('line', { x1: X(d.mu), x2: X(d.mu), y1: Y(pdf(d.mu, d.mu, d.sd)), y2: H - m.b, stroke: d.color, 'stroke-width': 1.5, 'stroke-dasharray': '4 3' });
+    el('text', { x: X(d.mu) + 6, y: Y(pdf(d.mu, d.mu, d.sd)) - 6, class: 't-xs' }).textContent = `${d.name.split(' ')[0]} mean ≈ ${d.mu}`;
+  });
+  const cross = el('line', { y1: m.t, y2: H - m.b, stroke: 'var(--ink-3)', 'stroke-dasharray': '3 3', visibility: 'hidden' });
+  const hit = el('rect', { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: 'transparent' });
+  hit.addEventListener('pointermove', e => {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const v = Math.round(x0 + (p.x - m.l) / (W - m.l - m.r) * (x1 - x0));
+    cross.setAttribute('x1', X(v)); cross.setAttribute('x2', X(v)); cross.setAttribute('visibility', 'visible');
+    const [a, b] = dists.map(d => pdf(v, d.mu, d.sd) * 1000);
+    NotesTip.show(`<b>${v} runs</b><br>Training density: ${a.toFixed(1)}‰<br>Live density: ${b.toFixed(1)}‰`, e.clientX, e.clientY);
+  });
+  hit.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); NotesTip.hide(); });
+})();
+</script>
+</body>
+</html>

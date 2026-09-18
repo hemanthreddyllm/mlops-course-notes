@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>06 · Required Linux Commands for MLOps — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .term { background: var(--code-bg); border-radius: 10px; overflow: hidden; margin: 14px 0; }
+  .term .bar { display: flex; gap: 6px; padding: 9px 12px; background: #2b2b29; }
+  .term .bar i { width: 10px; height: 10px; border-radius: 50%; background: #5b5a55; }
+  .term .bar span { margin-left: 8px; font: 12px var(--mono); color: #a8a79f; }
+  .term pre { margin: 0; border-radius: 0; }
+  .term .p { color: #7fc79a; }
+  .term .o { color: #c3c2b7; }
+  .cmd { font: 600 13px var(--mono); white-space: nowrap; }
+  .fixnote { font-size: 12.5px; color: var(--bad); }
+  /* chmod calculator */
+  .calc { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 16px; margin: 18px 0; }
+  .calc table { font-size: 14px; }
+  .calc td, .calc th { text-align: center; }
+  .calc td:first-child, .calc th:first-child { text-align: left; }
+  .calc input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+  .calc .out { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; align-items: stretch; }
+  .calc .box-out { flex: 1 1 160px; background: var(--surface-2); border-radius: 8px; padding: 10px 14px; }
+  .calc .box-out small { display: block; color: var(--ink-3); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+  .calc .box-out b { font: 600 22px var(--mono); }
+  .calc .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .calc button { font: 500 12px var(--mono); padding: 5px 10px; border-radius: 999px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); cursor: pointer; }
+  .calc button:hover { border-color: var(--accent); }
+  .filter { width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); font: 14px var(--sans); margin: 8px 0 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 06</span></div>
+<div class="eyebrow">Chapter 06 · Required Linux Commands for MLOps</div>
+<h1>The Linux commands you'll use on every server</h1>
+<p class="lede">On the new EC2 machine, the instructor goes through the commands a developer needs in production: updating packages, moving around folders, creating and editing files, running Python, copying and moving, checking processes, setting permissions, compressing files, managing users, and a few utilities. These notes follow his demo in order, fix a few slips from the recording, and end with a cheat sheet you can search.</p>
+<div class="meta">
+  <span class="chip">Video 01:31:55 – 01:54:09</span>
+  <span class="chip">Hands-on · bash on Ubuntu</span>
+  <span class="chip">~30 commands</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s0">The Linux folder layout</a></li>
+    <li><a href="#s1">sudo and package updates</a></li>
+    <li><a href="#s2">Looking around: ls, pwd, clear</a></li>
+    <li><a href="#s3">Folders: mkdir, cd, rmdir</a></li>
+    <li><a href="#s4">Files: touch, vim, cat</a></li>
+    <li><a href="#s5">Running Python on the server</a></li>
+    <li><a href="#s6">Copy, move, delete: cp, mv, rm</a></li>
+    <li><a href="#s7">Getting help and watching processes: man, top</a></li>
+    <li><a href="#s8">Permissions: ls -l and chmod (with calculator)</a></li>
+    <li><a href="#s9">Compression: tar and zip</a></li>
+    <li><a href="#s10">Users: whoami, useradd, userdel</a></li>
+    <li><a href="#s11">Utilities: date, echo, head, tail</a></li>
+    <li><a href="#s12">Full cheat sheet (searchable)</a></li>
+    <li><a href="#s13">More commands you'll need for deployment</a></li>
+    <li><a href="#s14">Practice: serve a tiny API from EC2</a></li>
+    <li><a href="#hands-on">Hands-on files: what we built</a></li>
+    <li><a href="#s15">Interview questions</a></li>
+    <li><a href="#s16">Recap</a></li>
+  </ol>
+</nav>
+
+<div class="callout key"><span class="label">Instructor's framing</span><p>Production servers have <strong>no user interface</strong>, so these commands are how you work. Note them down: the instructor says he'll use them throughout the rest of the course, and that he'd share the full list on GitHub. For anything not covered here, look it up (Google or ChatGPT).</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s0"><span class="num">00</span>The Linux folder layout</h2>
+<p>Before running any commands, it helps to know where you are. Linux has a single tree that starts at <code>/</code>. When you log in to EC2 you start in <code>/home/ubuntu</code>.</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 230" role="img" aria-label="Linux directory tree: root slash contains home, etc, var, usr, tmp, root; home contains ubuntu, which is where you start">
+    <g class="edge">
+      <path d="M380,48 L380,70 M90,70 L670,70 M90,70 L90,90 M200,70 L200,90 M310,70 L310,90 M450,70 L450,90 M560,70 L560,90 M670,70 L670,90"/>
+      <path d="M90,122 L90,150"/>
+    </g>
+    <rect x="340" y="14" width="80" height="34" rx="8" class="box-2"/><text x="380" y="36" text-anchor="middle" class="t-sm t-b">/</text>
+    <g data-tip="<b>/home</b><br>One folder per user"><rect x="45" y="90" width="90" height="32" rx="7" class="box"/><text x="90" y="111" text-anchor="middle" class="t-xs t-b">home</text></g>
+    <g data-tip="<b>/etc</b><br>System config files (nginx, ssh…)"><rect x="155" y="90" width="90" height="32" rx="7" class="box"/><text x="200" y="111" text-anchor="middle" class="t-xs t-b">etc</text></g>
+    <g data-tip="<b>/var</b><br>Changing data; /var/log holds logs"><rect x="265" y="90" width="90" height="32" rx="7" class="box"/><text x="310" y="111" text-anchor="middle" class="t-xs t-b">var/log</text></g>
+    <g data-tip="<b>/usr</b><br>Installed programs; /usr/bin holds python3, git…"><rect x="405" y="90" width="90" height="32" rx="7" class="box"/><text x="450" y="111" text-anchor="middle" class="t-xs t-b">usr/bin</text></g>
+    <g data-tip="<b>/tmp</b><br>Temporary files, cleared on reboot"><rect x="515" y="90" width="90" height="32" rx="7" class="box"/><text x="560" y="111" text-anchor="middle" class="t-xs t-b">tmp</text></g>
+    <g data-tip="<b>/root</b><br>Home folder of the root (admin) user"><rect x="625" y="90" width="90" height="32" rx="7" class="box"/><text x="670" y="111" text-anchor="middle" class="t-xs t-b">root</text></g>
+    <g data-tip="<b>/home/ubuntu</b><br>Your home folder on EC2. Shown as ~"><rect x="20" y="150" width="140" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="90" y="168" text-anchor="middle" class="t-xs t-b">ubuntu  (= ~)</text><text x="90" y="183" text-anchor="middle" class="t-xs">📍 you start here</text></g>
+    <text x="180" y="176" class="t-xs">bappy_test/ · bappy.txt · test.py ← the demo files are created here</text>
+    <text x="20" y="220" class="t-xs">Hover a folder. <tspan class="t-b">/</tspan> is the true root of the filesystem.</text>
+  </svg>
+  </div>
+</figure>
+<div class="callout wrong"><span class="label">Correction</span><p>In the video, <code>/home/ubuntu</code> is called "the root directory". It is your <strong>home directory</strong>. The root of the filesystem is <code>/</code>, and <code>/root</code> is the home folder of the <em>root user</em>.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>sudo and package updates <span class="ts">01:32:00</span></h2>
+<p>A new cloud machine needs its <strong>package manager</strong> updated before you install anything, much like running Windows Update on a new laptop.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>ubuntu@ip-172-31-5-20: ~</span></div>
+<pre><code><span class="p">$</span> sudo apt update          <span class="c"># refresh the list of available packages</span>
+<span class="p">$</span> clear                    <span class="c"># wipe the screen</span>
+<span class="p">$</span> sudo apt-get update      <span class="c"># same job with the older tool</span></code></pre></div>
+<div class="grid">
+  <div class="card"><h4><span class="cmd">sudo</span> = "run as administrator"</h4><p>The Windows equivalent is <em>Run as administrator</em>. It runs a command with <strong>root (admin) permission</strong>. Installing software and changing system files need it.</p></div>
+  <div class="card"><h4><span class="cmd">apt</span> and <span class="cmd">apt-get</span></h4><p>Both are front ends to Ubuntu's package manager, and they download from the internet. <code>apt</code> is the newer, friendlier one for interactive use. <code>apt-get</code> is older and has stable output, so it's the one to use in scripts and Dockerfiles.</p></div>
+</div>
+<div class="callout beyond"><span class="label">Clarification · update vs upgrade</span>
+<p><code>apt update</code> only refreshes the <em>list</em> of packages; it doesn't install new versions. To actually upgrade, run <code>sudo apt upgrade -y</code>. To install something: <code>sudo apt install -y python3-pip</code>.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>Looking around: ls, pwd, clear <span class="ts">01:34:06</span></h2>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>ubuntu@ip-172-31-5-20: ~</span></div>
+<pre><code><span class="p">$</span> ls                <span class="c"># list files and folders; nothing yet on a new machine</span>
+<span class="p">$</span> ls -al            <span class="c"># all files, including hidden ones, in long format</span>
+<span class="o">drwxr-x--- 4 ubuntu ubuntu 4096 .
+drwxr-xr-x 3 root   root   4096 ..
+-rw-r--r-- 1 ubuntu ubuntu  220 .bash_logout
+-rw-r--r-- 1 ubuntu ubuntu 3771 .bashrc
+drwx------ 2 ubuntu ubuntu 4096 .ssh</span>
+<span class="p">$</span> pwd               <span class="c"># print the full path of where you are</span>
+<span class="o">/home/ubuntu</span></code></pre></div>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Command</th><th>What it does</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td class="cmd">ls</td><td>List the contents of the current directory</td><td></td></tr>
+    <tr><td class="cmd">ls -al</td><td>List <strong>all</strong> files (<code>-a</code>, including hidden) in <strong>long</strong> format (<code>-l</code>)</td><td>Hidden files start with a <strong>dot</strong>, e.g. <code>.bashrc</code>, <code>.ssh</code></td></tr>
+    <tr><td class="cmd">pwd</td><td>Show the full path of the current directory</td><td><span class="fixnote">The video says "project working directory"; it stands for <strong>print working directory</strong>.</span></td></tr>
+    <tr><td class="cmd">clear</td><td>Clear the terminal screen</td><td>Shortcut: <kbd>Ctrl</kbd>+<kbd>L</kbd></td></tr>
+    <tr><td><kbd>↑</kbd> arrow</td><td>Bring back previous commands</td><td>The instructor's shortcut to avoid retyping</td></tr>
+    <tr><td><kbd>Tab</kbd></td><td>Autocomplete file and folder names</td><td>Type <code>cd te</code> then press Tab</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>Folders: mkdir, cd, rmdir <span class="ts">01:35:08</span></h2>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>ubuntu@ip-172-31-5-20: ~</span></div>
+<pre><code><span class="p">$</span> mkdir test            <span class="c"># make a directory</span>
+<span class="p">$</span> ls
+<span class="o">test</span>
+<span class="p">$</span> cd test               <span class="c"># change directory into it</span>
+<span class="p">ubuntu@…:~/test$</span> ls -l <span class="c"># empty</span>
+<span class="p">ubuntu@…:~/test$</span> cd ..  <span class="c"># go up one level</span>
+<span class="p">$</span> rmdir test            <span class="c"># remove the (empty) directory</span>
+<span class="p">$</span> mkdir bappy_test
+<span class="p">$</span> cd bappy_test &amp;&amp; pwd
+<span class="o">/home/ubuntu/bappy_test</span>
+<span class="p">$</span> cd ..</code></pre></div>
+
+<figure>
+  <p class="fig-title">How <code>cd</code> moves you around</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 150" role="img" aria-label="cd bappy_test moves down into the folder, cd .. moves up to the parent, cd ~ goes home, cd / goes to the filesystem root">
+    <defs><marker id="e1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker><marker id="e2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker></defs>
+    <rect x="40" y="14" width="160" height="34" rx="8" class="box-2"/><text x="120" y="36" text-anchor="middle" class="t-sm t-b">/</text>
+    <rect x="300" y="14" width="160" height="34" rx="8" class="box"/><text x="380" y="36" text-anchor="middle" class="t-sm t-b">/home/ubuntu (~)</text>
+    <rect x="560" y="14" width="180" height="34" rx="8" class="box"/><text x="650" y="36" text-anchor="middle" class="t-sm t-b">~/bappy_test</text>
+    <path d="M460,26 L558,26" class="edge-accent" marker-end="url(#e2)"/><text x="509" y="18" text-anchor="middle" class="t-xs" style="fill:var(--accent)">cd bappy_test</text>
+    <path d="M560,40 L462,40" class="edge" marker-end="url(#e1)"/><text x="509" y="62" text-anchor="middle" class="t-xs">cd ..</text>
+    <path d="M300,31 L202,31" class="edge" marker-end="url(#e1)"/><text x="251" y="24" text-anchor="middle" class="t-xs">cd /</text>
+    <path d="M650,48 Q650,110 380,110 Q380,80 380,52" class="edge" marker-end="url(#e1)"/><text x="520" y="126" text-anchor="middle" class="t-xs">cd ~  (or just cd) → back home from anywhere</text>
+  </svg>
+  </div>
+</figure>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td class="cmd">mkdir name</td><td><strong>Make</strong> a <strong>dir</strong>ectory. <code>mkdir -p a/b/c</code> creates nested folders in one go.</td></tr>
+    <tr><td class="cmd">cd name</td><td><strong>C</strong>hange <strong>d</strong>irectory into <code>name</code></td></tr>
+    <tr><td class="cmd">cd ..</td><td>Go up to the parent folder</td></tr>
+    <tr><td class="cmd">rmdir name</td><td>Remove a directory. <strong>Only works if it's empty.</strong> For a folder with files, use <code>rm -r name</code>.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>Files: touch, vim, cat <span class="ts">01:38:18</span></h2>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>ubuntu@ip-172-31-5-20: ~</span></div>
+<pre><code><span class="p">$</span> touch bappy.txt       <span class="c"># create an empty file</span>
+<span class="p">$</span> ls
+<span class="o">bappy.txt  bappy_test</span>
+<span class="p">$</span> vim bappy.txt         <span class="c"># open it in the vim editor → press i → type "hello" → Esc → :wq → Enter</span>
+<span class="p">$</span> cat bappy.txt         <span class="c"># print the file's contents</span>
+<span class="o">hello</span></code></pre></div>
+
+<h3>Vim in 30 seconds</h3>
+<p>Vim is the terminal text editor the instructor uses. It has <strong>modes</strong>, which is what confuses beginners:</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 190" role="img" aria-label="Vim modes: open file in normal mode; press i for insert mode and type; press Esc to return; type colon wq to save and quit, or colon q bang to quit without saving">
+    <defs><marker id="e3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <text x="20" y="80" class="t-xs">vim file.txt</text><path d="M92,76 L138,76" class="edge" marker-end="url(#e3)"/>
+    <rect x="140" y="46" width="190" height="60" rx="10" class="box-2" stroke="var(--s1)" stroke-width="2"/><text x="235" y="72" text-anchor="middle" class="t-sm t-b">NORMAL mode</text><text x="235" y="92" text-anchor="middle" class="t-xs">keys are commands, not text</text>
+    <rect x="470" y="10" width="190" height="60" rx="10" fill="var(--good-soft)" stroke="var(--good)" stroke-width="2"/><text x="565" y="36" text-anchor="middle" class="t-sm t-b">INSERT mode</text><text x="565" y="56" text-anchor="middle" class="t-xs">type / paste normally</text>
+    <rect x="470" y="110" width="190" height="60" rx="10" fill="var(--warn-soft)" stroke="var(--s4)" stroke-width="2"/><text x="565" y="136" text-anchor="middle" class="t-sm t-b">COMMAND line  :</text><text x="565" y="156" text-anchor="middle" class="t-xs">save / quit</text>
+    <path d="M330,60 Q400,30 468,36" class="edge" marker-end="url(#e3)"/><text x="395" y="30" text-anchor="middle" class="t-xs t-b">press i</text>
+    <path d="M470,56 Q400,76 332,76" class="edge" marker-end="url(#e3)"/><text x="400" y="86" text-anchor="middle" class="t-xs t-b">press Esc</text>
+    <path d="M330,96 Q400,130 468,136" class="edge" marker-end="url(#e3)"/><text x="385" y="136" text-anchor="middle" class="t-xs t-b">type :</text>
+    <text x="680" y="130" class="t-xs"><tspan class="t-b">:wq</tspan> save + quit</text>
+    <text x="680" y="146" class="t-xs"><tspan class="t-b">:q!</tspan> quit, discard</text>
+    <text x="680" y="162" class="t-xs"><tspan class="t-b">:w</tspan> save only</text>
+  </svg>
+  </div>
+  <figcaption>Save-and-quit is <b>Esc, then <code>:wq</code>, then Enter</b>. The captions spell the colon as "clone"; it's the <b>colon</b> character <code>:</code>. Paste into the terminal with right-click (or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>).</figcaption>
+</figure>
+<div class="callout beyond"><span class="label">Beyond the video · an easier editor</span><p><code>nano file.txt</code> is friendlier for beginners: type straight away, <kbd>Ctrl</kbd>+<kbd>O</kbd> saves, <kbd>Ctrl</kbd>+<kbd>X</kbd> exits. It's still worth learning basic vim, because it's the one editor installed on almost every server and Docker image.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>Running Python on the server <span class="ts">01:39:20</span></h2>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>ubuntu@ip-172-31-5-20: ~</span></div>
+<pre><code><span class="p">$</span> touch test.py
+<span class="p">$</span> vim test.py            <span class="c"># i → print("hello") → Esc → :wq</span>
+<span class="p">$</span> cat test.py
+<span class="o">print("hello")</span>
+<span class="p">$</span> python3 test.py        <span class="c"># run it; Ubuntu ships python3</span>
+<span class="o">hello</span></code></pre></div>
+<p>This is the same workflow you'll use to run a training script or start an API on a server: create or copy the code, check it with <code>cat</code>, then run it with <code>python3</code>.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>Copy, move, delete: cp, mv, rm <span class="ts">01:40:22</span></h2>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>ubuntu@ip-172-31-5-20: ~</span></div>
+<pre><code><span class="p">$</span> cp test.py bappy_test/     <span class="c"># copy: file now exists in BOTH places</span>
+<span class="p">$</span> ls bappy_test
+<span class="o">test.py</span>
+<span class="p">$</span> mv test.py bappy_test/     <span class="c"># move: file leaves the current folder</span>
+<span class="p">$</span> ls
+<span class="o">bappy.txt  bappy_test</span>
+<span class="p">$</span> cd bappy_test
+<span class="p">$</span> rm test.py                 <span class="c"># delete the file (no recycle bin!)</span></code></pre></div>
+<figure>
+  <p class="fig-title">cp vs mv</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 150" role="img" aria-label="cp leaves the original file and creates a copy in the destination; mv removes it from the source and places it in the destination">
+    <defs><marker id="e4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker></defs>
+    <text x="20" y="30" class="t-sm t-b">cp</text>
+    <rect x="70" y="12" width="130" height="36" rx="7" class="box"/><text x="135" y="35" text-anchor="middle" class="t-xs">~/ test.py ✓ stays</text>
+    <rect x="300" y="12" width="170" height="36" rx="7" class="box"/><text x="385" y="35" text-anchor="middle" class="t-xs">~/bappy_test/ test.py ✓</text>
+    <path d="M200,30 L298,30" class="edge-accent" marker-end="url(#e4)"/><text x="249" y="24" text-anchor="middle" class="t-xs" style="fill:var(--accent)">copy</text>
+    <text x="500" y="35" class="t-xs">→ 2 files in total</text>
+    <text x="20" y="100" class="t-sm t-b">mv</text>
+    <rect x="70" y="82" width="130" height="36" rx="7" class="box" stroke-dasharray="4 3"/><text x="135" y="105" text-anchor="middle" class="t-xs t-mute">~/ test.py ✗ gone</text>
+    <rect x="300" y="82" width="170" height="36" rx="7" class="box"/><text x="385" y="105" text-anchor="middle" class="t-xs">~/bappy_test/ test.py ✓</text>
+    <path d="M200,100 L298,100" class="edge-accent" marker-end="url(#e4)"/><text x="249" y="94" text-anchor="middle" class="t-xs" style="fill:var(--accent)">move</text>
+    <text x="500" y="105" class="t-xs">→ still 1 file (<tspan class="t-b">mv</tspan> also renames: mv a.py b.py)</text>
+  </svg>
+  </div>
+</figure>
+<div class="callout wrong"><span class="label">Careful with rm</span><p><code>rm</code> deletes permanently. <code>rm -r folder</code> deletes a folder and everything in it. Check with <code>pwd</code> and <code>ls</code> before running it, and be especially careful with <code>sudo rm -rf</code>.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>Getting help and watching processes: man, top <span class="ts">01:42:28</span></h2>
+<div class="grid">
+  <div class="card"><h4><span class="cmd">man ls</span>: the manual</h4><p>Shows the official guide for any command: what it does and every option. Useful when you're new to a command. Press <kbd>q</kbd> to quit (<kbd>h</kbd> for help). <code>ls --help</code> gives a shorter version.</p></div>
+  <div class="card"><h4><span class="cmd">top</span>: the Task Manager</h4><p>The Linux version of Windows Task Manager. It shows live <strong>CPU and memory use per process</strong>. Press <kbd>Ctrl</kbd>+<kbd>C</kbd> (or <kbd>q</kbd>) to exit. <code>htop</code> is a more readable alternative.</p></div>
+</div>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>top</span></div>
+<pre><code><span class="o">top - 10:42:01 up 12 min,  1 user,  load average: 0.00, 0.02, 0.01
+Tasks: 105 total,   1 running, 104 sleeping
+%Cpu(s):  0.3 us,  0.3 sy,  0.0 ni, 99.3 id
+MiB Mem :    957.4 total,    412.8 free,    298.6 used
+  PID USER      %CPU %MEM COMMAND
+  812 ubuntu     0.3  1.2 sshd
+  901 ubuntu     0.0  0.5 bash</span></code></pre></div>
+<p class="fig-sub">Illustrative output on a t2.micro. Watch <b>%CPU</b> and <b>Mem</b> when your model server is under load.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>Permissions: ls -l and chmod <span class="ts">01:43:33</span></h2>
+<p>Every file and folder carries <strong>permissions</strong>, which <code>ls -l</code> displays. The instructor calls this "a bigger concept". For now, remember <strong>3 kinds of user × 3 kinds of access</strong>.</p>
+
+<figure>
+  <p class="fig-title">Reading a permission string</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 190" role="img" aria-label="Permission string -rw-rw-r-- split into type, owner rw-, group rw-, others r--, which is 664 in octal">
+    <g style="font-family:var(--mono);font-size:30px">
+      <rect x="60" y="20" width="44" height="50" rx="6" class="box-2"/><text x="82" y="56" text-anchor="middle">-</text>
+      <rect x="112" y="20" width="150" height="50" rx="6" fill="var(--s1)" fill-opacity=".15" stroke="var(--s1)"/><text x="187" y="56" text-anchor="middle">r w -</text>
+      <rect x="270" y="20" width="150" height="50" rx="6" fill="var(--s2)" fill-opacity=".15" stroke="var(--s2)"/><text x="345" y="56" text-anchor="middle">r w -</text>
+      <rect x="428" y="20" width="150" height="50" rx="6" fill="var(--s3)" fill-opacity=".15" stroke="var(--s3)"/><text x="503" y="56" text-anchor="middle">r - -</text>
+    </g>
+    <text x="600" y="52" class="t-sm">bappy.txt</text>
+    <text x="82" y="94" text-anchor="middle" class="t-xs t-b">type</text><text x="82" y="110" text-anchor="middle" class="t-xs">- file</text><text x="82" y="124" text-anchor="middle" class="t-xs">d dir</text>
+    <text x="187" y="94" text-anchor="middle" class="t-xs t-b">OWNER (user)</text><text x="187" y="110" text-anchor="middle" class="t-xs">read + write</text><text x="187" y="150" text-anchor="middle" class="t-b" style="font-size:22px">6</text><text x="187" y="170" text-anchor="middle" class="t-xs">4+2+0</text>
+    <text x="345" y="94" text-anchor="middle" class="t-xs t-b">GROUP</text><text x="345" y="110" text-anchor="middle" class="t-xs">read + write</text><text x="345" y="150" text-anchor="middle" class="t-b" style="font-size:22px">6</text><text x="345" y="170" text-anchor="middle" class="t-xs">4+2+0</text>
+    <text x="503" y="94" text-anchor="middle" class="t-xs t-b">OTHERS (public)</text><text x="503" y="110" text-anchor="middle" class="t-xs">read only</text><text x="503" y="150" text-anchor="middle" class="t-b" style="font-size:22px">4</text><text x="503" y="170" text-anchor="middle" class="t-xs">4+0+0</text>
+    <text x="640" y="150" class="t-sm t-b">= 664</text><text x="640" y="170" class="t-xs">r=4 · w=2 · x=1</text>
+  </svg>
+  </div>
+  <figcaption>This is the <code>bappy.txt</code> example from the video: owner and group can read and write, the public can only read, and nobody can execute.</figcaption>
+</figure>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Letter</th><th>Permission</th><th class="num">Value</th><th>On a file</th><th>On a folder</th></tr></thead>
+  <tbody>
+    <tr><td class="cmd">r</td><td>read</td><td class="num">4</td><td>view contents</td><td>list contents</td></tr>
+    <tr><td class="cmd">w</td><td>write</td><td class="num">2</td><td>modify</td><td>create/delete files inside</td></tr>
+    <tr><td class="cmd">x</td><td>execute</td><td class="num">1</td><td>run as a program/script</td><td>enter it with <code>cd</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>The instructor uses an online <strong>chmod calculator</strong> to turn ticked boxes into a number. Here's one you can use directly:</p>
+<div class="calc" id="calc">
+  <p class="fig-title" style="margin-bottom:8px">chmod calculator</p>
+  <div class="table-wrap" style="margin:0">
+  <table>
+    <thead><tr><th></th><th>Read (4)</th><th>Write (2)</th><th>Execute (1)</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Owner</strong></td><td><input type="checkbox" data-w="0" data-v="4" aria-label="owner read"></td><td><input type="checkbox" data-w="0" data-v="2" aria-label="owner write"></td><td><input type="checkbox" data-w="0" data-v="1" aria-label="owner execute"></td></tr>
+      <tr><td><strong>Group</strong></td><td><input type="checkbox" data-w="1" data-v="4" aria-label="group read"></td><td><input type="checkbox" data-w="1" data-v="2" aria-label="group write"></td><td><input type="checkbox" data-w="1" data-v="1" aria-label="group execute"></td></tr>
+      <tr><td><strong>Others</strong></td><td><input type="checkbox" data-w="2" data-v="4" aria-label="others read"></td><td><input type="checkbox" data-w="2" data-v="2" aria-label="others write"></td><td><input type="checkbox" data-w="2" data-v="1" aria-label="others execute"></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="out">
+    <div class="box-out"><small>Octal</small><b id="oct">000</b></div>
+    <div class="box-out"><small>ls -l shows</small><b id="sym">----------</b></div>
+    <div class="box-out" style="flex-basis:260px"><small>Command</small><b id="cmdout" style="font-size:16px">chmod 000 bappy.txt</b><div id="meaning" style="font-size:12.5px;color:var(--ink-2);margin-top:4px"></div></div>
+  </div>
+  <div class="presets">
+    <span style="font-size:12px;color:var(--ink-3);align-self:center">Presets:</span>
+    <button type="button" data-p="664">664 (video default)</button>
+    <button type="button" data-p="700">700 (video example)</button>
+    <button type="button" data-p="755">755 (scripts, folders)</button>
+    <button type="button" data-p="644">644 (normal files)</button>
+    <button type="button" data-p="400">400 (.pem key)</button>
+  </div>
+</div>
+
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>ubuntu@ip-172-31-5-20: ~</span></div>
+<pre><code><span class="p">$</span> ls -l bappy.txt
+<span class="o">-rw-rw-r-- 1 ubuntu ubuntu 6 bappy.txt</span>
+<span class="p">$</span> chmod 700 bappy.txt
+<span class="p">$</span> ls -l bappy.txt
+<span class="o">-rwx------ 1 ubuntu ubuntu 6 bappy.txt</span></code></pre></div>
+<div class="callout wrong"><span class="label">Precision note</span><p>The video calls <code>700</code> "administrator access". More precisely, it gives the <strong>owner</strong> full read/write/execute and removes <strong>all</strong> access for group and others. It doesn't grant admin (root) rights, which come from <code>sudo</code>. Common real-world values: <code>755</code> for scripts, <code>644</code> for files, <code>400</code> for SSH keys, and <code>chmod +x run.sh</code> to make a script executable.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>Compression: tar and zip <span class="ts">01:47:49</span></h2>
+<p>This is the Linux version of "zip it up". The standard format is <strong>tar</strong>. The instructor first forgets to give the archive a name, which fails, then fixes it and later has to look up the extract flags. Here are the correct forms:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>ubuntu@ip-172-31-5-20: ~</span></div>
+<pre><code><span class="p">$</span> touch bappy.txt test.py
+<span class="p">$</span> tar -cvf archive.tar test.py bappy.txt   <span class="c"># c=create v=verbose f=archive file name (comes right after f)</span>
+<span class="p">$</span> ls
+<span class="o">archive.tar  bappy.txt  bappy_test  test.py</span>
+<span class="p">$</span> tar -xvf archive.tar                     <span class="c"># x=extract</span>
+<span class="o">test.py
+bappy.txt</span>
+<span class="p">$</span> sudo apt install -y zip unzip            <span class="c"># zip may not be pre-installed</span>
+<span class="p">$</span> zip files.zip test.py bappy.txt          <span class="c"># archive name first, then the files</span>
+<span class="p">$</span> unzip files.zip</code></pre></div>
+
+<figure>
+  <p class="fig-title">tar flags decoded</p>
+  <div class="table-wrap" style="margin:0">
+  <table>
+    <thead><tr><th>Flag</th><th>Meaning</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td class="cmd">-c</td><td>create an archive</td><td><code>tar -cvf out.tar a b</code></td></tr>
+      <tr><td class="cmd">-x</td><td>extract an archive</td><td><code>tar -xvf out.tar</code></td></tr>
+      <tr><td class="cmd">-v</td><td>verbose (list files as it works)</td><td></td></tr>
+      <tr><td class="cmd">-f</td><td>the archive <strong>file name</strong> follows. This is the part the demo forgot.</td><td></td></tr>
+      <tr><td class="cmd">-z</td><td>also gzip-compress (beyond the video)</td><td><code>tar -czvf model.tar.gz model/</code></td></tr>
+      <tr><td class="cmd">-t</td><td>list contents without extracting (beyond the video)</td><td><code>tar -tvf out.tar</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <figcaption>A plain <code>.tar</code> <b>bundles</b> files but doesn't shrink them. Add <code>-z</code> to get a compressed <code>.tar.gz</code>, the usual format for shipping model artifacts. SageMaker, for example, expects <code>model.tar.gz</code>.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>Users: whoami, useradd, userdel <span class="ts">01:50:00</span></h2>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>ubuntu@ip-172-31-5-20: ~</span></div>
+<pre><code><span class="p">$</span> whoami                 <span class="c"># which user am I?</span>
+<span class="o">ubuntu</span>
+<span class="p">$</span> useradd bappy
+<span class="o">useradd: Permission denied.</span>     <span class="c"># the demo hits this: user management needs sudo</span>
+<span class="p">$</span> sudo useradd bappy     <span class="c"># create a user</span>
+<span class="p">$</span> sudo userdel bappy     <span class="c"># delete it</span></code></pre></div>
+<p>The instructor calls this <strong>not an important command</strong> for the course, since deployments are done as the default or root user.</p>
+<div class="callout beyond"><span class="label">Beyond the video · in real production</span><p>Running apps as root is discouraged: if the app is compromised, the attacker gets the whole machine. Teams usually run services under a dedicated low-privilege user and use <code>sudo</code> only for admin tasks. Docker images often add <code>USER appuser</code> for the same reason. Following the course's approach is fine while you learn.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s11"><span class="num">11</span>Utilities: date, echo, head, tail <span class="ts">01:51:04</span></h2>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>ubuntu@ip-172-31-5-20: ~</span></div>
+<pre><code><span class="p">$</span> date                   <span class="c"># current date and time</span>
+<span class="o">Tue Sep 16 10:51:04 UTC 2026</span>
+<span class="p">$</span> echo hello             <span class="c"># print a message</span>
+<span class="o">hello</span>
+<span class="p">$</span> head bappy.txt         <span class="c"># first lines of a file (10 by default)</span>
+<span class="p">$</span> tail bappy.txt         <span class="c"># last lines of a file (10 by default)</span>
+<span class="p">$</span> head -n 5 train.log    <span class="c"># first 5 lines</span>
+<span class="p">$</span> tail -f app.log        <span class="c"># follow a log live, as it grows</span></code></pre></div>
+<p><strong>head</strong> is handy for a quick look at a large file (for example a CSV header). <strong>tail</strong> shows the newest lines, and with <code>-f</code> (beyond the video) it's how you watch a live server's logs.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s12"><span class="num">12</span>Full cheat sheet</h2>
+<p>Every command from the session in one table. Type to filter.</p>
+<input class="filter" id="q" type="search" placeholder="Filter commands… e.g. file, permission, folder" aria-label="Filter commands">
+<div class="table-wrap">
+<table id="cheat">
+  <thead><tr><th>Category</th><th>Command</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td>Setup</td><td class="cmd">sudo apt update</td><td>Refresh the package list (run first on a new machine)</td></tr>
+    <tr><td>Setup</td><td class="cmd">sudo apt-get update</td><td>Same, using the older tool</td></tr>
+    <tr><td>Setup</td><td class="cmd">sudo &lt;cmd&gt;</td><td>Run a command with admin (root) permission</td></tr>
+    <tr><td>Navigate</td><td class="cmd">ls</td><td>List folder contents</td></tr>
+    <tr><td>Navigate</td><td class="cmd">ls -al</td><td>List all files, including hidden, with details and permissions</td></tr>
+    <tr><td>Navigate</td><td class="cmd">pwd</td><td>Print working directory (where am I?)</td></tr>
+    <tr><td>Navigate</td><td class="cmd">cd &lt;dir&gt;</td><td>Go into a folder</td></tr>
+    <tr><td>Navigate</td><td class="cmd">cd ..</td><td>Go up one folder</td></tr>
+    <tr><td>Terminal</td><td class="cmd">clear</td><td>Clear the screen</td></tr>
+    <tr><td>Terminal</td><td class="cmd">↑ / Tab</td><td>Previous commands / autocomplete names</td></tr>
+    <tr><td>Folder</td><td class="cmd">mkdir &lt;dir&gt;</td><td>Create a folder</td></tr>
+    <tr><td>Folder</td><td class="cmd">rmdir &lt;dir&gt;</td><td>Delete an empty folder</td></tr>
+    <tr><td>File</td><td class="cmd">touch &lt;file&gt;</td><td>Create an empty file</td></tr>
+    <tr><td>File</td><td class="cmd">vim &lt;file&gt;</td><td>Edit a file (i = insert, Esc, :wq = save and quit)</td></tr>
+    <tr><td>File</td><td class="cmd">cat &lt;file&gt;</td><td>Print a file's contents</td></tr>
+    <tr><td>File</td><td class="cmd">head &lt;file&gt;</td><td>Show the first lines of a file</td></tr>
+    <tr><td>File</td><td class="cmd">tail &lt;file&gt;</td><td>Show the last lines of a file</td></tr>
+    <tr><td>File</td><td class="cmd">cp &lt;src&gt; &lt;dest&gt;</td><td>Copy a file (the original stays)</td></tr>
+    <tr><td>File</td><td class="cmd">mv &lt;src&gt; &lt;dest&gt;</td><td>Move or rename a file</td></tr>
+    <tr><td>File</td><td class="cmd">rm &lt;file&gt;</td><td>Delete a file permanently</td></tr>
+    <tr><td>Run</td><td class="cmd">python3 &lt;file.py&gt;</td><td>Run a Python script</td></tr>
+    <tr><td>Help</td><td class="cmd">man &lt;cmd&gt;</td><td>Open a command's manual (q to quit)</td></tr>
+    <tr><td>System</td><td class="cmd">top</td><td>Live CPU and memory per process, like Task Manager (Ctrl+C to quit)</td></tr>
+    <tr><td>Permission</td><td class="cmd">ls -l</td><td>Show permissions: owner / group / others × r w x</td></tr>
+    <tr><td>Permission</td><td class="cmd">chmod 700 &lt;file&gt;</td><td>Set permissions by number (r=4, w=2, x=1)</td></tr>
+    <tr><td>Archive</td><td class="cmd">tar -cvf a.tar f1 f2</td><td>Bundle files into a tar archive</td></tr>
+    <tr><td>Archive</td><td class="cmd">tar -xvf a.tar</td><td>Extract a tar archive</td></tr>
+    <tr><td>Archive</td><td class="cmd">zip a.zip f1 f2</td><td>Create a zip file</td></tr>
+    <tr><td>User</td><td class="cmd">whoami</td><td>Show the current user</td></tr>
+    <tr><td>User</td><td class="cmd">sudo useradd &lt;name&gt;</td><td>Create a user</td></tr>
+    <tr><td>User</td><td class="cmd">sudo userdel &lt;name&gt;</td><td>Delete a user</td></tr>
+    <tr><td>Utility</td><td class="cmd">date</td><td>Show the date and time</td></tr>
+    <tr><td>Utility</td><td class="cmd">echo &lt;text&gt;</td><td>Print text</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="fig-sub" id="qcount"></p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s13"><span class="num">13</span>More commands you'll need for deployment</h2>
+<p>The instructor limits the session to the essentials and says to search for anything else. These are the extras that come up most often when serving models:</p>
+<div class="callout beyond"><span class="label">Beyond the video · the deployment toolkit</span>
+<div class="table-wrap" style="margin:8px 0 0">
+<table>
+  <thead><tr><th>Need</th><th>Command</th></tr></thead>
+  <tbody>
+    <tr><td>Log in to a server / copy files to it</td><td><code>ssh -i key.pem ubuntu@IP</code> · <code>scp -i key.pem model.pkl ubuntu@IP:~/</code></td></tr>
+    <tr><td>Get code and data</td><td><code>git clone &lt;repo&gt;</code> · <code>wget &lt;url&gt;</code> · <code>curl -O &lt;url&gt;</code></td></tr>
+    <tr><td>Python environment</td><td><code>sudo apt install -y python3-venv</code> · <code>python3 -m venv .venv</code> · <code>source .venv/bin/activate</code></td></tr>
+    <tr><td>Test an API</td><td><code>curl -X POST localhost:8000/predict -H "Content-Type: application/json" -d '{...}'</code></td></tr>
+    <tr><td>Keep a process running after logout</td><td><code>nohup uvicorn app:app --host 0.0.0.0 --port 8000 &amp;</code> (or a <code>systemd</code> service or Docker)</td></tr>
+    <tr><td>Find and stop processes</td><td><code>ps aux | grep uvicorn</code> · <code>kill &lt;PID&gt;</code></td></tr>
+    <tr><td>What's using a port?</td><td><code>sudo ss -tulpn | grep 8000</code></td></tr>
+    <tr><td>Disk and memory</td><td><code>df -h</code> · <code>du -sh *</code> · <code>free -h</code></td></tr>
+    <tr><td>Search inside files and logs</td><td><code>grep -i error app.log</code></td></tr>
+    <tr><td>Environment variables and secrets</td><td><code>export MLFLOW_TRACKING_URI=...</code> · <code>env | grep MLFLOW</code></td></tr>
+    <tr><td>Services</td><td><code>sudo systemctl status docker</code> · <code>sudo systemctl restart nginx</code></td></tr>
+  </tbody>
+</table>
+</div></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s14"><span class="num">14</span>Practice: serve a tiny API from EC2</h2>
+<div class="callout beyond"><span class="label">Beyond the video · put the commands to work</span>
+<p>This combines Chapters 05 and 06 into a first "production" deployment. Use a t2.small or larger, and add an inbound rule for <strong>TCP 8000</strong> to the security group.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>ubuntu@ip-172-31-5-20: ~</span></div>
+<pre><code><span class="p">$</span> sudo apt update &amp;&amp; sudo apt install -y python3-venv
+<span class="p">$</span> mkdir hello-api &amp;&amp; cd hello-api
+<span class="p">$</span> python3 -m venv .venv &amp;&amp; source .venv/bin/activate
+<span class="p">(.venv) $</span> pip install fastapi uvicorn
+<span class="p">(.venv) $</span> vim app.py
+<span class="c">#   from fastapi import FastAPI
+#   app = FastAPI()
+#   @app.get("/health")
+#   def health(): return {"status": "ok"}</span>
+<span class="p">(.venv) $</span> nohup uvicorn app:app --host 0.0.0.0 --port 8000 &gt; app.log 2&gt;&amp;1 &amp;
+<span class="p">(.venv) $</span> curl localhost:8000/health
+<span class="o">{"status":"ok"}</span>
+<span class="p">(.venv) $</span> tail -f app.log          <span class="c"># watch requests arrive (Ctrl+C to stop watching)</span></code></pre></div>
+<p>Then open <code>http://&lt;public-ip&gt;:8000/health</code> in your browser, and try <code>/docs</code> as well. When you're finished: <code>ps aux | grep uvicorn</code> → <code>kill &lt;PID&gt;</code>, then <strong>terminate the instance</strong>.</p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="hands-on"><span class="num">▶</span>Hands-on files: what we built</h2>
+<div class="handson">
+<span class="label">Hands-on notebook · already executed, outputs saved</span>
+<div class="files"><a href="../projects/ch06_linux_commands/linux_commands_practice.ipynb">projects/ch06_linux_commands/linux_commands_practice.ipynb</a><a href="../projects/README.md">projects/README.md</a></div>
+<p>Every command from this chapter is run for real in a throw-away <code>sandbox/</code> folder, in the same order as the video. What the outputs show:</p>
+<ul>
+  <li><strong>ls vs ls -al</strong>: <code>ls</code> shows only <code>visible.txt</code>. <code>ls -al</code> also shows <code>.hidden_config</code>.</li>
+  <li><strong>rmdir</strong> on a non-empty folder fails with <em>Directory not empty</em>, and <code>rm -r</code> removes it.</li>
+  <li><strong>cp vs mv</strong>: after <code>cp</code> the file is in both folders; after <code>mv</code> it's only in <code>bappy_test/</code>.</li>
+  <li><strong>chmod</strong>: <code>-rw-r--r--</code> → <code>chmod 700</code> → <code>-rwx------</code>. A script fails with <em>Permission denied</em> until <code>chmod +x</code>.</li>
+  <li><strong>tar</strong>: a plain <code>.tar</code> of two tiny files is 3,072 bytes; the gzip version is 172 bytes.</li>
+  <li><strong>head / tail / grep</strong> on a 31-line log file, where <code>grep ERROR</code> finds the failed request.</li>
+</ul>
+<p class="fig-sub">Run on macOS, so the notebook checks for <code>apt</code> (not present), uses macOS <code>top</code> flags, writes files with <code>printf</code> (vim is interactive), and skips <code>useradd</code>. On EC2 Ubuntu, type the commands exactly as in the notes.</p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s15"><span class="num">15</span>Interview questions</h2>
+<details class="qa"><summary>What does sudo do? What's the difference between apt update and apt upgrade?</summary>
+<p><code>sudo</code> runs a single command with root privileges. <code>apt update</code> refreshes the package index (the list of available versions). <code>apt upgrade</code> actually installs newer versions of installed packages.</p></details>
+<details class="qa"><summary>Explain chmod 755 and chmod 700.</summary>
+<p>Each digit is a sum of r=4, w=2, x=1 for owner, group and others. 755 means owner rwx, group r-x, others r-x, which is typical for scripts and directories. 700 means owner rwx and nobody else has any access. SSH private keys need 400 or 600, or ssh refuses to use them.</p></details>
+<details class="qa"><summary>How do you find and kill a process that's hogging CPU or holding a port?</summary>
+<p>Use <code>top</code> or <code>htop</code> to see per-process CPU and memory, or <code>ps aux | grep name</code> to find a PID. For ports, <code>sudo ss -tulpn | grep :8000</code>. Then <code>kill &lt;PID&gt;</code>, or <code>kill -9 &lt;PID&gt;</code> if it won't stop.</p></details>
+<details class="qa"><summary>How would you view the last lines of a log file continuously?</summary>
+<p><code>tail -f app.log</code>, or <code>tail -n 100 -f app.log</code> to start with the last 100 lines. Combine with <code>grep</code> to filter, for example <code>tail -f app.log | grep ERROR</code>.</p></details>
+<details class="qa"><summary>tar vs zip, and what does -czvf mean?</summary>
+<p>tar bundles files (and keeps Unix permissions). Adding gzip (<code>-z</code>) compresses the bundle. zip bundles and compresses in one format that's common on Windows. <code>-czvf</code> = create, gzip, verbose, file name follows. Extract with <code>-xzvf</code>.</p></details>
+<details class="qa"><summary>What's the difference between cp and mv, and rmdir and rm -r?</summary>
+<p><code>cp</code> duplicates (the original stays); <code>mv</code> relocates or renames (the original is gone). <code>rmdir</code> only removes empty directories; <code>rm -r</code> recursively deletes a directory and everything in it.</p></details>
+<details class="qa"><summary>How do you keep a model server running after you close SSH?</summary>
+<p>For quick tests, <code>nohup … &amp;</code> or a <code>tmux</code>/<code>screen</code> session. For real deployments, a <code>systemd</code> service (auto-restart, starts on boot) or, most commonly in MLOps, a Docker container run with <code>--restart</code>, or an orchestrator such as Kubernetes.</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s16"><span class="num">16</span>Recap</h2>
+<ul>
+  <li>First on a new server: <code>sudo apt update</code>. <code>sudo</code> means admin permission, and <code>apt</code>/<code>apt-get</code> are the package managers.</li>
+  <li>Navigate: <code>ls</code>, <code>ls -al</code> (hidden files start with a dot), <code>pwd</code>, <code>cd</code>, <code>cd ..</code>, <code>clear</code>, ↑ and Tab.</li>
+  <li>Folders and files: <code>mkdir</code>, <code>rmdir</code>, <code>touch</code>, <code>vim</code> (i → Esc → <code>:wq</code>), <code>cat</code>, <code>head</code>, <code>tail</code>.</li>
+  <li>Run code: <code>python3 file.py</code>. Manage files: <code>cp</code> (copy), <code>mv</code> (move), <code>rm</code> (delete).</li>
+  <li>Help and monitoring: <code>man</code>, <code>top</code>.</li>
+  <li>Permissions: <strong>owner / group / others × r(4) w(2) x(1)</strong>. Set them with <code>chmod 700 file</code>.</li>
+  <li>Archives: <code>tar -cvf out.tar files</code> / <code>tar -xvf out.tar</code>, and <code>zip</code>.</li>
+  <li>Users (not needed for the course): <code>whoami</code>, <code>sudo useradd</code>, <code>sudo userdel</code>. Also <code>date</code> and <code>echo</code>.</li>
+  <li>When you're finished, <strong>terminate the EC2 instance</strong> (<a href="05_linux_on_aws_ec2.html#s8">Chapter 05</a>).</li>
+</ul>
+
+<div class="pager">
+  <a href="05_linux_on_aws_ec2.html"><small>← Previous</small>05 · Setting up Linux with AWS EC2</a>
+  <a class="next" href="07_git_and_github_intro.html"><small>Next →</small>07 · Getting started with Git &amp; GitHub</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+<script>
+// chmod calculator
+(function () {
+  const root = document.getElementById('calc');
+  const boxes = [...root.querySelectorAll('input[type=checkbox]')];
+  const names = ['owner', 'group', 'others'];
+  function render() {
+    const d = [0, 0, 0];
+    boxes.forEach(b => { if (b.checked) d[+b.dataset.w] += +b.dataset.v; });
+    const sym = '-' + d.map(n => (n & 4 ? 'r' : '-') + (n & 2 ? 'w' : '-') + (n & 1 ? 'x' : '-')).join('');
+    const oct = d.join('');
+    document.getElementById('oct').textContent = oct;
+    document.getElementById('sym').textContent = sym;
+    document.getElementById('cmdout').textContent = `chmod ${oct} bappy.txt`;
+    const word = n => [n & 4 && 'read', n & 2 && 'write', n & 1 && 'execute'].filter(Boolean).join(' + ') || 'no access';
+    document.getElementById('meaning').textContent = d.map((n, i) => `${names[i]}: ${word(n)}`).join(' · ');
+  }
+  function preset(p) {
+    const d = p.split('').map(Number);
+    boxes.forEach(b => { b.checked = !!(d[+b.dataset.w] & +b.dataset.v); });
+    render();
+  }
+  boxes.forEach(b => b.addEventListener('change', render));
+  root.querySelectorAll('button[data-p]').forEach(btn => btn.addEventListener('click', () => preset(btn.dataset.p)));
+  preset('664');
+})();
+// cheat-sheet filter
+(function () {
+  const q = document.getElementById('q');
+  const rows = [...document.querySelectorAll('#cheat tbody tr')];
+  const count = document.getElementById('qcount');
+  function run() {
+    const t = q.value.trim().toLowerCase();
+    let n = 0;
+    rows.forEach(r => { const hit = !t || r.textContent.toLowerCase().includes(t); r.hidden = !hit; if (hit) n++; });
+    count.textContent = `${n} of ${rows.length} commands`;
+  }
+  q.addEventListener('input', run);
+  run();
+})();
+</script>
+</body>
+</html>

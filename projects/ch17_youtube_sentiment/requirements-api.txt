@@ -1,0 +1,13 @@
+flask==3.1.3
+flask-cors
+gunicorn
+lightgbm==4.7.0
+scikit-learn==1.9.1
+pandas
+numpy
+nltk
+matplotlib
+wordcloud
+pyyaml
+certifi
+mlflow-skinny   # only needed when loading the model from the registry

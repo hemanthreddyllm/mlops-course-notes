@@ -1,0 +1,24 @@
+# Horizontal Pod Autoscaler: the "automatic scaling" the video describes.
+# It only works because the Deployment declares CPU *requests*.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: yt-sentiment
+  namespace: mlops
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: yt-sentiment
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60     # desired = ceil(replicas × current / 60%)
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300   # wait 5 min of low load before shrinking (avoids flapping)

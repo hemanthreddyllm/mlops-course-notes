@@ -1,0 +1,27 @@
+# Alerting lives with the data, not with the dashboard: Prometheus evaluates these expressions every
+# `evaluation_interval` and marks an alert as firing once the condition holds for `for:`.
+groups:
+  - name: sentiment-api
+    rules:
+      - alert: HighErrorRate
+        expr: sum(rate(http_requests_total{status!~"2.."}[1m])) > 0.05
+        for: 30s
+        labels: { severity: warning }
+        annotations:
+          summary: "The API is returning errors ({{ $value | printf \"%.2f\" }} per second)"
+
+      - alert: SlowResponses
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[2m]))) > 1
+        for: 1m
+        labels: { severity: warning }
+        annotations:
+          summary: "p95 latency is above 1s"
+
+      - alert: NegativeSentimentSurge
+        expr: |
+          sum(rate(model_predictions_total{label="negative"}[2m]))
+            / sum(rate(model_predictions_total[2m])) > 0.5
+        for: 1m
+        labels: { severity: info }
+        annotations:
+          summary: "More than half of predictions are negative — check the input data, not just the model"

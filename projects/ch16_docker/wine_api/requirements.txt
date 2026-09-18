@@ -1,0 +1,5 @@
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+scikit-learn==1.9.1     # must match the version the model was trained with
+pandas
+joblib

@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>12 · Build & Track ML Pipelines with DVC — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .term { background: var(--code-bg); border-radius: 10px; overflow: hidden; margin: 14px 0; }
+  .term .bar { display: flex; gap: 6px; padding: 9px 12px; background: #2b2b29; }
+  .term .bar i { width: 10px; height: 10px; border-radius: 50%; background: #5b5a55; }
+  .term .bar span { margin-left: 8px; font: 12px var(--mono); color: #a8a79f; }
+  .term pre { margin: 0; border-radius: 0; }
+  .term .p { color: #7fc79a; }
+  .term .o { color: #c3c2b7; }
+  .term .r { color: #f08a82; }
+  .term .g { color: #7fc79a; }
+  .term .y { color: #f0c36a; }
+  .cmd { font: 600 13px var(--mono); white-space: nowrap; }
+  pre .k { color: #86b6ef; }
+  pre .s { color: #f0c36a; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .cols > * { min-width: 0; }
+  @media (max-width: 700px) { .cols { grid-template-columns: 1fr; } }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+  .tabs button { font: 12px var(--mono); padding: 6px 10px; border-radius: 8px 8px 0 0; border: 1px solid var(--rule); border-bottom: 0; background: var(--surface-2); color: var(--ink-2); cursor: pointer; }
+  .tabs button[aria-selected="true"] { background: var(--code-bg); color: #f1f0ea; border-color: var(--code-bg); }
+  .tabpanel pre { margin-top: 0; border-top-left-radius: 0; }
+  .repro { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; margin: 18px 0; }
+  .repro label { display: flex; gap: 8px; align-items: center; font-size: 14px; padding: 3px 0; cursor: pointer; }
+  .repro input { accent-color: var(--accent); }
+  .stagebar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 14px 0 4px; }
+  @media (max-width: 640px) { .stagebar { grid-template-columns: 1fr; } }
+  .st { border-radius: 8px; padding: 10px; text-align: center; font: 600 12px var(--mono); border: 1px solid var(--rule); background: var(--surface-2); }
+  .st small { display: block; font: 11px var(--sans); color: var(--ink-3); margin-top: 3px; }
+  .st.run { background: var(--warn-soft); border-color: var(--s4); }
+  .st.skip { background: var(--good-soft); border-color: var(--good); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 12</span></div>
+<div class="eyebrow">Chapter 12 · Build &amp; Track ML Pipelines with DVC</div>
+<h1>From one notebook to a tracked 5-stage pipeline</h1>
+<p class="lede">The instructor takes a Jupyter notebook project (<strong>Twitter emotion detection</strong>: happiness vs sadness), splits it into five Python component files, and runs them as a DVC pipeline defined in <code>dvc.yaml</code>. He adds the stages one at a time and shows each time that <code>dvc repro</code> runs only what's new or changed. The pipeline graph and metrics are viewed with <code>dvc dag</code> and <code>dvc metrics show</code>.</p>
+<div class="meta">
+  <span class="chip">Video 02:37:31 – 03:09:31</span>
+  <span class="chip">Hands-on · VS Code + Git Bash + Anaconda</span>
+  <span class="chip">Stack: pandas · NLTK · scikit-learn · XGBoost · DVC</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">The plan</a></li>
+    <li><a href="#s2">Environment setup</a></li>
+    <li><a href="#s3">The notebook version</a></li>
+    <li><a href="#s4">Why convert it: modular components</a></li>
+    <li><a href="#s5">The five component files</a></li>
+    <li><a href="#s6">How the stages depend on each other</a></li>
+    <li><a href="#s7">Writing dvc.yaml</a></li>
+    <li><a href="#s8">git init → dvc init → dvc repro</a></li>
+    <li><a href="#s9">Proving the tracking works</a></li>
+    <li><a href="#s10">Adding the remaining stages</a></li>
+    <li><a href="#s11">Interactive: what will dvc repro run?</a></li>
+    <li><a href="#s12">dvc dag and dvc metrics show</a></li>
+    <li><a href="#s13">Next steps: params, experiments, data remotes</a></li>
+    <li><a href="#hands-on">Hands-on files: what we built</a></li>
+    <li><a href="#s14">Interview questions</a></li>
+    <li><a href="#s15">Recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>The plan <span class="ts">02:37:33</span></h2>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 150" role="img" aria-label="Plan: a Jupyter notebook experiment is split into five src component files, which are wired into dvc.yaml and run with dvc repro">
+    <defs><marker id="q1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker></defs>
+    <rect x="10" y="30" width="200" height="90" rx="10" class="box"/>
+    <text x="110" y="56" text-anchor="middle" class="t-sm t-b">📓 Notebook</text><text x="110" y="76" text-anchor="middle" class="t-xs">twitter emotion detection</text><text x="110" y="96" text-anchor="middle" class="t-xs">"the experiment"</text>
+    <path d="M210,75 L268,75" class="edge-accent" marker-end="url(#q1)"/><text x="239" y="66" text-anchor="middle" class="t-xs">split</text>
+    <rect x="270" y="20" width="220" height="110" rx="10" class="box-2"/>
+    <text x="380" y="42" text-anchor="middle" class="t-sm t-b">📁 src/  (5 components)</text>
+    <text x="290" y="64" class="t-xs">data_ingestion.py</text><text x="290" y="80" class="t-xs">data_preprocessing.py</text><text x="290" y="96" class="t-xs">feature_engineering.py</text><text x="290" y="112" class="t-xs">model_building.py · model_evaluation.py</text>
+    <path d="M490,75 L548,75" class="edge-accent" marker-end="url(#q1)"/><text x="519" y="66" text-anchor="middle" class="t-xs">wire</text>
+    <rect x="550" y="30" width="200" height="90" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+    <text x="650" y="56" text-anchor="middle" class="t-sm t-b">dvc.yaml</text><text x="650" y="76" text-anchor="middle" class="t-xs">5 stages: cmd · deps · outs</text><text x="650" y="96" text-anchor="middle" class="t-xs t-b">$ dvc repro</text>
+  </svg>
+  </div>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>Environment setup <span class="ts">02:37:33</span></h2>
+<p>The instructor creates a folder called <em>ML pipelines using DVC</em> and opens a terminal there. He uses <strong>Git Bash with Anaconda set up inside it</strong>; the plain Anaconda Prompt works too. You'll need <strong>Anaconda</strong> and <strong>VS Code</strong> installed. He opens VS Code with <code>code .</code> (or right-click → Show more options → Open with Code).</p>
+<p>His <code>README.md</code> lists every command for the project:</p>
+<div class="cols">
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>README · how to run</span></div>
+<pre><code><span class="p">$</span> conda create -n test python=3.11 -y   <span class="c"># once</span>
+<span class="p">$</span> conda activate test
+<span class="p">$</span> pip install -r requirements.txt
+<span class="p">$</span> git init
+<span class="p">$</span> dvc init
+<span class="p">$</span> dvc repro
+<span class="p">$</span> dvc dag
+<span class="p">$</span> dvc metrics show</code></pre></div>
+<div>
+<p class="fig-title">requirements.txt</p>
+<pre><code>scikit-learn
+xgboost
+nltk
+pandas
+numpy
+dvc          <span class="c"># this line is all DVC needs</span>
+pyyaml</code></pre>
+<p class="fig-sub">Or just <code>pip install dvc</code>. This ease of setup is why the instructor picked DVC.</p>
+</div>
+</div>
+<div class="callout key"><span class="label">Always use a virtual environment</span><p>The instructor recommends creating a new environment for every project, so its package versions don't clash with other projects.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>The notebook version <span class="ts">02:41:44</span></h2>
+<p>The notebook in the <code>notebooks/</code> folder is ordinary ML code, so the instructor only walks through it without running it. The dataset is a CSV of tweets hosted on his GitHub, with columns <code>tweet_id</code>, <code>sentiment</code> and <code>content</code>.</p>
+<figure>
+  <p class="fig-title">What the notebook does</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 250" role="img" aria-label="Notebook steps: read CSV from URL, drop tweet_id, keep happiness and sadness, map to 1 and 0, train test split, text preprocessing, CountVectorizer, XGBoost classifier, evaluation metrics">
+    <defs><marker id="q2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g class="t-xs">
+      <rect x="10" y="20" width="230" height="96" rx="10" class="box"/>
+      <text x="125" y="42" text-anchor="middle" class="t-sm t-b">Data ingestion</text>
+      <text x="24" y="62">• read CSV from the GitHub URL</text><text x="24" y="78">• drop tweet_id</text><text x="24" y="94">• keep happiness &amp; sadness only</text><text x="24" y="110">• happiness → 1, sadness → 0 · split</text>
+      <rect x="265" y="20" width="230" height="96" rx="10" class="box"/>
+      <text x="380" y="42" text-anchor="middle" class="t-sm t-b">Text preprocessing (NLTK)</text>
+      <text x="279" y="62">• lowercase · remove URLs</text><text x="279" y="78">• remove numbers &amp; punctuation</text><text x="279" y="94">• remove stop words</text><text x="279" y="110">• lemmatise · normalise text</text>
+      <rect x="520" y="20" width="230" height="96" rx="10" class="box"/>
+      <text x="635" y="42" text-anchor="middle" class="t-sm t-b">Feature engineering</text>
+      <text x="534" y="62">• CountVectorizer</text><text x="534" y="78">  (bag of words)</text><text x="534" y="94">• text → numeric matrix</text>
+      <rect x="265" y="146" width="230" height="80" rx="10" class="box"/>
+      <text x="380" y="168" text-anchor="middle" class="t-sm t-b">Model building</text>
+      <text x="279" y="188">• XGBClassifier</text><text x="279" y="204">  (binary classification)</text>
+      <rect x="10" y="146" width="230" height="80" rx="10" class="box"/>
+      <text x="125" y="168" text-anchor="middle" class="t-sm t-b">Evaluation</text>
+      <text x="24" y="188">• accuracy · precision · recall</text><text x="24" y="204">  on the test set</text>
+    </g>
+    <path d="M240,68 L263,68" class="edge" marker-end="url(#q2)"/><path d="M495,68 L518,68" class="edge" marker-end="url(#q2)"/>
+    <path d="M635,116 Q635,186 497,186" class="edge" marker-end="url(#q2)"/><path d="M265,186 L242,186" class="edge" marker-end="url(#q2)"/>
+  </svg>
+  </div>
+  <figcaption>The instructor reduced three labels (happiness, sadness, neutral) to two to keep the project simple. Improving accuracy isn't the goal here; the goal is showing a tracked pipeline.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>Why convert it: modular components <span class="ts">02:45:54</span></h2>
+<p>This is the "traditional approach" from Chapter 03, and it has the same problems: everything is in one place, so <strong>there's no modularity</strong>. That makes the code hard to manage, hard to collaborate on, and hard to extend with new features.</p>
+<div class="callout key"><span class="label">Notebook vs production</span><p>The notebook is for <strong>experimenting</strong>: checking that everything works. For <strong>production</strong>, split the code into separate components and build a pipeline. This demo uses simple <strong>functions</strong>. Later projects in the course use full <strong>OOP modular code</strong> with classes.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>The five component files <span class="ts">02:46:57</span></h2>
+<p>Inside <code>src/</code>, each notebook section becomes its own script with the same logic, wrapped in functions and called from <code>main()</code>. The instructor also adds <strong>logging</strong>, so messages and errors go to a log file instead of only the terminal (logging is covered in detail later). Each script reads the previous stage's files and writes its own:</p>
+
+<div class="tabs" role="tablist" id="tabs">
+  <button type="button" role="tab" aria-selected="true" data-t="t1">data_ingestion.py</button>
+  <button type="button" role="tab" aria-selected="false" data-t="t2">data_preprocessing.py</button>
+  <button type="button" role="tab" aria-selected="false" data-t="t3">feature_engineering.py</button>
+  <button type="button" role="tab" aria-selected="false" data-t="t4">model_building.py</button>
+  <button type="button" role="tab" aria-selected="false" data-t="t5">model_evaluation.py</button>
+</div>
+<div class="tabpanel" id="t1"><pre><code><span class="c"># src/data_ingestion.py  →  data/raw/train.csv, test.csv</span>
+<span class="k">import</span> os, logging
+<span class="k">import</span> pandas <span class="k">as</span> pd
+<span class="k">from</span> sklearn.model_selection <span class="k">import</span> train_test_split
+
+logging.basicConfig(filename=<span class="s">"pipeline.log"</span>, level=logging.INFO)
+DATA_URL = <span class="s">"https://raw.githubusercontent.com/entbappy/Branching-tutorial/refs/heads/master/tweet_emotions.csv"</span>
+
+<span class="k">def</span> load_data(url):
+    <span class="k">return</span> pd.read_csv(url)
+
+<span class="k">def</span> preprocess(df):
+    df = df.drop(columns=[<span class="s">"tweet_id"</span>])
+    df = df[df[<span class="s">"sentiment"</span>].isin([<span class="s">"happiness"</span>, <span class="s">"sadness"</span>])].copy()
+    df[<span class="s">"sentiment"</span>] = df[<span class="s">"sentiment"</span>].map({<span class="s">"happiness"</span>: 1, <span class="s">"sadness"</span>: 0})
+    <span class="k">return</span> df
+
+<span class="k">def</span> save(train, test, out_dir=<span class="s">"data/raw"</span>):
+    os.makedirs(out_dir, exist_ok=True)
+    train.to_csv(f<span class="s">"{out_dir}/train.csv"</span>, index=False)
+    test.to_csv(f<span class="s">"{out_dir}/test.csv"</span>, index=False)
+
+<span class="k">def</span> main():
+    <span class="k">try</span>:
+        df = preprocess(load_data(DATA_URL))
+        train, test = train_test_split(df, test_size=0.2, random_state=42)
+        save(train, test)
+        logging.info(<span class="s">"ingestion done: %d train / %d test rows"</span>, len(train), len(test))
+    <span class="k">except</span> Exception:
+        logging.exception(<span class="s">"ingestion failed"</span>); <span class="k">raise</span>
+
+<span class="k">if</span> __name__ == <span class="s">"__main__"</span>:
+    main()</code></pre></div>
+<div class="tabpanel" id="t2" hidden><pre><code><span class="c"># src/data_preprocessing.py  data/raw  →  data/processed</span>
+<span class="k">import</span> os, re, string
+<span class="k">import</span> pandas <span class="k">as</span> pd, nltk
+<span class="k">from</span> nltk.corpus <span class="k">import</span> stopwords
+<span class="k">from</span> nltk.stem <span class="k">import</span> WordNetLemmatizer
+
+nltk.download(<span class="s">"stopwords"</span>, quiet=True); nltk.download(<span class="s">"wordnet"</span>, quiet=True)
+STOP, LEM = set(stopwords.words(<span class="s">"english"</span>)), WordNetLemmatizer()
+
+<span class="k">def</span> normalize(text):
+    text = str(text).lower()
+    text = re.sub(<span class="s">r"https?://\S+|www\.\S+"</span>, <span class="s">""</span>, text)       <span class="c"># URLs</span>
+    text = re.sub(<span class="s">r"\d+"</span>, <span class="s">""</span>, text)                          <span class="c"># numbers</span>
+    text = text.translate(str.maketrans(<span class="s">""</span>, <span class="s">""</span>, string.punctuation))
+    words = [LEM.lemmatize(w) <span class="k">for</span> w <span class="k">in</span> text.split() <span class="k">if</span> w <span class="k">not in</span> STOP]
+    <span class="k">return</span> <span class="s">" "</span>.join(words)
+
+<span class="k">def</span> main():
+    os.makedirs(<span class="s">"data/processed"</span>, exist_ok=True)
+    <span class="k">for</span> split <span class="k">in</span> (<span class="s">"train"</span>, <span class="s">"test"</span>):
+        df = pd.read_csv(f<span class="s">"data/raw/{split}.csv"</span>)
+        df[<span class="s">"content"</span>] = df[<span class="s">"content"</span>].map(normalize)
+        df.dropna().to_csv(f<span class="s">"data/processed/{split}_processed.csv"</span>, index=False)
+
+<span class="k">if</span> __name__ == <span class="s">"__main__"</span>:
+    main()</code></pre></div>
+<div class="tabpanel" id="t3" hidden><pre><code><span class="c"># src/feature_engineering.py  data/processed  →  data/features</span>
+<span class="k">import</span> os, pickle
+<span class="k">import</span> pandas <span class="k">as</span> pd
+<span class="k">from</span> sklearn.feature_extraction.text <span class="k">import</span> CountVectorizer
+
+<span class="k">def</span> main(max_features=1000):
+    train = pd.read_csv(<span class="s">"data/processed/train_processed.csv"</span>).fillna(<span class="s">""</span>)
+    test  = pd.read_csv(<span class="s">"data/processed/test_processed.csv"</span>).fillna(<span class="s">""</span>)
+    vec = CountVectorizer(max_features=max_features)           <span class="c"># bag of words</span>
+    X_train = vec.fit_transform(train[<span class="s">"content"</span>])              <span class="c"># fit on TRAIN only</span>
+    X_test  = vec.transform(test[<span class="s">"content"</span>])
+    os.makedirs(<span class="s">"data/features"</span>, exist_ok=True)
+    <span class="k">for</span> name, X, y <span class="k">in</span> ((<span class="s">"train"</span>, X_train, train[<span class="s">"sentiment"</span>]), (<span class="s">"test"</span>, X_test, test[<span class="s">"sentiment"</span>])):
+        out = pd.DataFrame(X.toarray()); out[<span class="s">"label"</span>] = y.values
+        out.to_csv(f<span class="s">"data/features/{name}_bow.csv"</span>, index=False)
+    pickle.dump(vec, open(<span class="s">"data/features/vectorizer.pkl"</span>, <span class="s">"wb"</span>))  <span class="c"># needed at serving time</span>
+
+<span class="k">if</span> __name__ == <span class="s">"__main__"</span>:
+    main()</code></pre></div>
+<div class="tabpanel" id="t4" hidden><pre><code><span class="c"># src/model_building.py  data/features  →  model.pkl</span>
+<span class="k">import</span> pickle
+<span class="k">import</span> pandas <span class="k">as</span> pd
+<span class="k">from</span> xgboost <span class="k">import</span> XGBClassifier
+
+<span class="k">def</span> main():
+    df = pd.read_csv(<span class="s">"data/features/train_bow.csv"</span>)
+    X, y = df.drop(columns=[<span class="s">"label"</span>]).values, df[<span class="s">"label"</span>].values
+    model = XGBClassifier(eval_metric=<span class="s">"logloss"</span>)
+    model.fit(X, y)
+    <span class="k">with</span> open(<span class="s">"model.pkl"</span>, <span class="s">"wb"</span>) <span class="k">as</span> f:
+        pickle.dump(model, f)
+
+<span class="k">if</span> __name__ == <span class="s">"__main__"</span>:
+    main()</code></pre></div>
+<div class="tabpanel" id="t5" hidden><pre><code><span class="c"># src/model_evaluation.py  model.pkl + test features  →  metrics.json</span>
+<span class="k">import</span> json, pickle
+<span class="k">import</span> pandas <span class="k">as</span> pd
+<span class="k">from</span> sklearn.metrics <span class="k">import</span> accuracy_score, precision_score, recall_score, roc_auc_score
+
+<span class="k">def</span> main():
+    model = pickle.load(open(<span class="s">"model.pkl"</span>, <span class="s">"rb"</span>))
+    df = pd.read_csv(<span class="s">"data/features/test_bow.csv"</span>)
+    X, y = df.drop(columns=[<span class="s">"label"</span>]).values, df[<span class="s">"label"</span>].values
+    pred, proba = model.predict(X), model.predict_proba(X)[:, 1]
+    metrics = {
+        <span class="s">"accuracy"</span>:  accuracy_score(y, pred),
+        <span class="s">"precision"</span>: precision_score(y, pred),
+        <span class="s">"recall"</span>:    recall_score(y, pred),
+        <span class="s">"auc"</span>:       roc_auc_score(y, proba),
+    }
+    json.dump(metrics, open(<span class="s">"metrics.json"</span>, <span class="s">"w"</span>), indent=4)
+
+<span class="k">if</span> __name__ == <span class="s">"__main__"</span>:
+    main()</code></pre></div>
+<p class="fig-sub">Beyond the video: compact, self-written versions of what the video describes, not the instructor's exact code (his is in <code>course_repo/ML-Pipeline-using-DVC</code>). The runnable versions, with a shared logging helper, are in <a href="../projects/ch12_dvc_pipeline/src/">projects/ch12_dvc_pipeline/src/</a>. Run any one directly, e.g. <code>python src/data_ingestion.py</code>, which is how the instructor tests each component before adding DVC.</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Component</th><th>Run it</th><th>Creates</th></tr></thead>
+  <tbody>
+    <tr><td>data_ingestion</td><td><code>python src/data_ingestion.py</code></td><td><code>data/raw/</code> (train.csv, test.csv)</td></tr>
+    <tr><td>data_preprocessing</td><td><code>python src/data_preprocessing.py</code></td><td><code>data/processed/</code></td></tr>
+    <tr><td>feature_engineering</td><td><code>python src/feature_engineering.py</code></td><td><code>data/features/</code></td></tr>
+    <tr><td>model_building</td><td><code>python src/model_building.py</code></td><td><code>model.pkl</code></td></tr>
+    <tr><td>model_evaluation</td><td><code>python src/model_evaluation.py</code></td><td><code>metrics.json</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>How the stages depend on each other <span class="ts">02:52:18</span></h2>
+<p>The five stages must run <strong>in order</strong>, because each one needs the previous one's output. You can't run evaluation right after ingestion. That chain of dependencies is what makes it an <strong>ML pipeline</strong>.</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 170" role="img" aria-label="Linear DAG: data_ingestion produces data/raw, used by data_preprocessing which produces data/processed, used by feature_engineering producing data/features, used by model_building producing model.pkl, used by model_evaluation producing metrics.json">
+    <defs><marker id="q3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g class="t-xs">
+      <rect x="5" y="20" width="130" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="70" y="47" text-anchor="middle" class="t-b">data_ingestion</text>
+      <rect x="160" y="20" width="140" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="230" y="47" text-anchor="middle" class="t-b">data_preprocessing</text>
+      <rect x="325" y="20" width="140" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="395" y="47" text-anchor="middle" class="t-b">feature_engineering</text>
+      <rect x="490" y="20" width="125" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="552" y="47" text-anchor="middle" class="t-b">model_building</text>
+      <rect x="635" y="20" width="120" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="695" y="47" text-anchor="middle" class="t-b">model_evaluation</text>
+      <rect x="15" y="110" width="110" height="30" rx="6" class="box-2"/><text x="70" y="130" text-anchor="middle">📁 data/raw</text>
+      <rect x="170" y="110" width="120" height="30" rx="6" class="box-2"/><text x="230" y="130" text-anchor="middle">📁 data/processed</text>
+      <rect x="335" y="110" width="120" height="30" rx="6" class="box-2"/><text x="395" y="130" text-anchor="middle">📁 data/features</text>
+      <rect x="500" y="110" width="105" height="30" rx="6" class="box-2"/><text x="552" y="130" text-anchor="middle">📄 model.pkl</text>
+      <rect x="640" y="110" width="110" height="30" rx="6" class="box-2"/><text x="695" y="130" text-anchor="middle">📊 metrics.json</text>
+    </g>
+    <path d="M70,64 L70,108" class="edge" marker-end="url(#q3)"/><path d="M125,118 L200,66" class="edge" marker-end="url(#q3)"/>
+    <path d="M230,64 L230,108" class="edge" marker-end="url(#q3)"/><path d="M290,118 L365,66" class="edge" marker-end="url(#q3)"/>
+    <path d="M395,64 L395,108" class="edge" marker-end="url(#q3)"/><path d="M455,118 L520,66" class="edge" marker-end="url(#q3)"/>
+    <path d="M552,64 L552,108" class="edge" marker-end="url(#q3)"/><path d="M605,118 L665,66" class="edge" marker-end="url(#q3)"/>
+    <path d="M695,64 L695,108" class="edge" marker-end="url(#q3)"/>
+    <text x="380" y="164" text-anchor="middle" class="t-xs">↓ = the stage's <tspan class="t-b">outs</tspan> · ↗ = that output is the next stage's <tspan class="t-b">deps</tspan></text>
+  </svg>
+  </div>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>Writing dvc.yaml <span class="ts">02:53:20</span></h2>
+<p>DVC reads the pipeline from a file named <strong><code>dvc.yaml</code></strong> in the project root, as the DVC docs specify.</p>
+<div class="callout key"><span class="label">Why YAML?</span><p>Most configuration files in <strong>DevOps and MLOps</strong> are YAML (DVC, Kubeflow, GitHub Actions, Kubernetes, Docker Compose…) because it's easy to write and read. The instructor expands it as "Yet Another Markup Language", its original name. Today's official expansion is <em>"YAML Ain't Markup Language"</em>.</p></div>
+<p>Before using DVC, the instructor <strong>deletes all generated outputs</strong> (data folder, log, metrics, model) so DVC can recreate them. Every stage has the same three keys:</p>
+<div class="grid">
+  <div class="card"><h4><span class="cmd">cmd</span></h4><p>The shell command that runs the stage.</p></div>
+  <div class="card"><h4><span class="cmd">deps</span></h4><p>What the stage depends on: <strong>its own script</strong> (if the script is missing there's nothing to run) plus <strong>its input data</strong>.</p></div>
+  <div class="card"><h4><span class="cmd">outs</span></h4><p>What the stage produces. A later stage can list it as a dependency.</p></div>
+</div>
+<p>The final file, built one stage at a time during the video:</p>
+<pre><code><span class="k">stages:</span>
+  <span class="k">data_ingestion:</span>
+    <span class="k">cmd:</span> python src/data_ingestion.py
+    <span class="k">deps:</span>
+      - src/data_ingestion.py
+    <span class="k">outs:</span>
+      - data/raw
+
+  <span class="k">data_preprocessing:</span>
+    <span class="k">cmd:</span> python src/data_preprocessing.py
+    <span class="k">deps:</span>
+      - data/raw
+      - src/data_preprocessing.py
+    <span class="k">outs:</span>
+      - data/processed
+
+  <span class="k">feature_engineering:</span>
+    <span class="k">cmd:</span> python src/feature_engineering.py
+    <span class="k">deps:</span>
+      - data/processed
+      - src/feature_engineering.py
+    <span class="k">outs:</span>
+      - data/features
+
+  <span class="k">model_building:</span>
+    <span class="k">cmd:</span> python src/model_building.py
+    <span class="k">deps:</span>
+      - data/features
+      - src/model_building.py
+    <span class="k">outs:</span>
+      - model.pkl
+
+  <span class="k">model_evaluation:</span>
+    <span class="k">cmd:</span> python src/model_evaluation.py
+    <span class="k">deps:</span>
+      - model.pkl
+      - src/model_evaluation.py
+    <span class="k">metrics:</span>                 <span class="c"># not "outs": lets `dvc metrics show` read it</span>
+      - metrics.json</code></pre>
+<div class="callout key"><span class="label">The one rule</span><p>"You just need to understand your pipeline: what is the <strong>input</strong> and what is the <strong>output</strong> of each step." Once you know each stage's dependencies and outputs, you can write the <code>dvc.yaml</code> for any pipeline.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>git init → dvc init → dvc repro <span class="ts">02:56:31</span></h2>
+<p>With only the first stage written, the instructor initialises everything and runs it:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>(test) ~/ml-pipelines-using-dvc</span></div>
+<pre><code><span class="p">$</span> git init                     <span class="c"># DVC runs on top of Git (Git Bash from git-scm.com)</span>
+<span class="o">Initialized empty Git repository in …/.git/</span>
+<span class="p">$</span> dvc init
+<span class="o">Initialized DVC repository.
+You can now commit the changes to git.</span>
+<span class="p">$</span> dvc repro
+<span class="o">Running stage 'data_ingestion':
+&gt; python src/data_ingestion.py
+Generating lock file 'dvc.lock'
+Updating lock file 'dvc.lock'
+
+To track the changes with git, run:
+        git add dvc.lock data/.gitignore</span></code></pre></div>
+
+<div class="grid">
+  <div class="card"><span class="tag">CREATED BY dvc init</span><h4>.dvc/ folder</h4><p>DVC's internal files (config, cache), which it uses to track the pipeline. Similar to <code>.git/</code>.</p></div>
+  <div class="card"><span class="tag">CREATED BY dvc init</span><h4>.dvcignore</h4><p>Works like <code>.gitignore</code>: paths DVC should ignore. Not needed in this demo.</p></div>
+  <div class="card" style="border-color:var(--accent)"><span class="tag">CREATED BY dvc repro</span><h4>dvc.lock</h4><p>Records what was run: hashes and sizes of every dependency and output. This is how DVC "remembers".</p></div>
+</div>
+
+<div class="callout wrong"><span class="label">The bug in the demo</span><p>The first <code>dvc repro</code> failed with a "can't find directory" error. The <code>cmd</code> had been written with a slash after <code>python</code> (<code>python/src/…</code>), which makes it a path instead of a command. The fix is <code>python src/data_ingestion.py</code>, with a space.</p></div>
+
+<p class="fig-title">What dvc.lock looks like (beyond the video)</p>
+<pre><code><span class="k">schema:</span> <span class="s">'2.0'</span>
+<span class="k">stages:</span>
+  <span class="k">data_ingestion:</span>
+    <span class="k">cmd:</span> python src/data_ingestion.py
+    <span class="k">deps:</span>
+    - <span class="k">path:</span> src/data_ingestion.py
+      <span class="k">md5:</span> 6f1c0e3d9b…          <span class="c"># fingerprint of the script</span>
+      <span class="k">size:</span> 2154
+    <span class="k">outs:</span>
+    - <span class="k">path:</span> data/raw
+      <span class="k">md5:</span> 9a2b77e0c4….dir      <span class="c"># fingerprint of the whole folder</span>
+      <span class="k">size:</span> 612904
+      <span class="k">nfiles:</span> 2</code></pre>
+<p class="fig-sub">Commit <code>dvc.yaml</code> and <code>dvc.lock</code> to Git. DVC adds the outputs (<code>data/raw</code>, <code>model.pkl</code>…) to <code>.gitignore</code> itself, so large files never go into Git.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>Proving the tracking works <span class="ts">02:59:42</span></h2>
+<h3>Run it again: nothing happens</h3>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>(test) ~/ml-pipelines-using-dvc</span></div>
+<pre><code><span class="p">$</span> dvc repro
+<span class="g">Stage 'data_ingestion' didn't change, skipping</span>
+<span class="o">Data and pipelines are up to date.</span></code></pre></div>
+<p>Neither the code nor the data changed, so the data isn't downloaded again. In production, where every run costs money, this is exactly what you want.</p>
+
+<h3>Change the code: the stage runs <span class="ts">03:01:55</span></h3>
+<p>The instructor edits <code>data_ingestion.py</code> to keep <strong>neutral</strong> instead of <strong>happiness</strong> (neutral → 1), saves it, and runs <code>dvc repro</code> again. DVC compares the script with its previous run, sees the change, and <strong>re-runs</strong> ingestion. The new data now contains neutral. He then changes it back to happiness and runs it once more.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>(test) ~/ml-pipelines-using-dvc</span></div>
+<pre><code><span class="p">$</span> dvc repro                       <span class="c"># after editing the script</span>
+<span class="y">Running stage 'data_ingestion':</span>
+<span class="o">&gt; python src/data_ingestion.py
+Updating lock file 'dvc.lock'</span></code></pre></div>
+<div class="callout beyond"><span class="label">Beyond the video · the run-cache</span><p>When you switch the code <em>back</em> to a version DVC has already run, recent DVC versions may say <em>"Stage … is cached - skipping run, checking out outputs"</em>. DVC's <strong>run-cache</strong> remembers earlier results and restores them without recomputing.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>Adding the remaining stages <span class="ts">03:03:00</span></h2>
+<p>The instructor adds one stage at a time and runs <code>dvc repro</code> after each. Every time, <strong>earlier stages are skipped and only the new one runs</strong>:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>adding stages one by one</span></div>
+<pre><code><span class="c"># + data_preprocessing</span>
+<span class="p">$</span> dvc repro
+<span class="g">Stage 'data_ingestion' didn't change, skipping</span>
+<span class="y">Running stage 'data_preprocessing':</span>          <span class="c"># → data/processed</span>
+<span class="c"># + feature_engineering</span>
+<span class="p">$</span> dvc repro
+<span class="g">Stage 'data_ingestion' didn't change, skipping
+Stage 'data_preprocessing' didn't change, skipping</span>
+<span class="y">Running stage 'feature_engineering':</span>         <span class="c"># → data/features</span>
+<span class="c"># + model_building, then + model_evaluation</span>
+<span class="p">$</span> dvc repro
+<span class="g">… 3 stages skipped …</span>
+<span class="y">Running stage 'model_building':</span>              <span class="c"># → model.pkl</span>
+<span class="p">$</span> dvc repro
+<span class="g">… 4 stages skipped …</span>
+<span class="y">Running stage 'model_evaluation':</span>            <span class="c"># → metrics.json</span>
+<span class="p">$</span> dvc repro
+<span class="o">Data and pipelines are up to date.</span>          <span class="c"># everything skipped</span></code></pre></div>
+<div class="callout key"><span class="label">What it would cost without DVC</span><p>If you run the five Python files yourself, <strong>all five run every time</strong>. For a deep learning project that means paying for GPU training even when nothing changed. So <strong>whenever you build a pipeline and set up retraining, add DVC</strong> to track it.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s11"><span class="num">11</span>Interactive: what will dvc repro run?</h2>
+<p>Pick what changed since the last successful run and see which stages DVC re-runs. Because this pipeline is <strong>linear</strong>, a change re-runs that stage and everything after it.</p>
+<div class="repro" id="rp">
+  <div class="cols">
+    <div>
+      <label><input type="radio" name="chg" value="none" checked> Nothing changed</label>
+      <label><input type="radio" name="chg" value="0"> Edited <code>data_ingestion.py</code> (e.g. neutral instead of happiness)</label>
+      <label><input type="radio" name="chg" value="1"> Edited <code>data_preprocessing.py</code> (e.g. keep numbers)</label>
+      <label><input type="radio" name="chg" value="2"> Edited <code>feature_engineering.py</code> (e.g. max_features=100)</label>
+    </div>
+    <div>
+      <label><input type="radio" name="chg" value="3"> Edited <code>model_building.py</code> (e.g. new XGBoost params)</label>
+      <label><input type="radio" name="chg" value="4"> Edited <code>model_evaluation.py</code> (e.g. add F1)</label>
+      <label><input type="radio" name="chg" value="del"> Deleted <code>model.pkl</code> by accident</label>
+      <label><input type="radio" name="chg" value="url"> The dataset <em>at the URL</em> got new rows (no code changed)</label>
+    </div>
+  </div>
+  <div class="stagebar" id="rp-bar"></div>
+  <div class="term"><div class="bar"><i></i><i></i><i></i><span>$ dvc repro</span></div><pre><code id="rp-out"></code></pre></div>
+  <p id="rp-note" style="font-size:13.5px;margin:0"></p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s12"><span class="num">12</span>dvc dag and dvc metrics show <span class="ts">03:07:12</span></h2>
+<div class="cols">
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>$ dvc dag</span></div>
+<pre><code><span class="o">    +----------------+
+    | data_ingestion |
+    +----------------+
+             *
+   +--------------------+
+   | data_preprocessing |
+   +--------------------+
+             *
+  +---------------------+
+  | feature_engineering |
+  +---------------------+
+             *
+    +----------------+
+    | model_building |
+    +----------------+
+             *
+   +------------------+
+   | model_evaluation |
+   +------------------+</span></code></pre></div>
+<div>
+<p><strong><code>dvc dag</code></strong> draws the pipeline's dependency graph (a <strong>DAG</strong>, directed acyclic graph). Each stage connects to the one that needs its output, so this is a <strong>linear pipeline</strong>.</p>
+<p><strong><code>dvc metrics show</code></strong> reads every file listed under <code>metrics:</code> and prints it as a table. That's why <code>metrics.json</code> was listed there instead of under <code>outs</code>.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>$ dvc metrics show</span></div>
+<pre><code><span class="o">Path          accuracy    auc     precision    recall
+metrics.json  0.7401      0.8368  0.7995       0.6252</span></code></pre></div>
+<p class="fig-sub">Actual output from the <a href="#hands-on">hands-on run</a>.</p>
+</div>
+</div>
+<div class="callout key"><span class="label">Instructor's homework</span><p>Pick <strong>another dataset</strong> and build the same kind of tracked pipeline yourself. The concept only really sinks in with practice. The course's later end-to-end project uses DVC the same way.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s13"><span class="num">13</span>Next steps: params, experiments, data remotes</h2>
+<div class="callout beyond"><span class="label">Beyond the video · features you'll want next</span>
+<div class="cols">
+<div>
+<p class="fig-title">1 · Move hyperparameters into params.yaml</p>
+<pre><code><span class="c"># params.yaml</span>
+<span class="k">feature_engineering:</span>
+  <span class="k">max_features:</span> 1000
+<span class="k">model_building:</span>
+  <span class="k">n_estimators:</span> 100
+  <span class="k">learning_rate:</span> 0.1
+
+<span class="c"># dvc.yaml (stage excerpt)</span>
+<span class="k">model_building:</span>
+  <span class="k">cmd:</span> python src/model_building.py
+  <span class="k">deps:</span> [data/features, src/model_building.py]
+  <span class="k">params:</span>
+    - model_building.n_estimators
+    - model_building.learning_rate
+  <span class="k">outs:</span> [model.pkl]</code></pre>
+<p>Now changing only a parameter re-runs only the stages that use it. Read the values in Python with <code>yaml.safe_load(open("params.yaml"))</code> (that's what <code>pyyaml</code> in requirements.txt is for).</p>
+</div>
+<div>
+<p class="fig-title">2 · Compare experiments</p>
+<pre><code>dvc exp run -S model_building.n_estimators=300
+dvc exp show          <span class="c"># table of runs × params × metrics</span>
+dvc metrics diff      <span class="c"># metrics vs the last commit</span>
+dvc params diff</code></pre>
+<p class="fig-title" style="margin-top:12px">3 · Version data and push it to S3</p>
+<pre><code>dvc remote add -d storage s3://my-bucket/dvcstore
+dvc push              <span class="c"># upload cached data/models</span>
+git push              <span class="c"># upload dvc.yaml, dvc.lock, .dvc files</span>
+<span class="c"># on another machine / CI:</span>
+git clone … &amp;&amp; dvc pull   <span class="c"># get the exact data + model</span></code></pre>
+<p class="fig-title" style="margin-top:12px">4 · Detect data that changes at a URL</p>
+<pre><code>dvc import-url https://…/tweet_emotions.csv data/source.csv
+dvc update data/source.csv.dvc   <span class="c"># re-checks the URL</span></code></pre>
+</div>
+</div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="hands-on"><span class="num">▶</span>Hands-on files: what we built</h2>
+<div class="handson">
+<span class="label">Hands-on project · built, run and tracked with DVC</span>
+<div class="files">
+  <a href="../projects/ch12_dvc_pipeline/notebooks/01_experiment_twitter_emotion.ipynb">notebooks/01_experiment_twitter_emotion.ipynb</a>
+  <a href="../projects/ch12_dvc_pipeline/02_dvc_pipeline_walkthrough.ipynb">02_dvc_pipeline_walkthrough.ipynb</a>
+  <a href="../projects/ch12_dvc_pipeline/dvc.yaml">dvc.yaml</a>
+  <a href="../projects/ch12_dvc_pipeline/src/">src/</a>
+</div>
+<pre style="margin:0 0 12px"><code>projects/ch12_dvc_pipeline/
+├── notebooks/01_experiment_twitter_emotion.ipynb   <span class="c"># the "traditional" notebook</span>
+├── src/  data_ingestion.py · data_preprocessing.py · feature_engineering.py
+│         model_building.py · model_evaluation.py · utils.py (logging + certificates)
+├── dvc.yaml · dvc.lock · requirements.txt
+├── 02_dvc_pipeline_walkthrough.ipynb               <span class="c"># git init → dvc init → dvc repro …</span>
+└── data/ · model.pkl · metrics.json · logs/        <span class="c"># generated by the pipeline (DVC-tracked)</span></code></pre>
+
+<h4>1 · The notebook version</h4>
+<p>40,000 tweets, of which <strong>10,374</strong> are happiness or sadness (5,209 / 5,165, nearly balanced). After an 80/20 split, NLTK cleaning, a 1,000-word bag of words and XGBoost with 100 trees:</p>
+<div class="result">accuracy 0.739 · precision 0.798 · recall 0.625 · AUC 0.837
+confusion matrix:   pred sadness  pred happiness
+  actual sadness         899            161
+  actual happiness       380            634
+most useful words: sad, thanks, happy, miss, awesome, good, suck, hurt, hate</div>
+<p class="fig-sub">The model misses many happy tweets (380 false negatives), which is why recall is the weakest metric.</p>
+
+<h4>2 · The DVC walkthrough, following the video</h4>
+<div class="table-wrap" style="margin-top:6px">
+<table>
+  <thead><tr><th>Step</th><th>What <code>dvc</code> printed</th></tr></thead>
+  <tbody>
+    <tr><td><code>dvc init</code></td><td>created <code>.dvc/</code> and <code>.dvcignore</code></td></tr>
+    <tr><td>1-stage <code>dvc repro</code></td><td><em>Running stage 'data_ingestion'</em> → 8,299 train / 2,075 test rows, <em>Generating lock file 'dvc.lock'</em> (md5 of the script and of <code>data/raw</code>)</td></tr>
+    <tr><td>run again</td><td><em>Stage 'data_ingestion' didn't change, skipping</em></td></tr>
+    <tr><td>happiness → neutral</td><td><code>dvc status</code>: <em>modified: src/data_ingestion.py</em> → re-ran → 13,803 rows (neutral + sadness)</td></tr>
+    <tr><td>changed back</td><td><em>Stage 'data_ingestion' is <strong>cached</strong> - skipping run, checking out outputs</em> (the run-cache)</td></tr>
+    <tr><td>stages 2 → 5 added</td><td>each time, the earlier stages were skipped and only the new stage ran</td></tr>
+    <tr><td><code>dvc metrics show</code></td><td>accuracy 0.7401 · auc 0.8368 · precision 0.7995 · recall 0.6252</td></tr>
+    <tr><td>model.pkl deleted</td><td><code>dvc status</code>: <em>deleted: model.pkl</em> → <code>dvc repro</code> restored it from cache without retraining</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h4>3 · Beyond the video: change one hyperparameter and compare</h4>
+<p>After committing, <code>n_estimators</code> was raised from 100 to 300. <code>dvc repro</code> re-ran <strong>only</strong> <code>model_building</code> and <code>model_evaluation</code>, and <code>dvc metrics diff</code> reported:</p>
+<figure style="margin-top:8px">
+  <p class="fig-title">Test metrics: 100 vs 300 trees</p>
+  <div class="legend"><span><i style="background:var(--s1)"></i>n_estimators = 100 (committed)</span><span><i style="background:var(--s2)"></i>n_estimators = 300</span></div>
+  <div class="scroll">
+  <svg viewBox="0 0 760 250" role="img" aria-label="Grouped bars: accuracy 0.740 vs 0.775, precision 0.800 vs 0.796, recall 0.625 vs 0.726, AUC 0.837 vs 0.860">
+    <g class="t-xs">
+      <line x1="60" y1="200" x2="740" y2="200" class="axis"/>
+      <line x1="60" y1="155" x2="740" y2="155" class="grid-line"/><text x="52" y="159" text-anchor="end">0.6</text>
+      <line x1="60" y1="110" x2="740" y2="110" class="grid-line"/><text x="52" y="114" text-anchor="end">0.7</text>
+      <line x1="60" y1="65" x2="740" y2="65" class="grid-line"/><text x="52" y="69" text-anchor="end">0.8</text>
+      <line x1="60" y1="20" x2="740" y2="20" class="grid-line"/><text x="52" y="24" text-anchor="end">0.9</text>
+      <text x="52" y="204" text-anchor="end">0.5</text>
+    </g>
+    <!-- scale: 0.5 → y200, 0.9 → y20 : 450 px per 1.0 -->
+    <g data-tip="<b>accuracy</b><br>100 trees: 0.7401<br>300 trees: 0.7748 (+0.035)">
+      <rect x="95" y="92.0" width="54" height="108.0" rx="4" fill="var(--s1)"/><rect x="151" y="76.3" width="54" height="123.7" rx="4" fill="var(--s2)"/>
+      <text x="122" y="85" text-anchor="middle" class="t-xs">0.740</text><text x="178" y="70" text-anchor="middle" class="t-xs t-b">0.775</text>
+      <text x="150" y="220" text-anchor="middle" class="t-sm t-b">accuracy</text><text x="150" y="236" text-anchor="middle" class="t-xs">+0.035</text></g>
+    <g data-tip="<b>precision</b><br>100 trees: 0.7995<br>300 trees: 0.7957 (−0.004)">
+      <rect x="265" y="65.2" width="54" height="134.8" rx="4" fill="var(--s1)"/><rect x="321" y="66.9" width="54" height="133.1" rx="4" fill="var(--s2)"/>
+      <text x="292" y="59" text-anchor="middle" class="t-xs">0.800</text><text x="348" y="61" text-anchor="middle" class="t-xs t-b">0.796</text>
+      <text x="320" y="220" text-anchor="middle" class="t-sm t-b">precision</text><text x="320" y="236" text-anchor="middle" class="t-xs">−0.004</text></g>
+    <g data-tip="<b>recall</b><br>100 trees: 0.6252<br>300 trees: 0.7258 (+0.101)">
+      <rect x="435" y="143.7" width="54" height="56.3" rx="4" fill="var(--s1)"/><rect x="491" y="98.4" width="54" height="101.6" rx="4" fill="var(--s2)"/>
+      <text x="462" y="137" text-anchor="middle" class="t-xs">0.625</text><text x="518" y="92" text-anchor="middle" class="t-xs t-b">0.726</text>
+      <text x="490" y="220" text-anchor="middle" class="t-sm t-b">recall</text><text x="490" y="236" text-anchor="middle" class="t-xs">+0.101</text></g>
+    <g data-tip="<b>AUC</b><br>100 trees: 0.8368<br>300 trees: 0.8601 (+0.023)">
+      <rect x="605" y="48.4" width="54" height="151.6" rx="4" fill="var(--s1)"/><rect x="661" y="38.0" width="54" height="162.0" rx="4" fill="var(--s2)"/>
+      <text x="632" y="42" text-anchor="middle" class="t-xs">0.837</text><text x="688" y="32" text-anchor="middle" class="t-xs t-b">0.860</text>
+      <text x="660" y="220" text-anchor="middle" class="t-sm t-b">AUC</text><text x="660" y="236" text-anchor="middle" class="t-xs">+0.023</text></g>
+  </svg>
+  </div>
+  <figcaption>Y-axis starts at 0.5 so the differences are visible. Recall improved the most (+0.10): the bigger model finds far more of the happy tweets. The file was then restored and <code>dvc metrics diff</code> showed no difference.</figcaption>
+</figure>
+
+<div class="callout wrong" style="margin-bottom:0"><span class="label">Found while building this · pandas 3</span><p>The course repo's ingestion code does <code>final_df['sentiment'].replace({...}, inplace=True)</code> on a filtered slice. With <strong>pandas ≥ 3</strong> (copy-on-write), that in-place change does nothing, and the labels would stay as text. The project here uses <code>df = df[...].copy()</code> plus <code>.map({...})</code>, which works on every version.</p></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s14"><span class="num">14</span>Interview questions</h2>
+<details class="qa"><summary>Explain dvc.yaml and dvc.lock.</summary>
+<p><code>dvc.yaml</code> is the pipeline definition you write: stages with <code>cmd</code>, <code>deps</code>, <code>outs</code>, <code>params</code> and <code>metrics</code>. <code>dvc.lock</code> is generated by <code>dvc repro</code> and records the hashes and sizes of every dependency and output from the last run. DVC compares the current state with the lock file to decide which stages to skip. Both are committed to Git.</p></details>
+<details class="qa"><summary>How does DVC know a stage needs to re-run?</summary>
+<p>It hashes each stage's dependencies (scripts, input files and folders, listed params) and outputs, and compares them with <code>dvc.lock</code>. If anything differs, or an output is missing, the stage runs. Its new outputs then change the dependencies of downstream stages, so those run too. Unchanged stages are skipped, or restored from the run-cache.</p></details>
+<details class="qa"><summary>Your ingestion stage downloads from a URL. New rows appear upstream but dvc repro skips the stage. Why, and how do you fix it?</summary>
+<p>DVC only tracks what's declared. The stage's only dependency is the script, which didn't change. Fixes: use <code>dvc import-url</code> plus <code>dvc update</code> so the remote file is tracked; add <code>always_changed: true</code> to that stage; or make the data version an explicit parameter (such as a date or snapshot ID in <code>params.yaml</code>).</p></details>
+<details class="qa"><summary>What's the difference between outs and metrics in dvc.yaml?</summary>
+<p>Both are tracked outputs. Files under <code>metrics</code> are also treated as metric files, so <code>dvc metrics show</code> and <code>dvc metrics diff</code> can read and compare them across commits and experiments. Usually they're small JSON or YAML files kept in Git rather than the DVC cache.</p></details>
+<details class="qa"><summary>Why split a notebook into components before adding a pipeline tool?</summary>
+<p>Each component gets clear inputs and outputs, so it can be run, tested and owned on its own, reused, and declared as a pipeline stage with dependencies. A notebook has hidden state and no boundaries, so a tool can't tell what depends on what.</p></details>
+<details class="qa"><summary>Where do the vectorizer and model go for serving?</summary>
+<p>Both are pipeline outputs. The fitted <code>CountVectorizer</code> must be saved alongside the model so the prediction pipeline applies the <em>same</em> transformation to new text. They're versioned with DVC (or registered in MLflow) and loaded by the API at startup.</p></details>
+<details class="qa"><summary>How would you run this pipeline automatically?</summary>
+<p>A CI/CD job (for example GitHub Actions on push, or on a schedule) runs <code>dvc pull</code> → <code>dvc repro</code> → <code>dvc push</code>, posts <code>dvc metrics diff</code> on the pull request, and, if the metrics pass a threshold, promotes the model and triggers deployment.</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s15"><span class="num">15</span>Recap</h2>
+<ul>
+  <li>Setup: conda environment (Python 3.11) → <code>pip install -r requirements.txt</code> (includes <code>dvc</code>) → VS Code.</li>
+  <li>The notebook (Twitter emotion: happiness 1 / sadness 0, NLTK cleaning, CountVectorizer, XGBoost, accuracy/precision/recall) is the <strong>experiment</strong>. Production needs <strong>modular components</strong>.</li>
+  <li><code>src/</code>: ingestion → <code>data/raw</code>, preprocessing → <code>data/processed</code>, feature engineering → <code>data/features</code>, model building → <code>model.pkl</code>, evaluation → <code>metrics.json</code>, with logging to a file.</li>
+  <li><code>dvc.yaml</code>: one stage each, with <code>cmd</code>, <code>deps</code> (the script plus the previous output) and <code>outs</code> (<code>metrics</code> for the metrics file).</li>
+  <li><code>git init</code> → <code>dvc init</code> (creates <code>.dvc/</code> and <code>.dvcignore</code>) → <code>dvc repro</code> (runs stages and writes <code>dvc.lock</code>).</li>
+  <li>Unchanged stages are <strong>skipped</strong>; a code change re-runs that stage; new stages run alone. This saves compute during retraining.</li>
+  <li><code>dvc dag</code> draws the linear pipeline; <code>dvc metrics show</code> prints the metrics.</li>
+</ul>
+
+<div class="pager">
+  <a href="11_introduction_to_dvc.html"><small>← Previous</small>11 · Introduction to DVC</a>
+  <a class="next" href="13_cloud_fundamentals_for_mlops.html"><small>Next →</small>13 · Fundamentals of cloud for MLOps</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+<script>
+// tabs
+(function () {
+  const btns = document.querySelectorAll('#tabs button');
+  btns.forEach(b => b.addEventListener('click', () => {
+    btns.forEach(x => { const on = x === b; x.setAttribute('aria-selected', String(on)); document.getElementById(x.dataset.t).hidden = !on; });
+  }));
+})();
+// dvc repro simulator
+(function () {
+  const stages = ['data_ingestion', 'data_preprocessing', 'feature_engineering', 'model_building', 'model_evaluation'];
+  const outs = ['data/raw', 'data/processed', 'data/features', 'model.pkl', 'metrics.json'];
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  function render(v) {
+    let from = Infinity, note = '';
+    if (v === 'none') { note = 'Nothing to do. This is the "run it again" moment from the video.'; }
+    else if (v === 'del') { from = 3; note = 'A missing output counts as a change. model_building runs to recreate model.pkl, and evaluation runs because its input changed. (If the run-cache has it, DVC may just restore the file.)'; }
+    else if (v === 'url') { note = '⚠ Trap: DVC only tracks declared deps, and the ingestion stage depends only on its script, so the new rows are NOT detected. Use dvc import-url + dvc update, or always_changed: true (see section 13).'; }
+    else { from = +v; const n = 5 - from; note = `Edited ${stages[from]}.py: that stage and the ${n - 1} after it re-run, because each one's input changed. The ${from} before it ${from === 1 ? 'is' : 'are'} skipped.`; if (from === 4) note = 'Only model_evaluation re-runs. Training is untouched, so there is no GPU or CPU cost for it.'; }
+    document.getElementById('rp-bar').innerHTML = stages.map((s, i) =>
+      `<div class="st ${i >= from ? 'run' : 'skip'}">${s}<small>${i >= from ? '▶ runs → ' + outs[i] : '✓ skipped'}</small></div>`).join('');
+    const lines = stages.map((s, i) => i >= from
+      ? `<span class="y">Running stage '${s}':</span>\n<span class="o">&gt; python src/${s}.py</span>`
+      : `<span class="g">Stage '${s}' didn't change, skipping</span>`);
+    lines.push(from === Infinity ? '<span class="o">Data and pipelines are up to date.</span>' : `<span class="o">Updating lock file 'dvc.lock'</span>`);
+    document.getElementById('rp-out').innerHTML = lines.join('\n');
+    document.getElementById('rp-note').textContent = note;
+  }
+  document.querySelectorAll('#rp input').forEach(r => r.addEventListener('change', () => render(r.value)));
+  render('none');
+})();
+</script>
+</body>
+</html>

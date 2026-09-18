@@ -1,0 +1,27 @@
+{
+ "rows": 36793,
+ "class_percent": {
+  "positive": 42.9,
+  "neutral": 34.7,
+  "negative": 22.4
+ },
+ "median_words": {
+  "negative": 20.0,
+  "neutral": 7.0,
+  "positive": 21.0
+ },
+ "comments_over_100_words_pct": 5.1,
+ "top_bigrams": [
+  "free encyclopedia",
+  "encyclopedia team",
+  "good good",
+  "prime minister",
+  "best overall",
+  "don know",
+  "looks like",
+  "don think",
+  "team reached",
+  "social media"
+ ],
+ "rows_after_cleaning": 36662
+}

@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>15 · MLflow Experiment Tracking with DagsHub — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .term { background: var(--code-bg); border-radius: 10px; overflow: hidden; margin: 14px 0; }
+  .term .bar { display: flex; gap: 6px; padding: 9px 12px; background: #2b2b29; }
+  .term .bar i { width: 10px; height: 10px; border-radius: 50%; background: #5b5a55; }
+  .term .bar span { margin-left: 8px; font: 12px var(--mono); color: #a8a79f; }
+  .term pre { margin: 0; border-radius: 0; }
+  .term .p { color: #7fc79a; }
+  .term .o { color: #c3c2b7; }
+  pre .k { color: #86b6ef; }
+  pre .s { color: #f0c36a; }
+  pre .hl { background: rgba(57,135,229,.22); display: inline-block; width: 100%; }
+  .steps { counter-reset: st; list-style: none; padding: 0; margin: 16px 0; }
+  .steps > li { counter-increment: st; position: relative; padding: 12px 16px 12px 56px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; margin: 8px 0; }
+  .steps > li::before { content: counter(st); position: absolute; left: 16px; top: 12px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font: 600 13px/26px var(--sans); text-align: center; }
+  .steps p:last-child { margin-bottom: 0; }
+  .shot { border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; margin: 10px 0 4px; }
+  .shot img { display: block; width: 100%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 15</span></div>
+<div class="eyebrow">Chapter 15 · MLflow Experiment Tracking with DagsHub</div>
+<h1>Tracking real experiments on a remote MLflow server</h1>
+<p class="lede">This is the practical half of the MLflow topic. The instructor writes a small <code>demo.py</code> that trains an ElasticNet model on the red-wine-quality data, wraps it in <code>mlflow.start_run()</code> with <code>log_param</code> and <code>log_metric</code>, and sends every run to <strong>DagsHub</strong>, a hosted platform with an MLflow server connected to a GitHub repo. He runs three experiments from the terminal with different <code>alpha</code> and <code>l1_ratio</code> values, then uses the <strong>Compare</strong> view's parallel coordinates plot to pick the best one.</p>
+<div class="meta">
+  <span class="chip">Video 03:42:34 – 04:05:17</span>
+  <span class="chip">Hands-on · VS Code + DagsHub + MLflow UI</span>
+  <span class="chip">Best run: alpha 0.3 · l1_ratio 0.6</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">The setup</a></li>
+    <li><a href="#s2">The data and the model</a></li>
+    <li><a href="#s3">MLflow flavours: which API to use</a></li>
+    <li><a href="#s4">demo.py, part by part</a></li>
+    <li><a href="#s5">DagsHub: the remote tracking server</a></li>
+    <li><a href="#s6">Connecting a GitHub repo to DagsHub</a></li>
+    <li><a href="#s7">Running the experiments</a></li>
+    <li><a href="#s8">Comparing runs and picking the best</a></li>
+    <li><a href="#s9">Housekeeping: deleting runs</a></li>
+    <li><a href="#s10">Precision notes</a></li>
+    <li><a href="#hands-on">Hands-on files: what we built</a></li>
+    <li><a href="#s11">Interview questions</a></li>
+    <li><a href="#s12">Recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>The setup <span class="ts">03:42:34</span></h2>
+<p>The instructor creates a folder called <em>MLOps tool demo</em>, opens it in VS Code, selects his <code>test</code> environment, and writes a <code>requirements.txt</code>:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>MLOps-tool-demo</span></div>
+<pre><code><span class="c"># requirements.txt</span>
+mlflow==2.2.2      <span class="c"># the version pinned in the video</span>
+dagshub            <span class="c"># added a bit later, for the remote server</span>
+
+<span class="p">$</span> pip install -r requirements.txt</code></pre></div>
+
+<figure>
+  <p class="fig-title">What the demo connects together</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 230" role="img" aria-label="demo.py on the laptop sends params, metrics and models to the MLflow server hosted by DagsHub, which is linked to a GitHub repository; the browser opens the MLflow UI on DagsHub to compare runs">
+    <defs><marker id="d15" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker>
+    <marker id="d15b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <rect x="10" y="40" width="200" height="150" rx="10" class="box"/>
+    <text x="110" y="64" text-anchor="middle" class="t-sm t-b">💻 Laptop</text>
+    <rect x="26" y="78" width="168" height="30" rx="6" class="box-2"/><text x="110" y="98" text-anchor="middle" class="t-xs t-b">python demo.py 0.3 0.6</text>
+    <text x="26" y="130" class="t-xs">• trains ElasticNet</text>
+    <text x="26" y="148" class="t-xs">• dagshub.init(…, mlflow=True)</text>
+    <text x="26" y="166" class="t-xs">• log_param / log_metric / model</text>
+    <path d="M210,115 L318,115" class="edge-accent" marker-end="url(#d15)"/>
+    <text x="264" y="106" text-anchor="middle" class="t-xs" style="fill:var(--accent)">HTTPS</text>
+    <rect x="320" y="30" width="230" height="170" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+    <text x="435" y="56" text-anchor="middle" class="t-sm t-b">☁ DagsHub</text>
+    <text x="435" y="74" text-anchor="middle" class="t-xs">dagshub.com/&lt;user&gt;/mlflow-test</text>
+    <rect x="340" y="88" width="190" height="96" rx="8" class="box"/>
+    <text x="435" y="108" text-anchor="middle" class="t-xs t-b">hosted MLflow tracking server</text>
+    <text x="352" y="128" class="t-xs">runs · params · metrics</text>
+    <text x="352" y="146" class="t-xs">artifacts (model.pkl)</text>
+    <text x="352" y="164" class="t-xs">model registry</text>
+    <rect x="600" y="30" width="150" height="60" rx="10" class="box"/>
+    <text x="675" y="56" text-anchor="middle" class="t-sm t-b">🐙 GitHub repo</text>
+    <text x="675" y="74" text-anchor="middle" class="t-xs">mlflow-test (connected)</text>
+    <path d="M598,60 L552,72" class="edge" marker-end="url(#d15b)"/>
+    <rect x="600" y="130" width="150" height="70" rx="10" class="box"/>
+    <text x="675" y="156" text-anchor="middle" class="t-sm t-b">🌐 Browser</text>
+    <text x="675" y="174" text-anchor="middle" class="t-xs">"Go to MLflow UI"</text>
+    <text x="675" y="190" text-anchor="middle" class="t-xs">compare → best run</text>
+    <path d="M598,165 L552,155" class="edge" marker-end="url(#d15b)"/>
+  </svg>
+  </div>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>The data and the model <span class="ts">03:44:43</span></h2>
+<div class="grid">
+  <div class="card"><h4>🍷 Red-wine quality</h4><p>The Kaggle dataset, loaded from a GitHub URL as CSV. Columns such as <em>fixed acidity, volatile acidity, citric acid…</em> are used to predict the wine's <strong>quality</strong> score. The file is <strong>semicolon-separated</strong>, so it's read with <code>sep=";"</code>.</p></div>
+  <div class="card"><h4>📈 A regression problem</h4><p>Quality is a number, so the metrics are <strong>MSE / RMSE, MAE and R²</strong>. The model is <strong>ElasticNet</strong>, the regularised linear regression from Chapter 14.</p></div>
+</div>
+<p>Imports used: <code>pandas</code>, <code>numpy</code>, the sklearn metrics, <code>train_test_split</code>, <code>ElasticNet</code>, <code>urlparse</code> (to check what kind of tracking URI is in use), <code>mlflow</code>, <code>mlflow.sklearn</code>, <code>infer_signature</code>, <code>dagshub</code> and <code>logging</code>.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>MLflow flavours: which API to use <span class="ts">03:46:49</span></h2>
+<p>MLflow has integrations, called <strong>flavours</strong>, for many libraries: scikit-learn, TensorFlow, PyTorch, XGBoost, LangChain, LlamaIndex and more. Use the one that matches the model:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Project type</th><th>MLflow module</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td>Classic ML (this demo)</td><td><code>mlflow.sklearn</code></td><td><code>mlflow.sklearn.log_model(model, …)</code></td></tr>
+    <tr><td>Deep learning (TensorFlow/Keras)</td><td><code>mlflow.tensorflow</code></td><td>used in the course's later deep learning project</td></tr>
+    <tr><td>Deep learning (PyTorch)</td><td><code>mlflow.pytorch</code></td><td><code>mlflow.pytorch.log_model(net, …)</code></td></tr>
+    <tr><td>LLM apps</td><td><code>mlflow.langchain</code>, <code>mlflow.llama_index</code></td><td>GenAI tracking and evaluation</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>demo.py, part by part <span class="ts">03:48:57</span></h2>
+<p>The instructor's key message: <strong>it's ordinary ML code</strong>. The MLflow-specific part is the <code>with mlflow.start_run():</code> block and the logging calls inside it. The sketch below is condensed from the project version in the hands-on folder, with MLflow lines highlighted.</p>
+<pre><code><span class="k">import</span> sys, numpy <span class="k">as</span> np, pandas <span class="k">as</span> pd
+<span class="k">from</span> sklearn.linear_model <span class="k">import</span> ElasticNet
+<span class="k">from</span> sklearn.model_selection <span class="k">import</span> train_test_split
+<span class="hl"><span class="k">import</span> mlflow, mlflow.sklearn, dagshub</span>
+<span class="hl">dagshub.init(repo_owner=<span class="s">"&lt;user&gt;"</span>, repo_name=<span class="s">"mlflow-test"</span>, mlflow=<span class="k">True</span>)   <span class="c"># ① connect to DagsHub</span></span>
+
+<span class="k">def</span> eval_metrics(actual, pred):                  <span class="c"># ② one helper for all metrics</span>
+    rmse = np.sqrt(mean_squared_error(actual, pred))
+    <span class="k">return</span> rmse, mean_absolute_error(actual, pred), r2_score(actual, pred)
+
+np.random.seed(40)
+data = pd.read_csv(WINE_CSV_URL, sep=<span class="s">";"</span>)        <span class="c"># ③ semicolon-separated (wrapped in try/except + logging)</span>
+train, test = train_test_split(data)                 <span class="c">#   75 / 25 split</span>
+train_x, test_x = train.drop([<span class="s">"quality"</span>], axis=1), test.drop([<span class="s">"quality"</span>], axis=1)
+train_y, test_y = train[[<span class="s">"quality"</span>]], test[[<span class="s">"quality"</span>]]
+
+alpha    = float(sys.argv[1]) <span class="k">if</span> len(sys.argv) &gt; 1 <span class="k">else</span> 0.5   <span class="c"># ④ values from the command line</span>
+l1_ratio = float(sys.argv[2]) <span class="k">if</span> len(sys.argv) &gt; 2 <span class="k">else</span> 0.5
+
+<span class="hl"><span class="k">with</span> mlflow.start_run():                             <span class="c"># ⑤ everything inside is one tracked run</span></span>
+    model = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42).fit(train_x, train_y)
+    rmse, mae, r2 = eval_metrics(test_y, model.predict(test_x))
+<span class="hl">    mlflow.log_param(<span class="s">"alpha"</span>, alpha)                   <span class="c"># ⑥ inputs  → log_param</span></span>
+<span class="hl">    mlflow.log_param(<span class="s">"l1_ratio"</span>, l1_ratio)</span>
+<span class="hl">    mlflow.log_metric(<span class="s">"rmse"</span>, rmse)                    <span class="c"># ⑦ results → log_metric</span></span>
+<span class="hl">    mlflow.log_metric(<span class="s">"r2"</span>, r2)</span>
+<span class="hl">    mlflow.log_metric(<span class="s">"mae"</span>, mae)</span>
+<span class="hl">    <span class="k">if</span> urlparse(mlflow.get_tracking_uri()).scheme != <span class="s">"file"</span>:   <span class="c"># ⑧ a server has a model registry…</span></span>
+<span class="hl">        mlflow.sklearn.log_model(model, <span class="s">"model"</span>, registered_model_name=<span class="s">"ElasticnetWineModel"</span>)</span>
+<span class="hl">    <span class="k">else</span>:                                                         <span class="c">#   …a local folder doesn't</span></span>
+<span class="hl">        mlflow.sklearn.log_model(model, <span class="s">"model"</span>)</span></code></pre>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>#</th><th>Piece</th><th>Why it's there</th></tr></thead>
+  <tbody>
+    <tr><td>①</td><td><code>dagshub.init(…, mlflow=True)</code></td><td>Points MLflow at the DagsHub repo's tracking server. The instructor says the setup used to be more complicated and is now this single line.</td></tr>
+    <tr><td>②</td><td><code>eval_metrics()</code></td><td>Takes actual and predicted values and returns RMSE, MAE and R².</td></tr>
+    <tr><td>③</td><td>read CSV in <code>try/except</code></td><td>If the URL fails, the exception is written to the log.</td></tr>
+    <tr><td>④</td><td><code>sys.argv</code></td><td>"System arguments": pass <code>alpha</code> and <code>l1_ratio</code> when running the file, with 0.5 as the default.</td></tr>
+    <tr><td>⑤</td><td><code>with mlflow.start_run():</code></td><td>MLflow tracks everything in this block automatically.</td></tr>
+    <tr><td>⑥ ⑦</td><td><code>log_param</code> / <code>log_metric</code></td><td><strong>Parameters</strong> are what you set (alpha, l1_ratio). <strong>Metrics</strong> are what you measure (RMSE, R², MAE).</td></tr>
+    <tr><td>⑧</td><td><code>urlparse(...).scheme</code></td><td>With a remote server (DagsHub) the model is also <strong>registered</strong>. A plain local file store doesn't support the registry.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>DagsHub: the remote tracking server <span class="ts">03:53:12</span></h2>
+<p>The runs should live on a <strong>remote server</strong> in the cloud, not only on the laptop. <strong>DagsHub</strong> is an MLOps platform that provides this, and more:</p>
+<div class="grid">
+  <div class="card"><h4>📦 Dataset management</h4><p>Versioned data (it also works with DVC).</p></div>
+  <div class="card" style="border-color:var(--accent)"><h4>🧪 Experiment tracking</h4><p>A hosted MLflow server per repo. <strong>This is the feature used here.</strong></p></div>
+  <div class="card"><h4>🗂 Model registry</h4><p>Registered models and their versions.</p></div>
+  <div class="card"><h4>🔗 Data &amp; model lineage</h4><p>Traces which data and code produced which model.</p></div>
+</div>
+<p>It supports many frameworks and tools, and the instructor calls it production grade. <strong>Sign up with your email</strong>. When the onboarding asks what you want to do, choose <strong>Experiment tracking</strong>.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>Connecting a GitHub repo to DagsHub <span class="ts">03:54:14</span></h2>
+<ol class="steps">
+  <li><p><strong>Create a GitHub repo</strong> named <code>mlflow-test</code>, public, with a README.</p></li>
+  <li><p>On DagsHub: <strong>Create → New repository → Connect a repository</strong>. Other options are a blank repo or a template, and Bitbucket and other hosts are also supported.</p></li>
+  <li><p>Choose <strong>GitHub</strong>, then <strong>Add/revoke access</strong>, pick your account, confirm your password, <strong>select the repository</strong> and <strong>Save</strong>.</p></li>
+  <li><p>Select the repo and click <strong>Connect repository</strong>. You land on its DagsHub dashboard.</p></li>
+  <li><p>Click <strong>Remote</strong> and copy the MLflow tracking URI (the first one). DagsHub also shows the <code>dagshub.init(repo_owner=…, repo_name=…, mlflow=True)</code> snippet. Paste it at the top of <code>demo.py</code>.</p></li>
+  <li><p>Click <strong>Go to MLflow UI</strong>. For a new repo, the experiment list is empty.</p></li>
+</ol>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>Running the experiments <span class="ts">03:59:31</span></h2>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>terminal · the three runs from the video</span></div>
+<pre><code><span class="p">$</span> python demo.py              <span class="c"># run 1: alpha 0.5, l1_ratio 0.5 (defaults)</span>
+<span class="p">$</span> python demo.py 0.3 0.6      <span class="c"># run 2: alpha 0.3, l1_ratio 0.6</span>
+<span class="p">$</span> python demo.py 0.7 0.6      <span class="c"># run 3: "0.7" (see note below)</span></code></pre></div>
+<ul>
+  <li>Each run loads the data, trains, prints the parameters and metrics, and <strong>saves the model</strong>.</li>
+  <li>Refresh the MLflow UI and a new run appears (e.g. "19 seconds ago"). Opening it shows the run ID, creation time, duration, <strong>parameters</strong>, <strong>metrics</strong> (also as charts), system metrics, and the <strong>artifacts</strong>, including <code>model.pkl</code>. The model also appears in the Models section.</li>
+  <li>Nothing is logged by hand, and you could run 100 experiments the same way.</li>
+</ul>
+<p class="fig-sub">The recording makes clear that the third run passes 0.7, but not which argument it changes. The hands-on version uses <code>alpha 0.7, l1_ratio 0.6</code>.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>Comparing runs and picking the best <span class="ts">04:01:36</span></h2>
+<ol>
+  <li>Select all the runs and click <strong>Compare</strong>, which opens the <strong>parallel coordinates plot</strong>.</li>
+  <li>The parameter axes are <code>alpha</code> and <code>l1_ratio</code>. Only <code>r2</code> is selected as a metric at first, so <strong>add <code>rmse</code> and <code>mae</code></strong>.</li>
+  <li>Apply the regression rule: <strong>RMSE and MAE low, R² high</strong>. Follow the line that meets all three back to its parameters.</li>
+</ol>
+<figure>
+  <p class="fig-title">The three runs from the hands-on replay (same seed as the course code)</p>
+  <p class="fig-sub">Hover a bar. Lower is better for RMSE and MAE; higher is better for R².</p>
+  <div class="legend"><span><i style="background:var(--s1)"></i>alpha 0.5 · l1 0.5</span><span><i style="background:var(--s2)"></i>alpha 0.3 · l1 0.6 (best)</span><span><i style="background:var(--s3)"></i>alpha 0.7 · l1 0.6</span></div>
+  <div class="scroll"><svg id="runs3" viewBox="0 0 760 260" role="img" aria-label="Grouped bars: RMSE 0.793, 0.766, 0.832; MAE 0.627, 0.598, 0.666; R2 0.109, 0.168, 0.019; the alpha 0.3 l1 0.6 run is best on all three"></svg></div>
+  <figcaption>The <b>alpha 0.3 / l1_ratio 0.6</b> run is lowest on RMSE and MAE and highest on R² (<b>0.168</b>), the same winner the instructor finds. He reads its R² as "0.16".</figcaption>
+</figure>
+<div class="callout key"><span class="label">The instructor's takeaway</span><p>Run as many experiments as you like, and MLflow keeps every one. Selecting the best model out of 100 or 1,000 runs then takes a few clicks on the parallel coordinates plot instead of an Excel sheet. The course uses this approach in the projects that follow.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>Housekeeping: deleting runs <span class="ts">04:04:48</span></h2>
+<p>Select any run and click <strong>Delete</strong>. The instructor removes an old experiment this way. The UI also has a light/dark theme switch, and the documentation link is in the sidebar.</p>
+<p class="fig-sub">Beyond the video: deleted runs go to a "deleted" state and can be restored, until an admin runs <code>mlflow gc</code> to remove them permanently.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>Precision notes</h2>
+<div class="callout wrong"><span class="label">Things to know when you follow the video today</span>
+<ul>
+  <li><strong>"Accuracy score 0.16" is R².</strong> An R² of about 0.17 means the model explains only ~17% of the variance in quality, so it's a weak model. The comparison between runs is still valid, but none of these would be good enough for production.</li>
+  <li><strong>"Best model without hyperparameter tuning."</strong> Trying three settings and keeping the best <em>is</em> a small, manual hyperparameter search. MLflow doesn't replace tuning; it records it. Search tools such as Optuna or GridSearchCV can log into MLflow too.</li>
+  <li><strong>Setting the tracking URI inside the run.</strong> The course's script calls <code>mlflow.set_tracking_uri(...)</code> <em>inside</em> <code>start_run()</code>, after logging. <code>dagshub.init(…, mlflow=True)</code> has already set it, so that line is redundant, and changing the URI in the middle of an active run is fragile. Set it once, before the run.</li>
+  <li><strong>Version drift.</strong> The video pins <code>mlflow==2.2.2</code> (2023). With MLflow 3.x, <code>log_model</code> takes <code>name="model"</code> instead of the older <code>artifact_path</code>, and registry <em>stages</em> have been replaced by <strong>aliases</strong> (e.g. <code>@champion</code>).</li>
+  <li><strong>Authentication.</strong> The first <code>dagshub.init</code> opens a browser login, or you can run <code>dagshub login</code>. In CI, set <code>MLFLOW_TRACKING_USERNAME</code> and <code>MLFLOW_TRACKING_PASSWORD</code> (a DagsHub token) as secrets. Never commit the token.</li>
+</ul></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="hands-on"><span class="num">▶</span>Hands-on files: what we built</h2>
+<div class="handson">
+<span class="label">Hands-on project · executed end-to-end with a local MLflow server</span>
+<div class="files">
+  <a href="../projects/ch15_mlflow_dagshub/mlflow_remote_tracking_walkthrough.ipynb">mlflow_remote_tracking_walkthrough.ipynb</a>
+  <a href="../projects/ch15_mlflow_dagshub/demo.py">demo.py</a>
+  <a href="../projects/ch15_mlflow_dagshub/requirements.txt">requirements.txt</a>
+</div>
+<p>DagsHub needs your own account, so the notebook starts <code>mlflow server</code> locally. That's the same kind of HTTP tracking server DagsHub hosts. <code>demo.py</code> sends runs to <strong>DagsHub</strong> when <code>DAGSHUB_REPO_OWNER</code> and <code>DAGSHUB_REPO_NAME</code> are set, otherwise to <code>MLFLOW_TRACKING_URI</code>, otherwise to a local folder. So the same file works for the video's setup.</p>
+
+<h4>1 · The video's three commands</h4>
+<div class="result">$ python demo.py            →  RMSE 0.7932  MAE 0.6272  R² 0.1086
+$ python demo.py 0.3 0.6    →  RMSE 0.7661  MAE 0.5984  R² 0.1684   ← best on all three metrics
+$ python demo.py 0.7 0.6    →  RMSE 0.8322  MAE 0.6662  R² 0.0188</div>
+<div class="shot"><img src="assets/img/ch15_mlflow_runs.png" alt="MLflow UI Training runs page listing the three runs of wine-quality-elasticnet"></div>
+<p class="fig-sub">The MLflow UI after the three runs.</p>
+<div class="shot"><img src="assets/img/ch15_mlflow_compare.png" alt="MLflow Compare 3 runs parallel coordinates plot"></div>
+<p class="fig-sub">Compare → Parallel Coordinates Plot, with RMSE selected by default. The darkest line (lowest RMSE) comes from alpha 0.3 / l1_ratio 0.6.</p>
+
+<h4>2 · Beyond the video: model registry and alias</h4>
+<p>Each run registered a version of <code>ElasticnetWineModel</code> (v1–v3). The notebook gave <strong>version 2</strong> (the best run) the alias <code>@champion</code> and loaded it with <code>mlflow.pyfunc.load_model("models:/ElasticnetWineModel@champion")</code>.</p>
+<div class="shot"><img src="assets/img/ch15_mlflow_registry.png" alt="MLflow registered model ElasticnetWineModel with three versions, version 2 has alias champion"></div>
+
+<h4>3 · Beyond the video: serving the champion as an API</h4>
+<p><code>mlflow models serve -m "models:/ElasticnetWineModel@champion" --port 5058 --env-manager local</code> started a REST server. A request with three wines returned:</p>
+<div class="result">POST /invocations  {"dataframe_split": {"columns": ["fixed acidity", …], "data": [[…], […], […]]}}
+→ {"predictions": [5.543, 5.556, 5.750]}</div>
+<p>This is your first working model endpoint. Later chapters wrap the same idea in Docker, CI/CD and the cloud.</p>
+
+<h4>4 · Deleting a run</h4>
+<p>A throwaway run <code>oops-wrong-params</code> was deleted through the API. Afterwards: <em>active runs: 3 · deleted runs: ['oops-wrong-params']</em>.</p>
+<p class="fig-sub">To browse the results yourself: <code>cd projects/ch15_mlflow_dagshub &amp;&amp; mlflow ui --backend-store-uri sqlite:///mlflow.db</code>. The notebook's final cell has the exact steps to switch to DagsHub.</p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s11"><span class="num">11</span>Interview questions</h2>
+<details class="qa"><summary>Why use a remote MLflow tracking server instead of local <code>mlruns/</code>?</summary>
+<p>So the whole team (and CI jobs) logs to one place and sees the same runs. It also gives you a model registry (not available with a plain file store), durable artifact storage (S3/GCS or a hosted store), and access control. Options include a self-hosted <code>mlflow server</code> with a database and object store, DagsHub, Databricks, or SageMaker's managed MLflow.</p></details>
+<details class="qa"><summary>log_param vs log_metric vs log_artifact vs log_model?</summary>
+<p><code>log_param</code>: inputs or configuration (strings, set once per run). <code>log_metric</code>: numeric results, which can be logged repeatedly with a step to form curves. <code>log_artifact</code>: any file (plots, reports, data samples). <code>log_model</code>: a model in MLflow format (with its environment and signature) that can be loaded, registered and served.</p></details>
+<details class="qa"><summary>What is a model signature, and why infer it?</summary>
+<p>The expected input columns and types and the output schema, stored with the model. It documents the API contract, and MLflow uses it to validate inputs at serving time, so a request with missing or mistyped features fails clearly instead of producing silent garbage.</p></details>
+<details class="qa"><summary>How do you choose the best run when there are several metrics?</summary>
+<p>Decide the primary metric in advance (e.g. RMSE on a fixed validation set), use the others as tie-breakers or constraints (e.g. latency or model size), and query programmatically with <code>search_runs(order_by=["metrics.rmse ASC"])</code>. Visual tools such as parallel coordinates help you understand trade-offs. Here all three metrics agreed.</p></details>
+<details class="qa"><summary>Explain the MLflow Model Registry and aliases.</summary>
+<p>A central catalogue of named models with numbered versions, each linked to the run that produced it. Aliases (e.g. <code>champion</code>, <code>challenger</code>) are movable pointers, so deployment code loads <code>models:/name@champion</code>. Promoting a new model is then just moving the alias, and rolling back means pointing it at the old version.</p></details>
+<details class="qa"><summary>How can you serve an MLflow model?</summary>
+<p><code>mlflow models serve -m models:/name@alias</code> gives a local REST <code>/invocations</code> endpoint. <code>mlflow models build-docker</code> produces a container image to deploy anywhere (ECS, Kubernetes, SageMaker). You can also load the model with <code>mlflow.pyfunc.load_model</code> inside your own FastAPI or Flask app.</p></details>
+<details class="qa"><summary>How would CI log to DagsHub securely?</summary>
+<p>Store the DagsHub token as a CI secret, expose it as <code>MLFLOW_TRACKING_USERNAME</code> and <code>MLFLOW_TRACKING_PASSWORD</code> (plus <code>MLFLOW_TRACKING_URI</code>) in the job environment, and never write credentials into code or commit them.</p></details>
+<details class="qa"><summary>Why does the script set <code>np.random.seed(40)</code>?</summary>
+<p><code>train_test_split</code> without <code>random_state</code> uses NumPy's global random state. Seeding it makes the split identical on every run, so different runs differ only in their hyperparameters and the comparison is fair. Passing <code>random_state=</code> explicitly is cleaner.</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s12"><span class="num">12</span>Recap</h2>
+<ul>
+  <li><code>requirements.txt</code>: <code>mlflow</code> (2.2.2 in the video) and <code>dagshub</code>. Data: red-wine quality (regression, <code>sep=";"</code>). Model: ElasticNet.</li>
+  <li>Use the matching MLflow flavour: <code>mlflow.sklearn</code> for ML, <code>mlflow.tensorflow</code> or <code>mlflow.pytorch</code> for deep learning.</li>
+  <li>MLflow code: <code>with mlflow.start_run():</code> + <code>log_param</code> (alpha, l1_ratio) + <code>log_metric</code> (rmse, r2, mae) + <code>log_model</code> (registered when a server is used).</li>
+  <li>DagsHub: sign up (choose experiment tracking), connect a GitHub repo, copy <code>dagshub.init(…, mlflow=True)</code>, open <em>Go to MLflow UI</em>.</li>
+  <li>Run <code>python demo.py</code>, <code>demo.py 0.3 0.6</code>, <code>demo.py 0.7 0.6</code>, then Compare → parallel coordinates → lowest RMSE/MAE and highest R² → <strong>alpha 0.3, l1_ratio 0.6</strong>.</li>
+  <li>Hands-on extras: registry alias <code>@champion</code> and a working <code>/invocations</code> endpoint.</li>
+</ul>
+
+<div class="pager">
+  <a href="14_intro_to_mlflow_experiment_tracking.html"><small>← Previous</small>14 · Introduction to MLflow &amp; experiment tracking</a>
+  <a class="next" href="16_docker.html"><small>Next →</small>16 · Docker</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+<script>
+(function () {
+  const svg = document.getElementById('runs3'), NS = 'http://www.w3.org/2000/svg';
+  const el = (n, a, p = svg) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; };
+  const runs = [
+    {name: 'alpha 0.5 · l1 0.5', color: 'var(--s1)', rmse: 0.7932, mae: 0.6272, r2: 0.1086},
+    {name: 'alpha 0.3 · l1 0.6', color: 'var(--s2)', rmse: 0.7661, mae: 0.5984, r2: 0.1684, best: true},
+    {name: 'alpha 0.7 · l1 0.6', color: 'var(--s3)', rmse: 0.8322, mae: 0.6662, r2: 0.0188},
+  ];
+  const panels = [
+    {key: 'rmse', title: 'RMSE (lower is better)', max: 1.0},
+    {key: 'mae', title: 'MAE (lower is better)', max: 1.0},
+    {key: 'r2', title: 'R² (higher is better)', max: 0.2},
+  ];
+  const W = 230, gap = 20, top = 40, bot = 220;
+  panels.forEach((p, pi) => {
+    const x0 = 20 + pi * (W + gap);
+    el('text', {x: x0, y: 20, class: 't-sm t-b'}).textContent = p.title;
+    el('line', {x1: x0, x2: x0 + W, y1: bot, y2: bot, class: 'axis'});
+    [0, 0.5, 1].forEach(f => {
+      const y = bot - f * (bot - top);
+      if (f) el('line', {x1: x0, x2: x0 + W, y1: y, y2: y, class: 'grid-line'});
+      el('text', {x: x0 + W, y: y - 3, 'text-anchor': 'end', class: 't-xs'}).textContent = (p.max * f).toFixed(p.max < 1 ? 2 : 1);
+    });
+    runs.forEach((r, ri) => {
+      const bw = 46, x = x0 + 16 + ri * (bw + 12);
+      const h = r[p.key] / p.max * (bot - top), y = bot - h;
+      const g = el('g', {'data-tip': `<b>${r.name}</b><br>RMSE ${r.rmse} · MAE ${r.mae} · R² ${r.r2}${r.best ? '<br>★ best run' : ''}`});
+      el('rect', {x, y, width: bw, height: h, rx: 4, fill: r.color}, g);
+      el('text', {x: x + bw / 2, y: y - 6, 'text-anchor': 'middle', class: 't-xs' + (r.best ? ' t-b' : '')}, g).textContent = r[p.key].toFixed(3);
+    });
+  });
+  el('text', {x: 380, y: 250, 'text-anchor': 'middle', class: 't-xs'}).textContent = 'same data split for all three runs (np.random.seed(40))';
+})();
+</script>
+</body>
+</html>

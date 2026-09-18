@@ -1,0 +1,7 @@
+# Namespaces keep an app's objects (and its quotas and RBAC) apart from everything else in the cluster.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mlops
+  labels:
+    app.kubernetes.io/part-of: yt-sentiment

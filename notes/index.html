@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MLOps Course Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .ch { display: grid; grid-template-columns: 56px 1fr auto; gap: 14px; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--rule); text-decoration: none; color: var(--ink); }
+  .ch:last-child { border-bottom: 0; }
+  a.ch:hover { background: var(--surface-2); }
+  .ch .n { font: 600 14px var(--mono); color: var(--ink-3); }
+  .ch .t { font-weight: 600; }
+  .ch .d { font-size: 13px; color: var(--ink-2); }
+  .ch.todo { color: var(--ink-3); }
+  .ch.todo .t { font-weight: 500; }
+  .status { font: 600 11px var(--sans); padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
+  .status.done { background: var(--good-soft); color: var(--good); }
+  .status.todo { background: var(--surface-2); color: var(--ink-3); }
+  .list { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; margin: 16px 0; }
+  @media (max-width: 520px) { .ch { grid-template-columns: 40px 1fr; } .ch .status { grid-column: 2; justify-self: start; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="eyebrow">Study notes · Ultimate MLOps Full Course (12 h)</div>
+<h1>MLOps Course Notes</h1>
+<p class="lede">Chapter-by-chapter notes written from the full transcript, with diagrams, tables, charts and interview questions. They're meant to be read on their own, without the video.</p>
+<div class="meta">
+  <span class="chip"><a href="https://youtu.be/w71RHxAWxaM" style="color:inherit">Video on YouTube</a></span>
+  <span class="chip">Transcript: <code>../transcript/</code></span>
+  <span class="chip">Focus: interviews + production serving</span>
+  <span class="chip">Hands-on: <code>../projects/</code></span>
+</div>
+
+<a href="todo_after_course.html" style="display:flex;justify-content:space-between;align-items:center;gap:12px;text-decoration:none;color:var(--ink);background:var(--warn-soft);border-radius:10px;padding:14px 18px;margin:18px 0 0"><span><b>📝 My after-course to-do list</b><br><span style="font-size:13px;color:var(--ink-2)">Hands-on steps saved for after the 12 hours: Docker install, cloud accounts, DagsHub, real GitHub, EC2 deployment…</span></span><span style="font:600 13px var(--sans);color:var(--accent)">Open →</span></a>
+
+<h2 style="border:0;margin-top:24px">Chapters</h2>
+<div class="list">
+  <a class="ch" href="01_introduction_overview.html"><span class="n">01</span><span><span class="t">Introduction &amp; Overview</span><br><span class="d">Wrong vs right definition · lifecycle loop · tools · Venn diagram · roadmap</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="02_real_world_analogy.html"><span class="n">02</span><span><span class="t">Understand MLOps with a Real-World Analogy</span><br><span class="d">Home-kitchen business → 7 MLOps components · US Visa project mapping</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="03_intro_to_mlops_importance.html"><span class="n">03</span><span><span class="t">Introduction to MLOps &amp; Importance</span><br><span class="d">Cricket forecaster · 9 problems &amp; fixes · data drift · benefits &amp; challenges</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="04_why_linux_for_mlops.html"><span class="n">04</span><span><span class="t">Why Linux for MLOps</span><br><span class="d">Distros · kernel · AI ecosystem on Linux · dev vs prod server · VMs · terminal-only servers</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="05_linux_on_aws_ec2.html"><span class="n">05</span><span><span class="t">Setting Up Linux with AWS EC2</span><br><span class="d">WSL vs EC2 · launch wizard · instance types · key pair &amp; security group · terminate</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="06_linux_commands.html"><span class="n">06</span><span><span class="t">Required Linux Commands for MLOps</span><br><span class="d">~30 commands · vim · chmod calculator · tar/zip · searchable cheat sheet · mini API deploy</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="07_git_and_github_intro.html"><span class="n">07</span><span><span class="t">Getting Started With Git and GitHub</span><br><span class="d">Team push/pull loop · version history · Git vs GitHub · install · stars &amp; forks</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="08_local_and_remote_repo_setup.html"><span class="n">08</span><span><span class="t">Local and Remote Repository Setup</span><br><span class="d">New-repo form · public vs private · README/.gitignore/license · .gitignore tester · git clone · .git folder</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="09_code_management_with_git.html"><span class="n">09</span><span><span class="t">Code Management using Git</span><br><span class="d">status → add → commit → push · pull · interactive Git simulator · going back to old versions</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="10_git_branch_management.html"><span class="n">10</span><span><span class="t">Git Branch Management</span><br><span class="d">git branch · checkout -b · push a branch · branch switcher · merging &amp; PRs · conflicts</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="11_introduction_to_dvc.html"><span class="n">11</span><span><span class="t">Introduction to DVC</span><br><span class="d">Pipeline stages · validation gate · retraining · why tracking saves compute · DVC vs Airflow/Kubeflow</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="12_ml_pipelines_with_dvc.html"><span class="n">12</span><span><span class="t">Build &amp; Track ML Pipelines with DVC</span><br><span class="d">Notebook → 5 components · dvc.yaml · dvc repro / dag / metrics · repro simulator</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="13_cloud_fundamentals_for_mlops.html"><span class="n">13</span><span><span class="t">Fundamentals of Cloud for MLOps</span><br><span class="d">Providers · same services, different names · EC2/S3/ECR/IAM/SageMaker · regions · least privilege · offline AWS notebook</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="14_intro_to_mlflow_experiment_tracking.html"><span class="n">14</span><span><span class="t">Introduction to MLflow &amp; Experiment Tracking</span><br><span class="d">Hyperparameter tuning · ML vs DL cost · Excel vs MLflow · parallel coordinates · 9-run MLflow notebook + UI screenshots</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="15_mlflow_tracking_with_dagshub.html"><span class="n">15</span><span><span class="t">MLflow Experiment Tracking with DagsHub</span><br><span class="d">demo.py · DagsHub setup · 3 runs · compare → best · registry alias · serving an MLflow model</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="16_docker.html"><span class="n">16</span><span><span class="t">Docker: Intro, Installation, Demo, Custom Images</span><br><span class="d">Why Docker · engine/image/Dockerfile/container/registry · install · hello-world · calculator image · model API image</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="17_end_to_end_youtube_sentiment.html"><span class="n">17</span><span><span class="t">End-to-End Real ML Project with MLOps</span><br><span class="d">YouTube sentiment · EDA · MLflow on EC2 + S3 · 6 experiment rounds · DVC pipeline · registry · Flask API · Chrome extension · Dockerfile</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="18_cicd_github_actions.html"><span class="n">18</span><span><span class="t">CI/CD with GitHub Actions</span><br><span class="d">Manual vs automated deploys · CI vs delivery vs deployment · workflow explorer · IAM/ECR/EC2 · self-hosted runner · secrets · run simulator · toy runner + actionlint</span></span><span class="status done">Ready</span></a>
+  <a class="ch todo" href="19_cicd_jenkins.html"><span class="n">19</span><span><span class="t">CI/CD with Jenkins</span><br><span class="d">07:42:46 – 09:12:18 · placeholder page, notes on request</span></span><span class="status todo">Not written</span></a>
+  <a class="ch todo" href="20_cicd_circleci.html"><span class="n">20</span><span><span class="t">CI/CD with CircleCI</span><br><span class="d">09:12:18 – 10:18:09 · placeholder page, notes on request</span></span><span class="status todo">Not written</span></a>
+  <a class="ch" href="21_kubernetes.html"><span class="n">21</span><span><span class="t">Kubernetes</span><br><span class="d">Desired state &amp; controllers · control plane vs nodes · objects · GKE demo · manifest explorer · live cluster simulator · rollouts &amp; HPA</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="22_sagemaker.html"><span class="n">22</span><span><span class="t">ML Project using AWS SageMaker</span><br><span class="d">Studio domain/space · S3 → training job → endpoint · linear-learner · code explorer · serving options · cost calculator · mocked AWS run</span></span><span class="status done">Ready</span></a>
+  <a class="ch" href="23_grafana.html"><span class="n">23</span><span><span class="t">Grafana for Monitoring</span><br><span class="d">Grafana vs Prometheus · EC2 + Docker setup · metric types · PromQL explorer · live dashboard of our own API · drift signal · ML monitoring layers</span></span><span class="status done">Ready</span></a>
+</div>
+
+<div class="callout beyond">
+  <span class="label">How to read these notes</span>
+  <ul>
+    <li><strong>Blue "Key idea" boxes</strong> are what the instructor stresses most.</li>
+    <li><strong>Dashed "Beyond the video" boxes</strong> are additions for production and serving practice. They are not from the instructor.</li>
+    <li><span class="ts">hh:mm:ss</span> stamps point back to the video. Hover diagrams and charts for detail.</li>
+    <li>Each chapter ends with <strong>interview questions</strong> (click to reveal answers) and a recap.</li>
+    <li>Chapters with code have a <strong>▶ Hands-on files</strong> section linking to executed notebooks and projects in <a href="../projects/README.md"><code>projects/</code></a> (Linux → ch06, Git → ch08–10, DVC → ch12, AWS → ch13, MLflow → ch14–15, Docker → ch16, end-to-end project → ch17, GitHub Actions → ch18, Kubernetes → ch21, SageMaker → ch22, monitoring → ch23).</li>
+  </ul>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+</body>
+</html>

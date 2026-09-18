@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>18 · CI/CD with GitHub Actions — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .steps { counter-reset: st; list-style: none; padding: 0; margin: 16px 0; }
+  .steps > li { counter-increment: st; position: relative; padding: 12px 16px 12px 56px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; margin: 8px 0; }
+  .steps > li::before { content: counter(st); position: absolute; left: 16px; top: 12px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font: 600 13px/26px var(--sans); text-align: center; }
+  .steps p:last-child, .steps pre:last-child { margin-bottom: 0; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+  .cols > * { min-width: 0; }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+  /* workflow explorer */
+  .wfx { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 12px; margin: 16px 0; }
+  @media (max-width: 760px) { .wfx { grid-template-columns: 1fr; } }
+  .wfx .lines { background: var(--code-bg); border-radius: 10px; padding: 8px 0; font: 12.5px/1.45 var(--mono); max-height: 620px; overflow: auto; }
+  .wfx button { display: block; width: 100%; text-align: left; background: none; border: 0; color: #e9e8e2; font: inherit; padding: 4px 14px; cursor: pointer; border-left: 3px solid transparent; white-space: pre; }
+  .wfx button .k { color: #86b6ef; }
+  .wfx button .c { color: #8f8e86; }
+  .wfx button .s { color: #e6b36a; }
+  .wfx button[aria-pressed="true"] { background: rgba(57,135,229,.22); border-left-color: #3987e5; }
+  .wfx button:hover { background: rgba(255,255,255,.05); }
+  .wfx .explain { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; position: sticky; top: 12px; }
+  .wfx .explain h4 { margin-top: 0; }
+  /* run simulator */
+  .sim { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; margin: 18px 0; }
+  .sim .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .sim .btns button { font: 12px var(--sans); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--surface-2); color: var(--ink); cursor: pointer; }
+  .sim .btns button:hover { border-color: var(--accent); }
+  .sim .seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; margin-left: auto; }
+  .sim .seg button { border: 0; border-radius: 0; background: var(--surface); }
+  .sim .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .sim .jobs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 720px) { .sim .jobs { grid-template-columns: 1fr; } }
+  .sim .job { border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; background: var(--surface-2); min-height: 150px; }
+  .sim .job h5 { margin: 0 0 6px; font: 600 13px var(--sans); display: flex; justify-content: space-between; gap: 6px; }
+  .sim .job ul { list-style: none; padding: 0; margin: 0; font-size: 12px; }
+  .sim .job li { padding: 2px 0; }
+  .st { font: 600 11px var(--sans); padding: 1px 7px; border-radius: 999px; background: var(--surface); border: 1px solid var(--rule); white-space: nowrap; }
+  .st.run { background: #fff3cd; border-color: #e6b800; color: #7a5b00; }
+  .st.ok { background: #dff5ea; border-color: #1baf7a; color: #0d6b48; }
+  .st.bad { background: #fde2e2; border-color: #e34948; color: #9b1c1c; }
+  .st.skip { color: var(--ink-3); }
+  .sim .srv { margin-top: 12px; font-size: 13px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .sim .srv code { font-size: 12px; }
+  .sim .log { margin-top: 10px; font: 12px/1.5 var(--mono); background: var(--code-bg); color: #e9e8e2; border-radius: 8px; padding: 8px 12px; max-height: 150px; overflow: auto; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 18</span></div>
+<div class="eyebrow">Chapter 18 · CI/CD: continuous integration &amp; delivery/deployment · deployment with GitHub Actions</div>
+<h1>CI/CD with GitHub Actions: push code, the app updates itself</h1>
+<p class="lede">Why a team stops deploying by hand, what CI, continuous delivery and continuous deployment mean, and why the course picks GitHub Actions over Jenkins and CircleCI. Then the full AWS deployment: an IAM user, an ECR repository, an Ubuntu EC2 instance with Docker, that instance registered as a GitHub <strong>self-hosted runner</strong>, five repository secrets, and a <code>git push</code> that builds the image, pushes it to ECR and starts it on port 8080.</p>
+<div class="meta">
+  <span class="chip">Video 07:20:16 – 07:42:46 (2 TOC entries)</span>
+  <span class="chip">Hands-on: workflow lint + local run simulation</span>
+  <span class="chip">Jenkins → ch19 · CircleCI → ch20 (not written)</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">The problem with manual deployment</a></li>
+    <li><a href="#s2">CI, continuous delivery, continuous deployment</a></li>
+    <li><a href="#s3">Which tool? GitHub Actions, Jenkins, CircleCI</a></li>
+    <li><a href="#s4">The deployment architecture</a></li>
+    <li><a href="#s5">GitHub Actions vocabulary</a></li>
+    <li><a href="#s6">The workflow file, line by line (interactive)</a></li>
+    <li><a href="#s7">AWS set-up: IAM user, ECR, EC2 with Docker</a></li>
+    <li><a href="#s8">EC2 as a self-hosted runner</a></li>
+    <li><a href="#s9">Repository secrets</a></li>
+    <li><a href="#s10">Push, watch the run, open port 8080</a></li>
+    <li><a href="#s11">Try it: a pipeline run simulator</a></li>
+    <li><a href="#s12">Deploying again, and cleaning up</a></li>
+    <li><a href="#s13">Precision notes</a></li>
+    <li><a href="#hands-on">Hands-on files: what we built</a></li>
+    <li><a href="#s14">Interview questions</a></li>
+    <li><a href="#s15">Recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>The problem with manual deployment <span class="ts">07:20:17</span></h2>
+<p>So far the workflow has been: develop on your laptop (the <strong>development environment</strong>), push the code to GitHub with git, and deploy by hand. For example, you launch an EC2 machine, copy the project there and start it. That gives you an <strong>endpoint</strong> users can reach.</p>
+<p>Now, 4–6 months later, you want new features. The instructor's example is the medical chatbot from his other course, getting new data and knowledge. By hand, you would:</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 800 200" role="img" aria-label="Manual redeployment timeline: the app runs, you stop it, upload new code for three hours during which users see a server error, then it runs again. With CI/CD, pushes update the app automatically while it keeps serving.">
+    <text x="10" y="22" class="t-b">By hand</text>
+    <rect x="110" y="8" width="170" height="26" rx="6" fill="#dff5ea"/><text x="195" y="26" text-anchor="middle" class="t-xs">v1 serving users</text>
+    <rect x="284" y="8" width="60" height="26" rx="6" fill="var(--surface-2)"/><text x="314" y="26" text-anchor="middle" class="t-xs">stop</text>
+    <g data-tip="The instructor's example: the code change takes <b>3 hours</b>, and for those 3 hours every visitor sees a server error. Users leave for a competitor (&quot;they'll move to Google Bard&quot;).">
+      <rect x="348" y="8" width="250" height="26" rx="6" fill="#fde2e2"/><text x="473" y="26" text-anchor="middle" class="t-xs">upload + update · ≈3 h of "server error"</text></g>
+    <rect x="602" y="8" width="188" height="26" rx="6" fill="#dff5ea"/><text x="696" y="26" text-anchor="middle" class="t-xs">v2 serving users</text>
+    <text x="10" y="82" class="t-b">With CI/CD</text>
+    <rect x="110" y="68" width="680" height="26" rx="6" fill="#dff5ea"/>
+    <text x="450" y="86" text-anchor="middle" class="t-xs">the app keeps serving; each push is tested, built and rolled out automatically</text>
+    <g class="t-xs">
+      <line x1="300" y1="100" x2="300" y2="122" class="edge"/><text x="300" y="136" text-anchor="middle">git push</text>
+      <line x1="520" y1="100" x2="520" y2="122" class="edge"/><text x="520" y="136" text-anchor="middle">git push</text>
+      <line x1="700" y1="100" x2="700" y2="122" class="edge"/><text x="700" y="136" text-anchor="middle">git push</text>
+    </g>
+    <text x="400" y="176" text-anchor="middle" class="t-xs">"ChatGPT ships changes all the time, yet you never see its server go down." (the instructor's example of CI/CD at work)</text>
+  </svg>
+  </div>
+  <figcaption><b>Why automate.</b> Manual redeploys mean downtime, slow releases and human error. With CI/CD, you push to GitHub, a CI/CD tool deploys to AWS automatically, and the endpoint serves the new version.</figcaption>
+</figure>
+<div class="callout key"><span class="label">The idea in one line</span><p>Don't deploy by hand. <strong>Push the code to GitHub</strong>, and a CI/CD tool automatically tests, packages and deploys it to the cloud, while users keep using the app.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>CI, continuous delivery, continuous deployment</h2>
+<p>The course expands CI/CD as "continuous integration, continuous delivery <em>or</em> deployment". The two meanings of CD are different:</p>
+<div class="table-wrap"><table>
+  <tr><th>Stage</th><th>What it means</th><th>In the course workflow</th><th>In our workflow</th></tr>
+  <tr><td><strong>Continuous integration (CI)</strong></td><td>every push is merged and <strong>automatically checked</strong>: build, lint, tests</td><td>job "Continuous Integration": only <code>echo "Linting…"</code> and <code>echo "Running unit tests"</code></td><td>install deps → <code>dvc repro model_building</code> → <code>pytest</code></td></tr>
+  <tr><td><strong>Continuous delivery</strong></td><td>every change that passes CI becomes a <strong>releasable artifact</strong>, ready to deploy; the release itself may still need a click</td><td>job "Continuous Delivery": build the Docker image and push it to ECR</td><td>same, tagged with the commit SHA and <code>latest</code></td></tr>
+  <tr><td><strong>Continuous deployment</strong></td><td>that artifact goes to production <strong>automatically</strong>, with no human approval</td><td>job "Continuous-Deployment" on EC2: pull and <code>docker run</code></td><td>pull, replace the container, smoke test</td></tr>
+</table></div>
+<p>The course pipeline does all three, because nothing stops a green build from going live. Many teams put a manual approval (a GitHub <em>environment</em> with required reviewers) between delivery and deployment.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>Which tool? GitHub Actions, Jenkins, CircleCI <span class="ts">07:24:27</span></h2>
+<p>Something has to notice the push and run the steps. That's a <strong>CI/CD automation tool</strong>. The instructor names the three most popular:</p>
+<div class="table-wrap"><table>
+  <tr><th>Tool</th><th>Where it runs</th><th>Config</th><th>Notes</th></tr>
+  <tr><td><strong>GitHub Actions</strong> ✔</td><td>built into GitHub; GitHub-hosted runners, or your own self-hosted ones</td><td><code>.github/workflows/*.yaml</code></td><td>the course's choice: "you don't need to set up anything, it's already in GitHub"</td></tr>
+  <tr><td>Jenkins</td><td>a server <strong>you install and maintain</strong> (e.g. on EC2)</td><td><code>Jenkinsfile</code> (Groovy)</td><td>open source, huge plugin ecosystem, common in enterprises → <a href="19_cicd_jenkins.html">chapter 19</a> (not written)</td></tr>
+  <tr><td>CircleCI</td><td>a <strong>hosted SaaS</strong> connected to your GitHub (self-hosted runners optional)</td><td><code>.circleci/config.yml</code></td><td>"orbs" (reusable config) → <a href="20_cicd_circleci.html">chapter 20</a> (not written)</td></tr>
+</table></div>
+<div class="callout wrong"><span class="label">Small correction</span><p>The video says Jenkins <em>and CircleCI</em> need a server you set up yourself. That's true for <strong>Jenkins</strong>. CircleCI is a cloud service: you sign in with GitHub and add a config file. (In the course's CircleCI demo, EC2 is still used, but only as the <em>deployment target</em> or runner.)</p></div>
+<p>Whichever tool you use, the pipeline has the same shape: trigger → test → build image → push to a registry → deploy. Once you know GitHub Actions well, the other two are mostly different syntax.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>The deployment architecture <span class="ts">07:25:48</span></h2>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 820 350" role="img" aria-label="Developer pushes to GitHub. GitHub Actions runs the CI job and the delivery job on GitHub-hosted Ubuntu runners; the delivery job builds the Docker image and pushes it to Amazon ECR. The deployment job runs on a self-hosted runner on EC2, which pulls the image from ECR and runs the container on port 8080 for users.">
+    <defs>
+      <marker id="g18" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker>
+      <marker id="g18b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker>
+    </defs>
+    <g data-tip="<b>Developer</b><br>Writes code locally (development environment), then <code>git commit</code> and <code>git push origin main</code>.">
+      <rect x="10" y="40" width="110" height="60" rx="10" class="box"/><text x="65" y="66" text-anchor="middle" class="t-b">Developer</text><text x="65" y="86" text-anchor="middle" class="t-xs">git push</text></g>
+    <g data-tip="<b>GitHub</b><br>The repo holds the code, the Dockerfile and <code>.github/workflows/cicd.yaml</code>. The push event starts the workflow; secrets are stored in the repo settings.">
+      <rect x="160" y="20" width="370" height="170" rx="12" fill="var(--surface-2)" stroke="var(--rule)"/>
+      <text x="345" y="42" text-anchor="middle" class="t-b">GitHub repository → GitHub Actions</text></g>
+    <g data-tip="<b>Job 1 · Continuous Integration</b><br>GitHub-hosted <code>ubuntu-latest</code> VM, created fresh for this job. Checkout → lint → unit tests (echo placeholders in the course).">
+      <rect x="175" y="58" width="160" height="56" rx="8" class="box-2"/><text x="255" y="80" text-anchor="middle" class="t-b">1 · CI</text><text x="255" y="100" text-anchor="middle" class="t-xs">ubuntu-latest · tests</text></g>
+    <g data-tip="<b>Job 2 · Continuous Delivery</b><br>Another fresh GitHub-hosted VM. Configure AWS credentials (secrets) → log in to ECR → <code>docker build</code> → <code>docker push</code>.">
+      <rect x="355" y="58" width="160" height="56" rx="8" class="box-2"/><text x="435" y="80" text-anchor="middle" class="t-b">2 · Delivery</text><text x="435" y="100" text-anchor="middle" class="t-xs">build + push image</text></g>
+    <g data-tip="<b>Repository secrets</b><br>AWS_ACCESS_KEY_ID · AWS_SECRET_ACCESS_KEY · AWS_REGION · AWS_ECR_LOGIN_URI · ECR_REPOSITORY_NAME. Injected at run time and masked in logs.">
+      <rect x="175" y="130" width="340" height="44" rx="8" fill="var(--warn-soft)"/><text x="345" y="150" text-anchor="middle" class="t-xs">secrets: AWS keys · region · ECR URI · repo name</text><text x="345" y="166" text-anchor="middle" class="t-xs">(Settings → Secrets and variables → Actions)</text></g>
+    <g data-tip="<b>Amazon ECR</b> (Elastic Container Registry)<br>AWS's private alternative to Docker Hub. Repo e.g. <code>ml-project</code> in ap-south-1 (Mumbai).">
+      <rect x="610" y="50" width="190" height="70" rx="10" class="box"/><text x="705" y="78" text-anchor="middle" class="t-b">Amazon ECR</text><text x="705" y="100" text-anchor="middle" class="t-xs">image :latest</text></g>
+    <g data-tip="<b>EC2 · Ubuntu, t2.large (8 GB), 30 GB</b><br>Docker installed. The GitHub <b>self-hosted runner</b> agent runs here, polls GitHub for jobs, and executes job 3 on this machine.">
+      <rect x="430" y="222" width="300" height="118" rx="12" fill="var(--accent-soft)"/>
+      <rect x="445" y="234" width="120" height="56" rx="8" class="box"/><text x="505" y="256" text-anchor="middle" class="t-b">container</text><text x="505" y="276" text-anchor="middle" class="t-xs">-p 8080:8080</text>
+      <rect x="590" y="234" width="125" height="56" rx="8" class="box-2"/><text x="652" y="256" text-anchor="middle" class="t-b">3 · Deploy</text><text x="652" y="276" text-anchor="middle" class="t-xs">self-hosted runner</text>
+      <text x="580" y="324" text-anchor="middle" class="t-b">EC2 instance (production server)</text></g>
+    <g data-tip="<b>Users</b><br>Open <code>http://&lt;public-ip&gt;:8080</code> once the security group allows TCP 8080.">
+      <rect x="200" y="234" width="120" height="56" rx="10" class="box"/><text x="260" y="258" text-anchor="middle" class="t-b">Users</text><text x="260" y="278" text-anchor="middle" class="t-xs">browser</text></g>
+    <path d="M120,70 L156,70" class="edge" marker-end="url(#g18)"/>
+    <path d="M335,86 L351,86" class="edge" marker-end="url(#g18)"/>
+    <path d="M515,86 L606,86" class="edge-accent" marker-end="url(#g18b)"/><text x="560" y="78" text-anchor="middle" class="t-xs">push</text>
+    <path d="M760,120 L760,262 L719,262" class="edge-accent" fill="none" marker-end="url(#g18b)"/><text x="767" y="196" class="t-xs">pull</text>
+    <path d="M530,160 C600,170 640,190 648,230" class="edge" fill="none" stroke-dasharray="5 4" marker-end="url(#g18)"/><text x="612" y="206" class="t-xs" text-anchor="end">job 3 → runner</text>
+    <path d="M590,262 L569,262" class="edge" marker-end="url(#g18)"/>
+    <path d="M445,262 L324,262" class="edge" marker-end="url(#g18)"/><text x="384" y="254" text-anchor="middle" class="t-xs">:8080</text>
+  </svg>
+  </div>
+  <figcaption><b>What happens after <code>git push</code>.</b> Jobs 1 and 2 run on machines GitHub provides. Job 3 runs <em>on your EC2 instance</em>, because the self-hosted runner agent installed there picks it up. Hover the boxes for details.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>GitHub Actions vocabulary</h2>
+<div class="table-wrap"><table>
+  <tr><th>Term</th><th>Meaning</th><th>In this workflow</th></tr>
+  <tr><td><strong>Workflow</strong></td><td>one automated process, defined in a YAML file under <code>.github/workflows/</code></td><td><code>cicd.yaml</code>, named <code>workflow</code></td></tr>
+  <tr><td><strong>Event</strong></td><td>what starts it (<code>on:</code>): push, pull_request, schedule, workflow_dispatch…</td><td>a push to <code>main</code>, except README-only changes</td></tr>
+  <tr><td><strong>Job</strong></td><td>a group of steps that runs on one runner; jobs run in parallel unless linked with <code>needs:</code></td><td>integration → build-and-push-ecr-image → Continuous-Deployment</td></tr>
+  <tr><td><strong>Step</strong></td><td>either a shell command (<code>run:</code>) or an action (<code>uses:</code>)</td><td>"Install Utilities" (run) · "Login to Amazon ECR" (uses)</td></tr>
+  <tr><td><strong>Action</strong></td><td>a reusable, versioned building block from the Marketplace</td><td><code>actions/checkout</code>, <code>aws-actions/configure-aws-credentials</code>, <code>aws-actions/amazon-ecr-login</code></td></tr>
+  <tr><td><strong>Runner</strong></td><td>the machine that runs a job: <em>GitHub-hosted</em> (a fresh VM per job) or <em>self-hosted</em> (your machine running the runner agent)</td><td><code>ubuntu-latest</code> for jobs 1–2, <code>self-hosted</code> (EC2) for job 3</td></tr>
+  <tr><td><strong>Secrets / variables</strong></td><td>encrypted values (<code>${{ secrets.X }}</code>) and plain settings (<code>${{ vars.X }}</code>) stored in the repo settings</td><td>five secrets</td></tr>
+  <tr><td><strong>Outputs</strong></td><td>values a step or job hands to later steps or jobs</td><td><code>steps.login-ecr.outputs.registry</code></td></tr>
+</table></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>The workflow file, line by line <span class="ts">07:25:48</span></h2>
+<p>The instructor didn't write this file from scratch: "search for a GitHub Actions + AWS CI/CD workflow, copy it and modify it". Its path must be exactly <code>.github/workflows/cicd.yaml</code>. <strong>Click any line</strong> to see what it does.</p>
+<div class="wfx">
+  <div class="lines" id="wfx"></div>
+  <div class="explain" id="wfx-explain"></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>AWS set-up: IAM user, ECR, EC2 with Docker <span class="ts">07:26:49</span></h2>
+<ol class="steps">
+  <li><p><strong>Log in</strong> to the AWS console. Pick a region and stick to it; the video uses <strong>Mumbai, <code>ap-south-1</code></strong>.</p></li>
+  <li><p><strong>IAM user</strong> (e.g. <code>ml-project</code>) → attach policies directly:</p>
+    <ul>
+      <li><code>AmazonEC2ContainerRegistryFullAccess</code> (ECR)</li>
+      <li><code>AmazonEC2FullAccess</code> (EC2)</li>
+    </ul>
+    <p>Create the user → Security credentials → Create access key → <em>Command Line Interface</em> → download the CSV. Its access key ID comes before the comma and the secret key after it. "Don't share this key with anyone."</p></li>
+  <li><p><strong>ECR repository</strong>: search "Elastic Container Registry" → Create repository → name it (e.g. <code>ml-project</code>) with default settings → <strong>copy the URI</strong>, e.g. <code>123456789012.dkr.ecr.ap-south-1.amazonaws.com/ml-project</code>.</p></li>
+  <li><p><strong>EC2 instance</strong> (<code>ml-machine</code>):</p>
+    <ul>
+      <li>Ubuntu, <strong>t2.large</strong> ("take at least 8 GB memory")</li>
+      <li>a key pair (only needed for third-party SSH tools such as PuTTY or MobaXterm)</li>
+      <li>allow HTTP and HTTPS, 30 GB storage</li>
+    </ul>
+    <p>Launch it, wait for <em>Running</em>, then open <strong>Connect</strong> for a browser terminal. "This is your production server."</p></li>
+  <li><p><strong>Install Docker</strong> on the instance (from the repo README):</p>
+<pre><code>sudo apt-get update -y
+sudo apt-get upgrade                           <span class="c"># optional</span>
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker ubuntu                 <span class="c"># docker without sudo</span>
+newgrp docker
+docker --version                               <span class="c"># a version number means Docker works</span></code></pre></li>
+</ol>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>EC2 as a self-hosted runner <span class="ts">07:32:23</span></h2>
+<p>This connects GitHub to the EC2 machine, so the deployment job runs <em>there</em>.</p>
+<div class="cols">
+<div>
+<ol>
+  <li>In <strong>your</strong> repo: <strong>Settings → Actions → Runners → New self-hosted runner</strong> → choose <strong>Linux</strong>.</li>
+  <li>Copy the <em>Download</em> commands one by one into the EC2 terminal: make a folder, download the runner archive, extract it.</li>
+  <li>Copy the <em>Configure</em> command (<code>./config.sh --url … --token …</code>). It authenticates with GitHub and then asks:
+    <ul>
+      <li>runner group → <kbd>Enter</kbd></li>
+      <li>runner name → the instructor types <strong><code>self-hosted</code></strong> ("make sure you give the same name")</li>
+      <li>labels → <kbd>Enter</kbd>; work folder → <kbd>Enter</kbd></li>
+    </ul></li>
+  <li>Run <code>./run.sh</code> → <em>"Connected to GitHub … Listening for Jobs"</em>.</li>
+  <li>Back on the Runners page, the runner shows as <strong>Idle</strong>: connected and waiting.</li>
+</ol>
+</div>
+<div>
+<figure style="margin-top:0">
+  <div class="scroll">
+  <svg viewBox="0 0 380 250" role="img" aria-label="The runner agent on EC2 opens an outbound HTTPS connection to GitHub and long-polls for jobs; no inbound port is needed for this.">
+    <defs><marker id="r18" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <rect x="20" y="20" width="140" height="80" rx="10" class="box"/><text x="90" y="52" text-anchor="middle" class="t-b">GitHub</text><text x="90" y="72" text-anchor="middle" class="t-xs">job queue</text>
+    <rect x="220" y="140" width="140" height="90" rx="10" class="box-2"/><text x="290" y="166" text-anchor="middle" class="t-b">EC2</text><text x="290" y="186" text-anchor="middle" class="t-xs">actions-runner/</text><text x="290" y="204" text-anchor="middle" class="t-xs">./run.sh (agent)</text>
+    <path d="M230,140 L150,104" class="edge" marker-end="url(#r18)"/>
+    <text x="30" y="150" class="t-xs">asks: "any job for</text><text x="30" y="166" class="t-xs">label self-hosted?"</text>
+    <path d="M170,74 L286,136" class="edge" stroke-dasharray="4 3" marker-end="url(#r18)"/>
+    <text x="232" y="92" class="t-xs">job 3 + secrets</text>
+    <text x="20" y="245" class="t-xs">The agent only makes outbound HTTPS (443) calls.</text>
+  </svg>
+  </div>
+  <figcaption><b>How a self-hosted runner works.</b> The agent asks GitHub for work, so no inbound port has to be opened for it. Only the app's port (8080) is opened.</figcaption>
+</figure>
+</div>
+</div>
+<div class="callout beyond"><span class="label">Two things the video doesn't cover</span>
+<ul>
+  <li><strong>The runner name isn't what matters.</strong> <code>runs-on: self-hosted</code> matches the <em>label</em> <code>self-hosted</code>, which every self-hosted runner gets automatically, along with <code>Linux</code> and <code>X64</code>. Any name works.</li>
+  <li><strong><code>./run.sh</code> stops when the browser terminal closes.</strong> Install the agent as a service so it survives logouts and reboots: <code>sudo ./svc.sh install &amp;&amp; sudo ./svc.sh start</code>. The registration token is short-lived (about an hour), so use it straight away.</li>
+</ul></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>Repository secrets <span class="ts">07:34:53</span></h2>
+<p>Repo → <strong>Settings → Secrets and variables → Actions → New repository secret</strong>, once for each value. "Don't make any mistake, otherwise it won't work."</p>
+<div class="table-wrap"><table>
+  <tr><th>Name</th><th>Value (example)</th><th>Where it comes from</th><th>Really secret?</th></tr>
+  <tr><td><code>AWS_ACCESS_KEY_ID</code></td><td><code>AKIA…</code></td><td>the CSV, text before the comma</td><td>yes</td></tr>
+  <tr><td><code>AWS_SECRET_ACCESS_KEY</code></td><td><code>wJalr…</code></td><td>the CSV, text after the comma</td><td><strong>yes</strong></td></tr>
+  <tr><td><code>AWS_REGION</code></td><td><code>ap-south-1</code></td><td>the region where the ECR repo was created (the README example says <code>us-east-1</code>; it must match your repo)</td><td>no → could be a variable</td></tr>
+  <tr><td><code>AWS_ECR_LOGIN_URI</code></td><td><code>123456789012.dkr.ecr.ap-south-1.amazonaws.com</code></td><td>the ECR URI <em>without</em> <code>/ml-project</code></td><td>no</td></tr>
+  <tr><td><code>ECR_REPOSITORY_NAME</code></td><td><code>ml-project</code></td><td>the part of the URI after the <code>/</code></td><td>no</td></tr>
+</table></div>
+<p>Secrets are encrypted, injected only at run time, and <strong>masked</strong> (<code>***</code>) in logs. Anyone who can push workflow changes to the repo can still use them, so give repo write access carefully.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>Push, watch the run, open port 8080 <span class="ts">07:37:05</span></h2>
+<ol class="steps">
+  <li><p><strong>Commit and push</strong> (the instructor's message is "cicd added"). The repo page shows a <strong>yellow dot</strong>, meaning a workflow is running. Open the <strong>Actions</strong> tab to see the run and its three jobs.</p></li>
+  <li><p><strong>Continuous Integration</strong> finishes almost instantly, because it only echoes.</p></li>
+  <li><p><strong>Continuous Delivery</strong> takes a few minutes: install utilities → AWS authentication → build the image → push it to ECR. Afterwards the image appears in the ECR repository.</p></li>
+  <li><p><strong>Continuous Deployment</strong> runs on EC2: authenticate again → pull the image from ECR → <code>docker run -d -p 8080:8080 --name=cnncls …</code>.</p></li>
+  <li><p>Opening <code>http://&lt;public-ip&gt;</code> <strong>fails at first</strong>, because port 8080 isn't open. Instance → Security → security group → <strong>Edit inbound rules</strong> → Custom TCP, <strong>8080</strong>, <code>0.0.0.0/0</code> → Save.</p></li>
+  <li><p>Open <code>http://&lt;public-ip&gt;:8080</code> and the app loads: the course's <strong>wine-quality</strong> demo (not the YouTube project). Open <code>/train</code> ("Training Successful!"), then enter feature values and click <strong>Predict</strong> to get a wine-quality score.</p></li>
+</ol>
+<div class="callout key"><span class="label">What you've built</span><p>From now on, every push to <code>main</code> tests, builds, ships and restarts the app with no manual steps. The configuration (IAM, ECR, EC2, runner, secrets) is a <strong>one-time set-up</strong>.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s11"><span class="num">11</span>Try it: a pipeline run simulator</h2>
+<p>Pick a workflow version, then trigger events. Watch how the jobs run, what is serving on EC2, and what happens on the <strong>second</strong> deployment.</p>
+<div class="sim" id="sim">
+  <div class="btns">
+    <button data-a="push">git push (code change)</button>
+    <button data-a="readme">git push (README only)</button>
+    <button data-a="failtest">git push (breaks a test)</button>
+    <button data-a="feature">git push to feature branch</button>
+    <button data-a="reset">reset</button>
+    <span class="seg" role="group" aria-label="workflow version">
+      <button data-v="course" aria-pressed="true">course file</button>
+      <button data-v="ours" aria-pressed="false">our file</button>
+    </span>
+  </div>
+  <div class="jobs">
+    <div class="job"><h5>1 · Continuous Integration <span class="st" id="j1">idle</span></h5><ul id="j1s"></ul></div>
+    <div class="job"><h5>2 · Continuous Delivery <span class="st" id="j2">idle</span></h5><ul id="j2s"></ul></div>
+    <div class="job"><h5>3 · Continuous Deployment <span class="st" id="j3">idle</span></h5><ul id="j3s"></ul></div>
+  </div>
+  <div class="srv"><b>EC2 serving:</b> <code id="srv">nothing yet</code> <b>ECR images:</b> <code id="ecr">none</code></div>
+  <div class="log" id="simlog"></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s12"><span class="num">12</span>Deploying again, and cleaning up <span class="ts">07:40:14</span></h2>
+<div class="cols">
+<div>
+<h3>The second push</h3>
+<p>The instructor's warning: <strong>before pushing a second time, uncomment the three "Stop and remove container" lines</strong> in the deployment job. The container name <code>cnncls</code> is already taken, so a second <code>docker run --name=cnncls</code> fails with <em>"Conflict. The container name is already in use"</em>. With the lines enabled, the job stops and removes the old container, then starts the new one. The set-up itself is one-time: after that, every change reaches AWS on its own.</p>
+<pre><code><span class="c"># in the course file (commented out)</span>
+- name: Stop and remove container if running
+  run: |
+    docker ps -q --filter "name=cnncls" | grep -q . \
+      &amp;&amp; docker stop cnncls &amp;&amp; docker rm -fv cnncls</code></pre>
+<p>Even uncommented, this line has a flaw: if the container exists but is <em>stopped</em>, <code>docker ps -q</code> (running only) finds nothing, and the run fails again. <code>docker rm -f cnncls || true</code> handles both cases.</p>
+</div>
+<div>
+<h3>Delete everything <span class="ts">07:40:14</span></h3>
+<p>"Otherwise it will charge you."</p>
+<ol>
+  <li><strong>EC2</strong> → select → Instance state → <strong>Terminate</strong> (it shows <em>shutting down</em>, then disappears).</li>
+  <li><strong>ECR</strong> → delete the repository.</li>
+  <li><strong>IAM</strong> → delete the user (type its name to confirm).</li>
+</ol>
+<p>Also:</p>
+<ul>
+  <li>Remove the offline runner in GitHub (Settings → Actions → Runners). Otherwise the next push's deploy job waits in the queue forever.</li>
+  <li>Delete the now-useless secrets.</li>
+</ul>
+</div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s13"><span class="num">13</span>Precision notes</h2>
+<ul>
+  <li><strong>CI that doesn't test isn't CI.</strong> The course's CI job only echoes, so a broken app still goes live. Run real checks there: lint, unit tests, API tests and a model-quality gate. Our Chapter 17 workflow runs <code>pytest</code> after rebuilding the model.</li>
+  <li><strong>Outdated actions and commands</strong> (actionlint flags all of them):
+    <ul>
+      <li><code>actions/checkout@v3</code> and <code>configure-aws-credentials@v1</code> use Node versions GitHub has retired → <code>@v4</code></li>
+      <li><code>amazon-ecr-login@v1</code> → <code>@v2</code></li>
+      <li><code>::set-output</code> is deprecated → <code>echo "name=value" &gt;&gt; "$GITHUB_OUTPUT"</code></li>
+    </ul></li>
+  <li><strong>Long-lived access keys.</strong> The file already sets <code>permissions: id-token: write</code>, which is what <strong>OIDC</strong> needs, but still uses static keys. With OIDC, AWS trusts GitHub's short-lived token (<code>role-to-assume: arn:aws:iam::…:role/gha-deploy</code>), so no keys are stored anywhere.</li>
+  <li><strong>Over-broad policies.</strong> <code>AmazonEC2FullAccess</code> isn't needed by the pipeline at all. The keys only push to and pull from ECR. On EC2, give the instance an <strong>instance role</strong> with ECR read access instead of keys.</li>
+  <li><strong>AWS keys passed into the container</strong> (<code>docker run -e AWS_ACCESS_KEY_ID=… -e AWS_SECRET_ACCESS_KEY=…</code>). The wine app doesn't need them, and anyone who can run <code>docker inspect</code> on the host can read them.</li>
+  <li><strong>Only the <code>:latest</code> tag.</strong> You can't tell which commit is live or roll back to an earlier build. Tag with <code>${{ github.sha }}</code> as well; our workflow does.</li>
+  <li><strong>Downtime still happens.</strong> The video says CI/CD keeps the app running while features ship. Automation removes the <em>hours</em> of manual work, but stop-then-start on one server still drops requests for a few seconds. True zero-downtime needs rolling or blue/green deployment behind a load balancer (ECS, Kubernetes, App Runner).</li>
+  <li><strong>Self-hosted runners on public repos are dangerous.</strong> A pull request from a fork could run code on your EC2 machine. GitHub recommends self-hosted runners only for <em>private</em> repos, or with strict fork-PR approval.</li>
+  <li><strong>The runner name <code>self-hosted</code></strong> isn't required; the label is what matches (see section 8).</li>
+  <li><strong>The region must match everywhere</strong>: ECR repo, <code>AWS_REGION</code>, <code>AWS_ECR_LOGIN_URI</code>. The video uses ap-south-1 while the README example says us-east-1.</li>
+  <li><strong>Everything as a secret.</strong> The region and repo name aren't sensitive. Secrets get masked in logs, and GitHub <strong>drops any job output that contains a secret value</strong>. Keep non-sensitive settings in <em>variables</em> (<code>vars.*</code>).</li>
+  <li><strong>The wine app</strong> runs Flask with <code>debug=True</code> on 0.0.0.0, and its <code>GET /train</code> runs <code>os.system("python main.py")</code> inside the production container. Training belongs in the pipeline (CI or a scheduled job), not behind a public GET endpoint.</li>
+  <li><strong>Cost.</strong> t2.large isn't free-tier. Terminate it right after the demo, as the instructor does.</li>
+</ul>
+
+<!-- ───────────────────────────── -->
+<h2 id="hands-on"><span class="num">▶</span>Hands-on files: what we built</h2>
+<div class="handson">
+<span class="label">Hands-on project · no GitHub or AWS account used; everything that can run locally was run</span>
+<div class="files">
+  <a href="../projects/ch18_github_actions/github_actions_walkthrough.ipynb">github_actions_walkthrough.ipynb</a>
+  <a href="../projects/ch18_github_actions/toy_runner.py">toy_runner.py</a>
+  <a href="../projects/ch18_github_actions/ec2_setup.sh">ec2_setup.sh</a>
+  <a href="../projects/ch17_youtube_sentiment/.github/workflows/cicd.yaml">ch17 …/cicd.yaml (improved)</a>
+</div>
+<pre style="margin:0 0 12px"><code>projects/ch18_github_actions/
+├── github_actions_walkthrough.ipynb   <span class="c"># 9 parts (anatomy → … → clean-up)</span>
+├── toy_runner.py                      <span class="c"># mini runner: needs, ${{ }}, artifacts, masking</span>
+└── ec2_setup.sh                       <span class="c"># EC2: Docker + runner as a service</span>
+projects/_tools/bin/actionlint        <span class="c"># workflow linter (prebuilt binary)</span>
+projects/ch17_youtube_sentiment/.github/workflows/cicd.yaml
+                                       <span class="c"># rewritten using what this chapter found</span></code></pre>
+<h4>1 · actionlint on the course workflow (our workflow: 0 problems)</h4>
+<div class="result">line 20  action               actions/checkout@v3 runner is too old to run on GitHub Actions
+line 34  action               actions/checkout@v3 runner is too old …
+line 41  action               aws-actions/configure-aws-credentials@v1 runner is too old …
+line 57  deprecated-commands  workflow command "set-output" was deprecated → use $GITHUB_OUTPUT
+line 71  action               actions/checkout@v3 …
+line 74  action               aws-actions/configure-aws-credentials@v1 …</div>
+<h4>2 · A fresh checkout exposed a real bug in our first Chapter 17 workflow</h4>
+<div class="result">model files in the checkout: none
+pytest exit code: 2
+E   FileNotFoundError: … sandbox/fresh_checkout/lgbm_model.pkl
+→ fix: the CI job runs `dvc repro model_building` before pytest,
+       then hands the .pkl files to the build job as an artifact</div>
+<h4>3 · The whole Chapter 17 workflow run by the toy runner (fake secrets)</h4>
+<div class="result">▶ job 'test' (Continuous Integration) on ubuntu-latest
+  ✔ 1. actions/checkout@v4          cloned ch17_youtube_sentiment @ 70babe2 (only files tracked by git)
+  ✔ 2. actions/setup-python@v5      (imitated)
+  ✔ 3. Install dependencies         [2.4s]
+  ✔ 4. Train the model (DVC)        [25.1s]  saved lgbm_model.pkl and tfidf_vectorizer.pkl
+  ✔ 5. Run tests                    [5.1s]   5 passed
+  ✔ 6. upload-artifact              stored 2 file(s) as artifact 'model-files'
+▶ job 'build-and-push' (Continuous Delivery) on ubuntu-latest
+  ✔ checkout · ✔ download-artifact (tfidf_vectorizer.pkl, lgbm_model.pkl)
+  ⏭ configure-aws-credentials · ⏭ amazon-ecr-login     (needs a real AWS account)
+  ⏭ Build, tag and push   would run: docker build --platform linux/amd64 -t "$IMAGE:70babe2…" -t "$IMAGE:latest" .
+▶ job 'deploy' (Continuous Deployment) on self-hosted
+  ⏭ Pull the new image    IMAGE="123456789012.dkr.ecr.ap-south-1.amazonaws.com/yt-sentiment:70babe2…"
+  ⏭ Replace the running container · ⏭ Smoke test · ⏭ Clean up old images
+{'test': 'success', 'build-and-push': 'success', 'deploy': 'success'}</div>
+<h4>4 · A second bug found by imitating GitHub's secret rules</h4>
+<div class="result">building for repo ***
+⚠ Skip output 'image' since it may contain secret.
+deploying ''                ← the next job would run `docker pull ''`
+→ fix: keep AWS_REGION and ECR_REPOSITORY_NAME as repository *variables*;
+       the deploy job builds the image name itself</div>
+<h4>5 · Deploying three times (a small imitation of Docker)</h4>
+<div class="result">course, lines commented   push 1 ✔ running app:v1 · push 2 ✘ Conflict. The container name "/cnncls" is already in use · push 3 ✘ (still serving v1)
+course, lines enabled     push 1 ✔ · push 2 ✔ · push 3 ✔  (serving v3)
+ours (rm -f … || true)    push 1 ✔ · push 2 ✔ · push 3 ✔  (serving v3)</div>
+<p>Also in the notebook: which pushes trigger a run, and the ECR URI format with <strong>moto</strong> (<code>&lt;account&gt;.dkr.ecr.ap-south-1.amazonaws.com/yt-sentiment</code>). <strong>Not run:</strong> the real deployment (GitHub repo, IAM, ECR, EC2, runner). It's on your <a href="todo_after_course.html">after-course to-do list</a>.</p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s14"><span class="num">14</span>Interview questions</h2>
+<details class="qa"><summary>Explain CI vs continuous delivery vs continuous deployment.</summary>
+<ul>
+  <li><strong>CI:</strong> every change is integrated often and automatically checked (build and tests).</li>
+  <li><strong>Continuous delivery:</strong> every change that passes CI becomes a deployable artifact (e.g. an image in a registry), and release is one click away.</li>
+  <li><strong>Continuous deployment:</strong> that release also happens automatically, with no human gate.</li>
+</ul></details>
+<details class="qa"><summary>What does CI/CD look like for an ML project, compared with normal software?</summary>
+<p>On top of the usual code tests, ML CI checks the things that can break a model:</p>
+<ul>
+  <li><strong>Data:</strong> schema and quality checks.</li>
+  <li><strong>Training:</strong> a reproducible pipeline run (DVC, <code>dvc repro</code>).</li>
+  <li><strong>Quality gate:</strong> the model must beat a threshold or the current production model.</li>
+  <li><strong>Serving:</strong> signature and API contract tests.</li>
+</ul>
+<p>CD ships the model (registry version or image) plus the serving code, often with canary or shadow rollout and monitoring. Retraining can be triggered by a schedule or by data drift ("continuous training").</p></details>
+<details class="qa"><summary>GitHub-hosted vs self-hosted runners: when would you use each?</summary>
+<p><strong>GitHub-hosted runners</strong> give you a fresh, maintenance-free VM for every job: good for tests and builds. The downsides are cost per minute on private repos and no access to your private network.</p>
+<p><strong>Self-hosted runners</strong> are machines you control, and suit:</p>
+<ul>
+  <li>access to private resources (e.g. deploying on the same host)</li>
+  <li>GPUs or large machines</li>
+  <li>caching</li>
+</ul>
+<p>The trade-off: you patch them and secure them. They're risky on public repos, and state can leak between jobs. For per-job isolation use ephemeral runners.</p></details>
+<details class="qa"><summary>How do you give a GitHub workflow access to AWS securely?</summary>
+<p>Use <strong>OIDC</strong>:</p>
+<ol>
+  <li>Create an IAM identity provider for <code>token.actions.githubusercontent.com</code>.</li>
+  <li>Create a role whose trust policy is limited to your repo and branch (e.g. <code>repo:me/app:ref:refs/heads/main</code>), with least-privilege permissions (push to one ECR repo).</li>
+  <li>In the workflow, set <code>permissions: id-token: write</code> and use <code>configure-aws-credentials</code> with <code>role-to-assume</code>.</li>
+</ol>
+<p>No long-lived keys are stored, and the credentials expire in about an hour.</p></details>
+<details class="qa"><summary>How do you roll back a bad deployment in this setup?</summary>
+<p>Tag every image with the commit SHA (keep <code>latest</code> as a convenience). To roll back, run the deploy step with the previous SHA tag, via <code>workflow_dispatch</code> with an input or by reverting the commit. With only <code>:latest</code> you would have to rebuild old code. On ECS or Kubernetes, you roll back to the previous task definition or ReplicaSet.</p></details>
+<details class="qa"><summary>How do you pass data between jobs?</summary>
+<p>Jobs run on separate machines, so nothing is shared by default.</p>
+<ul>
+  <li><strong>Small values:</strong> job <code>outputs</code>, read later via <code>needs.&lt;job&gt;.outputs.x</code>. Outputs containing secrets are dropped.</li>
+  <li><strong>Files:</strong> <code>actions/upload-artifact</code> and <code>download-artifact</code> (our model files).</li>
+  <li><strong>Large or shared data:</strong> a registry, S3 or a cache.</li>
+</ul></details>
+<details class="qa"><summary>Your deploy job has been "Queued" for an hour. Why?</summary>
+<p>No runner with the required labels is online: the EC2 instance is stopped or terminated, <code>run.sh</code> died when the terminal closed (install it as a service), the runner was removed, or it belongs to another repo or org. Check Settings → Actions → Runners.</p></details>
+<details class="qa"><summary>How would you avoid downtime during deployment?</summary>
+<p>Start the new version first, health-check it, then switch traffic and stop the old one. That's blue/green, or a rolling update of several replicas behind a load balancer. Managed platforms (ECS with an ALB, Kubernetes Deployments, App Runner, SageMaker endpoints) do this for you. A single <code>docker stop</code>/<code>docker run</code> on one host always has a short gap.</p></details>
+<details class="qa"><summary>How do you keep secrets safe in CI?</summary>
+<ul>
+  <li>Store them as encrypted secrets, scoped to an environment with required reviewers for production.</li>
+  <li>Prefer OIDC to static keys.</li>
+  <li>Grant least privilege, and rotate secrets.</li>
+  <li>Never echo them or bake them into images.</li>
+  <li>Restrict who can edit workflows (branch protection, CODEOWNERS).</li>
+  <li>Pin third-party actions to a commit SHA, so a compromised action tag can't steal secrets.</li>
+</ul></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s15"><span class="num">15</span>Recap</h2>
+<ul>
+  <li><strong>Why:</strong> manual redeploys mean downtime and toil. With CI/CD, a <code>git push</code> automatically tests, packages and deploys.</li>
+  <li><strong>CI</strong> checks the code. <strong>Delivery</strong> produces a releasable image in a registry. <strong>Deployment</strong> puts it live automatically.</li>
+  <li><strong>Tools:</strong> GitHub Actions (built in; used here), Jenkins (a server you run), CircleCI (SaaS).</li>
+  <li><strong>Workflow</strong> <code>.github/workflows/cicd.yaml</code>: on push to main → job 1 CI (ubuntu-latest) → job 2 build and push to ECR → job 3 on the <strong>self-hosted</strong> EC2 runner: pull and <code>docker run -p 8080:8080</code>.</li>
+  <li><strong>AWS:</strong> an IAM user (ECR + EC2 policies, access key CSV), an ECR repo (copy the URI), EC2 Ubuntu t2.large with 30 GB and Docker installed.</li>
+  <li><strong>GitHub:</strong> Settings → Actions → Runners → New self-hosted runner (download, <code>config.sh</code>, <code>run.sh</code> → Idle). Five secrets: keys, region, ECR login URI, repo name.</li>
+  <li><strong>Run:</strong> push → watch Actions → image in ECR → open inbound 8080 → app at <code>ip:8080</code>. Before the next push, enable the stop/remove step. Afterwards, terminate EC2 and delete the ECR repo and IAM user.</li>
+</ul>
+
+<div class="pager">
+  <a href="17_end_to_end_youtube_sentiment.html"><small>← Previous</small>17 · End-to-end project: YouTube Sentiment Insights</a>
+  <a class="next" href="19_cicd_jenkins.html"><small>Next (notes not written) →</small>19 · CI/CD with Jenkins</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+<script>
+// ---- workflow explorer (course file, condensed)
+(function () {
+  const L = [
+    ["name: workflow", "Workflow name", "Shown in the Actions tab. Any name works."],
+    ["", null],
+    ["on:", "Trigger (event)", "What starts the workflow."],
+    ["  push:", "Trigger (event)", "A push event…"],
+    ["    branches:\n      - main", "Branch filter", "…only to the <code>main</code> branch. Pushes to other branches don't deploy."],
+    ["    paths-ignore:\n      - 'README.md'", "Path filter", "If a push changes <em>only</em> README.md, the workflow doesn't run: editing docs shouldn't redeploy the app."],
+    ["", null],
+    ["permissions:\n  id-token: write\n  contents: read", "Token permissions", "<code>contents: read</code> lets the job read the repo. <code>id-token: write</code> allows requesting an <b>OIDC token</b>, the keyless way to log in to AWS. This file doesn't use it; it still uses static access keys."],
+    ["", null],
+    ["jobs:", "Jobs", "Three jobs, chained with <code>needs:</code> so they run one after another."],
+    ["  integration:\n    name: Continuous Integration\n    runs-on: ubuntu-latest", "Job 1 · CI", "<code>runs-on: ubuntu-latest</code> means a <b>GitHub-hosted</b> VM, created fresh for this job and thrown away afterwards."],
+    ["      - uses: actions/checkout@v3", "Checkout", "Clones the repo into the runner. Every job starts with an empty machine, so each job checks out again.<br><br><b>Update:</b> use <code>@v4</code>; v3 runs on a retired Node version."],
+    ["      - name: Lint code\n        run: echo \"Linting repository\"", "Lint (placeholder)", "Only prints text. In a real project: <code>ruff check .</code> or <code>flake8</code>."],
+    ["      - name: Run unit tests\n        run: echo \"Running unit tests\"", "Tests (placeholder)", "The instructor: \"here I'm only doing an echo; if you have test cases, execute them here.\" For example <code>pytest -q</code>. If a test fails, the job fails and <b>nothing gets deployed</b>."],
+    ["", null],
+    ["  build-and-push-ecr-image:\n    name: Continuous Delivery\n    needs: integration\n    runs-on: ubuntu-latest", "Job 2 · Delivery", "<code>needs: integration</code>: starts only if job 1 succeeded. Another fresh GitHub-hosted VM."],
+    ["      - name: Install Utilities\n        run: |\n          sudo apt-get update\n          sudo apt-get install -y jq unzip", "Install utilities", "Installs <code>jq</code> and <code>unzip</code>, which this workflow never uses. It's leftover from the template."],
+    ["      - uses: aws-actions/configure-aws-credentials@v1\n        with:\n          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}\n          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}\n          aws-region: ${{ secrets.AWS_REGION }}", "AWS authentication", "Exports AWS credentials for the next steps, read from the <b>repository secrets</b>. <code>${{ secrets.X }}</code> is replaced at run time and masked in logs.<br><br><b>Update:</b> <code>@v4</code>, ideally with <code>role-to-assume</code> (OIDC) instead of keys."],
+    ["      - name: Login to Amazon ECR\n        id: login-ecr\n        uses: aws-actions/amazon-ecr-login@v1", "ECR login", "Runs <code>docker login</code> against your ECR registry. <code>id: login-ecr</code> lets later steps read its output <code>steps.login-ecr.outputs.registry</code> (<code>&lt;account&gt;.dkr.ecr.&lt;region&gt;.amazonaws.com</code>)."],
+    ["      - name: Build, tag, and push image to Amazon ECR\n        env:\n          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}\n          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_NAME }}\n          IMAGE_TAG: latest\n        run: |\n          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .\n          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG\n          echo \"::set-output name=image::…\"", "Build and push", "Builds the image from the repo's <b>Dockerfile</b> and pushes it to ECR as <code>:latest</code>.<br><br><b>Issues:</b> <code>::set-output</code> is deprecated (use <code>$GITHUB_OUTPUT</code>), and <code>latest</code> alone gives no rollback, so add a <code>${{ github.sha }}</code> tag. The comment in the template mentions ECS, a leftover from the original."],
+    ["", null],
+    ["  Continuous-Deployment:\n    needs: build-and-push-ecr-image\n    runs-on: self-hosted", "Job 3 · Deployment", "<code>runs-on: self-hosted</code>: this job is queued until a <b>self-hosted runner</b> (your EC2 agent) picks it up, so its commands run <em>on the EC2 machine</em>."],
+    ["      - uses: actions/checkout@v3\n      - uses: aws-actions/configure-aws-credentials@v1 …\n      - uses: aws-actions/amazon-ecr-login@v1", "Checkout + AWS login on EC2", "Logs in to ECR from EC2 so it can pull the private image. The checkout isn't needed here, because nothing from the repo is used."],
+    ["      - name: Pull latest images\n        run: |\n          docker pull ${{secrets.AWS_ECR_LOGIN_URI}}/${{ secrets.ECR_REPOSITORY_NAME }}:latest", "Pull", "Downloads the image job 2 just pushed. It builds the name from two secrets: the registry URI and the repo name."],
+    ["      # - name: Stop and remove container if running\n      #   run: |\n      #    docker ps -q --filter \"name=cnncls\" | grep -q . && docker stop cnncls && docker rm -fv cnncls", "Stop old container (commented!)", "Needed from the <b>second deployment on</b>, otherwise <code>docker run --name=cnncls</code> fails because the name is taken. The instructor: \"uncomment these three lines before pushing the second time.\""],
+    ["      - name: Run Docker Image to serve users\n        run: |\n          docker run -d -p 8080:8080 --name=cnncls\n            -e 'AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}'\n            -e 'AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}'\n            -e 'AWS_REGION=${{ secrets.AWS_REGION }}'\n            ${{secrets.AWS_ECR_LOGIN_URI}}/${{ secrets.ECR_REPOSITORY_NAME }}:latest", "Run the container", "<code>-d</code> runs it in the background. <code>-p 8080:8080</code> maps host port to container port; the security group must allow 8080. <code>--name=cnncls</code> is a fixed name, left over from a CNN-classifier template.<br><br><b>Issue:</b> the AWS keys are passed into the container, which the wine app doesn't need, and <code>docker inspect</code> would show them."],
+    ["      - name: Clean previous images and containers\n        run: |\n          docker system prune -f", "Clean up", "Removes stopped containers, dangling images and unused networks, so the EC2 disk doesn't fill up after many deployments."],
+  ];
+  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  const paint = s => esc(s)
+    .replace(/(#.*)$/gm, '<span class="c">$1</span>')
+    .replace(/^(\s*-?\s*)([A-Za-z_-]+):/gm, '$1<span class="k">$2</span>:')
+    .replace(/(\$\{\{.*?\}\})/g, '<span class="s">$1</span>');
+  const host = document.getElementById("wfx"), box = document.getElementById("wfx-explain");
+  const btns = [];
+  L.forEach(([code, title, text], i) => {
+    if (!title) { host.appendChild(document.createElement("br")); return; }
+    const b = document.createElement("button");
+    b.innerHTML = paint(code);
+    b.addEventListener("click", () => show(i));
+    b.dataset.i = i;
+    host.appendChild(b); btns.push(b);
+  });
+  function show(i) {
+    btns.forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.i === i)));
+    box.innerHTML = `<h4>${L[i][1]}</h4><p style="margin:0">${L[i][2]}</p>`;
+  }
+  show(10);
+})();
+
+// ---- pipeline run simulator
+(function () {
+  const $ = id => document.getElementById(id);
+  let version = "course", S;
+  const STEPS = {
+    course: [["checkout", "echo lint", "echo tests"],
+             ["checkout", "install jq/unzip", "AWS credentials", "ECR login", "build + push :latest"],
+             ["checkout", "AWS credentials", "ECR login", "pull :latest", "run --name=cnncls", "system prune"]],
+    ours:   [["checkout", "setup-python", "install deps", "dvc repro model_building", "pytest", "upload model artifact"],
+             ["checkout", "download artifact", "AWS credentials", "ECR login", "build + push :sha + :latest"],
+             ["AWS credentials", "ECR login", "pull :sha", "rm -f old + run", "smoke test", "prune old images"]],
+  };
+  function reset() {
+    S = { n: 0, running: false, serving: null, containerExists: false, images: [], log: ["# EC2 runner is Idle. Push something."] };
+    ["j1", "j2", "j3"].forEach((j, k) => { setJob(j, "idle", ""); list(k, -1); });
+    draw();
+  }
+  function setJob(id, label, cls) { const e = $(id); e.textContent = label; e.className = "st " + cls; }
+  function list(k, upto, failAt) {
+    $("j" + (k + 1) + "s").innerHTML = STEPS[version][k].map((s, i) => {
+      const m = failAt === i ? "✘" : i <= upto ? "✔" : "·";
+      return `<li>${m} ${s}</li>`;
+    }).join("");
+  }
+  function draw() {
+    $("srv").textContent = S.serving || "nothing yet";
+    $("ecr").textContent = S.images.length ? S.images.slice(-4).join(", ") : "none";
+    $("simlog").textContent = S.log.slice(-14).join("\n");
+    $("simlog").scrollTop = 1e6;
+  }
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  async function runJob(k, failAt) {
+    const id = "j" + (k + 1);
+    setJob(id, "running", "run");
+    for (let i = 0; i < STEPS[version][k].length; i++) {
+      await sleep(260);
+      if (failAt === i) { list(k, i - 1, i); setJob(id, "failed", "bad"); return false; }
+      list(k, i);
+    }
+    setJob(id, "success", "ok");
+    return true;
+  }
+  async function push(kind) {
+    if (S.running) return;
+    const sha = Math.random().toString(16).slice(2, 9);
+    S.log.push(`$ git push origin ${kind === "feature" ? "feature/x" : "main"}   (commit ${sha})`);
+    if (kind === "feature") { S.log.push("· no run: the workflow only listens to pushes to main"); draw(); return; }
+    if (kind === "readme") { S.log.push("· no run: only README.md changed (paths-ignore)"); draw(); return; }
+    S.running = true; S.n++;
+    ["j1", "j2", "j3"].forEach((j, k) => { setJob(j, "queued", "skip"); list(k, -1); });
+    draw();
+    const breakTest = kind === "failtest";
+    // job 1
+    const testIdx = version === "course" ? null : 4;
+    if (breakTest && version === "course") S.log.push("! a test is broken, but the course CI only echoes, so it passes");
+    let ok = await runJob(0, breakTest ? testIdx : undefined);
+    if (!ok) {
+      S.log.push("✘ CI failed → delivery and deployment skipped. The users keep the working version.");
+      setJob("j2", "skipped", "skip"); setJob("j3", "skipped", "skip");
+      S.running = false; draw(); return;
+    }
+    // job 2
+    ok = await runJob(1);
+    const tag = version === "course" ? "latest" : sha;
+    S.images = version === "course" ? ["latest"] : [...S.images.filter(t => t !== "latest"), sha, "latest"];
+    S.log.push(`✔ image pushed to ECR as :${tag}${version === "ours" ? " and :latest" : ""}`);
+    draw();
+    // job 3
+    setJob("j3", "waiting for runner", "run");
+    await sleep(300);
+    if (version === "course" && S.containerExists) {
+      ok = await runJob(2, 4);
+      S.log.push('✘ docker: Conflict. The container name "/cnncls" is already in use');
+      S.log.push("  → users still get the previous version (uncomment the stop/remove step)");
+    } else {
+      ok = await runJob(2);
+      S.containerExists = true;
+      const broken = breakTest ? " (contains the broken code!)" : "";
+      S.serving = `commit ${sha}${broken}`;
+      S.log.push(`✔ serving commit ${sha} on :8080${broken}`);
+      if (version === "ours") S.log.push("  smoke test passed");
+    }
+    S.running = false; draw();
+  }
+  document.querySelectorAll("#sim .btns > button").forEach(b => b.addEventListener("click", () => {
+    b.dataset.a === "reset" ? reset() : push(b.dataset.a);
+  }));
+  document.querySelectorAll("#sim .seg button").forEach(b => b.addEventListener("click", () => {
+    if (S.running) return;
+    version = b.dataset.v;
+    document.querySelectorAll("#sim .seg button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    reset();
+    S.log.push(version === "course" ? "# course file: CI only echoes, fixed container name, stop/remove step commented out"
+                                    : "# our file: real tests, SHA tags, rm -f before run, smoke test");
+    draw();
+  }));
+  reset();
+})();
+</script>
+</body>
+</html>

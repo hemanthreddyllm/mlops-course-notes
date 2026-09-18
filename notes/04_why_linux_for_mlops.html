@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>04 · Why Linux for MLOps — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .term { background: var(--code-bg); border-radius: 10px; overflow: hidden; margin: 14px 0; }
+  .term .bar { display: flex; gap: 6px; padding: 9px 12px; background: #2b2b29; }
+  .term .bar i { width: 10px; height: 10px; border-radius: 50%; background: #5b5a55; }
+  .term .bar span { margin-left: 8px; font: 12px var(--mono); color: #a8a79f; }
+  .term pre { margin: 0; border-radius: 0; }
+  .term .p { color: #7fc79a; }
+  .vs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+  @media (max-width: 560px) { .vs { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 04</span></div>
+<div class="eyebrow">Chapter 04 · Why Linux for MLOps</div>
+<h1>Why production ML runs on Linux</h1>
+<p class="lede">Linux is the first hands-on topic in the course. The reason is simple: the ML frameworks you use are built on Linux first, the cloud machines you deploy to almost always run Linux, and those machines have no graphical interface. You manage them entirely from a terminal.</p>
+<div class="meta">
+  <span class="chip">Video 01:14:11 – 01:25:45</span>
+  <span class="chip">Concept chapter (no code yet)</span>
+  <span class="chip">Leads into: AWS EC2 setup → Linux commands</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">Where this fits: the Linux series</a></li>
+    <li><a href="#s2">What Linux is: OS, kernel, distributions</a></li>
+    <li><a href="#s3">Reason 1: the AI ecosystem is built on Linux</a></li>
+    <li><a href="#s4">Reason 2: open source and customizable</a></li>
+    <li><a href="#s5">Reason 3: setup just works (the CUDA example)</a></li>
+    <li><a href="#s6">Reason 4: production servers are Linux</a></li>
+    <li><a href="#s7">Why not Windows on the server?</a></li>
+    <li><a href="#s8">Reason 5: no GUI, only a terminal</a></li>
+    <li><a href="#s9">How this connects to serving your model</a></li>
+    <li><a href="#s10">Interview questions</a></li>
+    <li><a href="#s11">Recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>Where this fits: the Linux series <span class="ts">01:14:11</span></h2>
+<p>The instructor calls Linux <strong>the very first concept inside MLOps</strong>. The series has three parts:</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 120" role="img" aria-label="Linux series: why Linux, then set up Linux on AWS EC2, then required Linux commands">
+    <defs><marker id="c1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <rect x="10" y="24" width="220" height="64" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+    <text x="120" y="50" text-anchor="middle" class="t-sm t-b">① Why Linux?</text><text x="120" y="70" text-anchor="middle" class="t-xs">you are here · 01:14:11</text>
+    <rect x="270" y="24" width="220" height="64" rx="10" class="box"/>
+    <text x="380" y="50" text-anchor="middle" class="t-sm t-b">② Set up Linux on AWS EC2</text><text x="380" y="70" text-anchor="middle" class="t-xs">a Linux server in the cloud · 01:25:45</text>
+    <rect x="530" y="24" width="220" height="64" rx="10" class="box"/>
+    <text x="640" y="50" text-anchor="middle" class="t-sm t-b">③ Required Linux commands</text><text x="640" y="70" text-anchor="middle" class="t-xs">the ones MLOps uses most · 01:31:55</text>
+    <path d="M230,56 L268,56" class="edge" marker-end="url(#c1)"/><path d="M490,56 L528,56" class="edge" marker-end="url(#c1)"/>
+  </svg>
+  </div>
+</figure>
+<p>This chapter answers one question: <em>if I'm starting with MLOps, why learn Linux first?</em> The sections below cover the five reasons the instructor gives.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>What Linux is: OS, kernel, distributions <span class="ts">01:15:17</span></h2>
+<p><strong>Linux is an operating system (OS)</strong>, like Windows or macOS. The instructor stresses that it isn't a single product: it comes in many <strong>distributions</strong> ("distros"). Each distro packages Linux with its own tools and defaults for a particular kind of work.</p>
+
+<div class="grid">
+  <div class="card" style="border-color:var(--accent)"><span class="tag">MOST RELEVANT TO US</span><h4>Ubuntu</h4><p>The most widely used distro in <strong>data science and AI</strong>, and common for general software development too. Most ML tooling is set up and tested for it. It is also the default Linux image on EC2 in this course.</p></div>
+  <div class="card"><span class="tag">SECURITY</span><h4>Kali</h4><p>Used for <strong>ethical hacking</strong>. Security and penetration-testing tools come built in, so you don't have to install them yourself.</p></div>
+  <div class="card"><span class="tag">SERVERS</span><h4>CentOS</h4><p>A server-oriented distro from the Red Hat family, common in enterprise data centres.</p></div>
+  <div class="card"><span class="tag">MINIMAL</span><h4>Alpine</h4><p>A very small distro. You'll meet it again as a lightweight Docker base image.</p></div>
+</div>
+<p>The point is that each distro has its <strong>own advantages and built-in functionality</strong>, so you pick one to suit the job. For AI and MLOps, that is usually Ubuntu.</p>
+
+<figure>
+  <p class="fig-title">How Linux is layered</p>
+  <p class="fig-sub">The instructor mentions the <b>kernel</b> as the core that "makes Linux work". This picture shows where it sits. Hover a layer.</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 250" role="img" aria-label="Layers: hardware at the bottom, kernel, shell and system tools, applications like Python and Docker at the top; a distribution bundles the upper layers">
+    <g data-tip="<b>Applications</b><br>What you actually run: Python, scikit-learn, PyTorch, FastAPI, Docker, MLflow…">
+      <rect x="40" y="16" width="560" height="44" rx="8" class="box"/><text x="320" y="43" text-anchor="middle" class="t-sm t-b">Applications: Python · PyTorch · FastAPI · Docker · MLflow</text></g>
+    <g data-tip="<b>Shell &amp; system tools</b><br>The terminal (bash) and commands like ls, cd, apt. This is how you control a server with no GUI.">
+      <rect x="40" y="72" width="560" height="44" rx="8" class="box"/><text x="320" y="99" text-anchor="middle" class="t-sm t-b">Shell &amp; tools: bash · ls · cd · apt · ssh</text></g>
+    <g data-tip="<b>Kernel</b><br>The core of Linux. It manages CPU, memory, disks, network and GPU drivers. Its source code is public and can be modified.">
+      <rect x="40" y="128" width="560" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="320" y="155" text-anchor="middle" class="t-sm t-b">Linux kernel (open source)</text></g>
+    <g data-tip="<b>Hardware</b><br>Physical, or virtual in the cloud: CPU, RAM, GPU, disk, network.">
+      <rect x="40" y="184" width="560" height="44" rx="8" class="box-2"/><text x="320" y="211" text-anchor="middle" class="t-sm t-b">Hardware: CPU · RAM · GPU · disk · network</text></g>
+    <path d="M620,16 L630,16 L630,172 L620,172" fill="none" stroke="var(--ink-3)" stroke-width="1.5"/>
+    <text x="640" y="88" class="t-xs t-b">A distribution</text><text x="640" y="104" class="t-xs">(Ubuntu, Kali, …)</text><text x="640" y="120" class="t-xs">= kernel + tools</text><text x="640" y="136" class="t-xs">+ default packages</text>
+  </svg>
+  </div>
+  <figcaption>Beyond the video: the layering is standard OS background. It helps explain why "Ubuntu" and "Linux" get used interchangeably: every distro shares the same kernel.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>Reason 1: the AI ecosystem is built on Linux <span class="ts">01:16:18</span></h2>
+<p>Consider the libraries you use in each area of data science:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Field</th><th>Typical frameworks (named in the video)</th></tr></thead>
+  <tbody>
+    <tr><td>Machine learning</td><td><strong>scikit-learn</strong></td></tr>
+    <tr><td>Deep learning</td><td><strong>TensorFlow</strong>, <strong>PyTorch</strong> (the two favourites among many)</td></tr>
+    <tr><td>Generative AI</td><td><strong>LangChain</strong>, <strong>LlamaIndex</strong></td></tr>
+    <tr><td>Computer vision and others</td><td>Many more libraries</td></tr>
+  </tbody>
+</table>
+</div>
+<p>All of these are <strong>optimized for Linux</strong>. The instructor explains why: researchers build and test new frameworks on Linux, publish them, and only afterwards does the community port and optimize them for Windows and macOS. <strong>The original work happens on Linux.</strong></p>
+
+<figure>
+  <p class="fig-title">How a new framework reaches your machine</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 170" role="img" aria-label="Research is implemented and tested on Linux, published, then ported to Windows and macOS later">
+    <defs><marker id="c2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <rect x="10" y="55" width="140" height="56" rx="8" class="box"/><text x="80" y="80" text-anchor="middle" class="t-sm t-b">🔬 Research</text><text x="80" y="98" text-anchor="middle" class="t-xs">new framework / paper</text>
+    <rect x="190" y="55" width="170" height="56" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="275" y="80" text-anchor="middle" class="t-sm t-b">🐧 Built &amp; tested on Linux</text><text x="275" y="98" text-anchor="middle" class="t-xs">first-class support</text>
+    <rect x="400" y="55" width="120" height="56" rx="8" class="box"/><text x="460" y="80" text-anchor="middle" class="t-sm t-b">📦 Published</text><text x="460" y="98" text-anchor="middle" class="t-xs">pip / conda</text>
+    <rect x="570" y="14" width="180" height="50" rx="8" class="box"/><text x="660" y="36" text-anchor="middle" class="t-sm t-b">Windows</text><text x="660" y="53" text-anchor="middle" class="t-xs">ported later · extra setup</text>
+    <rect x="570" y="102" width="180" height="50" rx="8" class="box"/><text x="660" y="124" text-anchor="middle" class="t-sm t-b">macOS</text><text x="660" y="141" text-anchor="middle" class="t-xs">ported later · partial support</text>
+    <path d="M150,83 L188,83" class="edge" marker-end="url(#c2)"/><path d="M360,83 L398,83" class="edge" marker-end="url(#c2)"/>
+    <path d="M520,75 L568,42" class="edge" stroke-dasharray="4 4" marker-end="url(#c2)"/><path d="M520,91 L568,124" class="edge" stroke-dasharray="4 4" marker-end="url(#c2)"/>
+    <text x="530" y="90" class="t-xs">later</text>
+  </svg>
+  </div>
+  <figcaption>Linux gets first-class support; other operating systems catch up later, sometimes with extra configuration.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>Reason 2: open source and customizable <span class="ts">01:18:25</span></h2>
+<div class="vs">
+  <div class="callout right" style="margin:0"><span class="label">Linux</span>
+    <ul>
+      <li><strong>Fully open source</strong>: the source code is public, so you can search for it online and change anything.</li>
+      <li>Even the <strong>kernel</strong> can be customized.</li>
+      <li>Many people <strong>contribute</strong> new features, which is why it keeps getting more popular and more powerful.</li>
+    </ul>
+  </div>
+  <div class="callout wrong" style="margin:0"><span class="label">Windows / macOS</span>
+    <ul>
+      <li>Closed source.</li>
+      <li>You get <strong>some</strong> customization options, but you can't change the OS as a whole.</li>
+    </ul>
+  </div>
+</div>
+<div class="callout key"><span class="label">Instructor's summary</span><p>Linux is "more powerful" for software development and AI because it's fully customizable, community-driven, and it's where frameworks and toolkits are implemented first.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>Reason 3: setup just works (the CUDA example) <span class="ts">01:19:27</span></h2>
+<p>Because packages are built for Linux first, <strong>installation errors are rare on Linux</strong> and much more common on Windows and Mac.</p>
+<p>The instructor's example is setting up an <strong>NVIDIA GPU with CUDA</strong> for deep learning. Most people have run into this:</p>
+<div class="grid">
+  <div class="card"><h4 style="color:var(--bad)">On Windows</h4><p>Hard to install. It takes many configuration steps, and version mismatches can break it.</p></div>
+  <div class="card"><h4 style="color:var(--good)">On Linux</h4><p>You run a few commands and they install everything for you.</p></div>
+</div>
+<div class="callout beyond"><span class="label">Beyond the video · what "a few commands" looks like on Ubuntu</span>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>ubuntu@gpu-server: ~</span></div>
+<pre><code><span class="p">$</span> sudo apt update
+<span class="p">$</span> sudo ubuntu-drivers install     <span class="c"># picks and installs the right NVIDIA driver</span>
+<span class="p">$</span> sudo reboot
+<span class="p">$</span> nvidia-smi                      <span class="c"># shows the GPU, driver and CUDA version</span>
+<span class="p">$</span> pip install torch               <span class="c"># Linux wheels bundle the CUDA runtime</span>
+<span class="p">$</span> python -c "import torch; print(torch.cuda.is_available())"
+True</code></pre></div>
+<p>Cloud providers also offer ready-made "Deep Learning" Ubuntu images with all of this pre-installed.</p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>Reason 4: production servers are Linux <span class="ts">01:20:32</span></h2>
+<p>This is the main reason for MLOps. Recall from Chapter 01 that MLOps covers the <strong>end-to-end pipeline and orchestration</strong>, not only deployment. Still, once the pipeline exists and people want to use your project, you have to <strong>deploy</strong> it:</p>
+<ul>
+  <li><strong>Not deployed:</strong> the app runs on <code>localhost</code>, and only you can reach it.</li>
+  <li><strong>Deployed:</strong> the app is hosted in the cloud, so users send <strong>requests</strong> and receive <strong>responses</strong>.</li>
+</ul>
+
+<figure>
+  <p class="fig-title">Development server vs production server</p>
+  <p class="fig-sub">Hover the boxes.</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 300" role="img" aria-label="Development on a local laptop with any OS; deploy to a production server, a Linux virtual machine in AWS, GCP, Azure or Alibaba cloud; users send requests and get responses">
+    <defs><marker id="c3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker>
+    <marker id="c4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker></defs>
+    <text x="20" y="24" class="t-xs t-b">DEVELOPMENT</text>
+    <g data-tip="<b>Development server</b><br>Your own machine. Any OS is fine here: Windows, macOS or Linux.">
+      <rect x="20" y="36" width="200" height="150" rx="10" class="box"/>
+      <text x="120" y="66" text-anchor="middle" class="t-sm t-b">💻 Your laptop</text>
+      <text x="120" y="88" text-anchor="middle" class="t-xs">localhost:8000</text>
+      <text x="120" y="116" text-anchor="middle" class="t-xs">OS: Windows / macOS / Linux</text>
+      <text x="120" y="134" text-anchor="middle" class="t-xs" style="fill:var(--good)">✓ any OS is fine</text>
+      <text x="120" y="164" text-anchor="middle" class="t-xs">only you can reach it</text></g>
+    <path d="M220,110 L318,110" class="edge-accent" marker-end="url(#c4)"/>
+    <text x="269" y="100" text-anchor="middle" class="t-xs t-b" style="fill:var(--accent)">deploy</text>
+
+    <text x="320" y="24" class="t-xs t-b">PRODUCTION ("prod server")</text>
+    <rect x="320" y="36" width="280" height="240" rx="12" class="box-2" stroke-dasharray="5 4"/>
+    <text x="460" y="58" text-anchor="middle" class="t-xs">☁ AWS · GCP · Azure · Alibaba Cloud</text>
+    <g data-tip="<b>Virtual machine</b><br>A virtual computer rented from the cloud, with its own CPU, RAM, GPU and disk. It usually runs Linux (Ubuntu).">
+      <rect x="345" y="72" width="230" height="186" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="460" y="98" text-anchor="middle" class="t-sm t-b">🖥 Virtual machine (e.g. EC2)</text>
+      <rect x="362" y="112" width="92" height="30" rx="6" class="box"/><text x="408" y="132" text-anchor="middle" class="t-xs">CPU</text>
+      <rect x="466" y="112" width="92" height="30" rx="6" class="box"/><text x="512" y="132" text-anchor="middle" class="t-xs">RAM</text>
+      <rect x="362" y="150" width="92" height="30" rx="6" class="box"/><text x="408" y="170" text-anchor="middle" class="t-xs">GPU</text>
+      <rect x="466" y="150" width="92" height="30" rx="6" class="box"/><text x="512" y="170" text-anchor="middle" class="t-xs">Disk</text>
+      <rect x="362" y="190" width="196" height="30" rx="6" class="box"/><text x="460" y="210" text-anchor="middle" class="t-xs t-b">🐧 OS: Linux (Ubuntu)</text>
+      <text x="460" y="242" text-anchor="middle" class="t-xs">your app runs here</text></g>
+
+    <g data-tip="<b>Users</b><br>Send HTTP requests to the public server and get predictions back.">
+      <rect x="660" y="80" width="90" height="60" rx="10" class="box"/><text x="705" y="106" text-anchor="middle" class="t-sm t-b">👥 Users</text><text x="705" y="124" text-anchor="middle" class="t-xs">anywhere</text></g>
+    <path d="M660,100 L578,120" class="edge" marker-end="url(#c3)"/><text x="620" y="96" class="t-xs">request</text>
+    <path d="M578,168 L660,130" class="edge" marker-end="url(#c3)"/><text x="612" y="172" class="t-xs">response</text>
+  </svg>
+  </div>
+</figure>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th></th><th>Development server</th><th>Production server</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Where</strong></td><td>Your local machine</td><td>Cloud: AWS, GCP, Azure, Alibaba…</td></tr>
+    <tr><td><strong>Who uses it</strong></td><td>You (localhost)</td><td>Real users, over the internet</td></tr>
+    <tr><td><strong>Machine</strong></td><td>Physical laptop or desktop</td><td>A <strong>virtual machine</strong></td></tr>
+    <tr><td><strong>OS</strong></td><td>Anything: Windows, Mac, Linux</td><td><strong>Linux</strong> in practice</td></tr>
+    <tr><td><strong>Interface</strong></td><td>GUI + terminal</td><td><strong>Terminal only</strong></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>What is a virtual machine? <span class="ts">01:21:36</span></h3>
+<p>To run anything in the cloud you rent a <strong>virtual machine (VM)</strong>. The instructor describes it simply: <strong>a VM is just a computer, a virtual one</strong>. It has <strong>RAM, CPU and GPU</strong>, the same hardware your own computer has, because your project needs a computer to run on. The cloud provider gives you access to that virtual computer so you can run your application there.</p>
+<p>On AWS the VM service is <strong>EC2</strong>, which is what the next chapter sets up.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>Why not Windows on the server? <span class="ts">01:22:38</span></h2>
+<p>Most cloud VMs run a <strong>Linux-based OS such as Ubuntu</strong>. <strong>Windows images do exist</strong> in the cloud, and OSes are offered as an "image" (explained properly in the Docker chapter). Windows has two drawbacks on a server:</p>
+<ol>
+  <li><strong>It's a big image.</strong> It needs more space, so it <strong>costs more</strong>.</li>
+  <li><strong>Setup is harder.</strong> Packages are optimized for Linux, so on Windows you install extra tools, hit more errors, and have to fix things again when packages update. On Linux, the instructor says, "Linux by default takes care of everything."</li>
+</ol>
+
+<figure>
+  <p class="fig-title">How big is the OS you ship?</p>
+  <p class="fig-sub">Approximate uncompressed sizes of common container base images, in MB, on a log scale. Hover a bar. Exact sizes change with each release.</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 230" role="img" aria-label="Log-scale bar chart: Alpine about 8 MB, Ubuntu about 80 MB, Debian slim about 75 MB, Windows Nano Server about 300 MB, Windows Server Core about 5000 MB">
+    <!-- log scale: 1MB..10000MB over x 190..730 ; 135 px per decade -->
+    <g class="t-xs">
+      <line x1="190" y1="14" x2="190" y2="196" class="axis"/>
+      <line x1="325" y1="14" x2="325" y2="196" class="grid-line"/><line x1="460" y1="14" x2="460" y2="196" class="grid-line"/><line x1="595" y1="14" x2="595" y2="196" class="grid-line"/><line x1="730" y1="14" x2="730" y2="196" class="grid-line"/>
+      <text x="190" y="212" text-anchor="middle">1 MB</text><text x="325" y="212" text-anchor="middle">10 MB</text><text x="460" y="212" text-anchor="middle">100 MB</text><text x="595" y="212" text-anchor="middle">1 GB</text><text x="730" y="212" text-anchor="middle">10 GB</text>
+    </g>
+    <g data-tip="<b>Alpine Linux</b><br>≈ 8 MB · minimal distro"><text x="180" y="36" text-anchor="end" class="t-sm">Alpine</text><rect x="190" y="22" width="122" height="22" rx="4" fill="var(--s1)"/><text x="318" y="38" class="t-xs t-b">≈ 8 MB</text></g>
+    <g data-tip="<b>Debian slim</b><br>≈ 75 MB · base of python:*-slim images"><text x="180" y="72" text-anchor="end" class="t-sm">Debian slim</text><rect x="190" y="58" width="253" height="22" rx="4" fill="var(--s1)"/><text x="449" y="74" class="t-xs t-b">≈ 75 MB</text></g>
+    <g data-tip="<b>Ubuntu</b><br>≈ 80 MB · the course's server OS"><text x="180" y="108" text-anchor="end" class="t-sm">Ubuntu</text><rect x="190" y="94" width="257" height="22" rx="4" fill="var(--s1)"/><text x="453" y="110" class="t-xs t-b">≈ 80 MB</text></g>
+    <g data-tip="<b>Windows Nano Server</b><br>≈ 300 MB · stripped-down Windows, limited compatibility"><text x="180" y="144" text-anchor="end" class="t-sm">Win Nano Server</text><rect x="190" y="130" width="334" height="22" rx="4" fill="var(--s2)"/><text x="530" y="146" class="t-xs t-b">≈ 300 MB</text></g>
+    <g data-tip="<b>Windows Server Core</b><br>≈ 5 GB · the usual Windows base for apps"><text x="180" y="180" text-anchor="end" class="t-sm">Win Server Core</text><rect x="190" y="166" width="499" height="22" rx="4" fill="var(--s2)"/><text x="695" y="182" class="t-xs t-b">≈ 5 GB</text></g>
+  </svg>
+  </div>
+  <div class="legend"><span><i style="background:var(--s1)"></i>Linux</span><span><i style="background:var(--s2)"></i>Windows</span></div>
+  <figcaption>Beyond the video: these figures back up the instructor's "Windows is a big image" point. Bigger images take more storage, slower pulls and slower deploys. Windows VMs on AWS also carry a <b>licence fee</b> in the hourly price, while Ubuntu does not.</figcaption>
+</figure>
+
+<div class="callout key"><span class="label">The rule the instructor gives</span>
+<p><strong>Development:</strong> use any OS you like (Windows, Mac), it's completely fine.<br>
+<strong>Production:</strong> you work with <strong>Linux</strong>, so you must be comfortable with it.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>Reason 5: no GUI, only a terminal <span class="ts">01:24:44</span></h2>
+<p>"Linux is all about commands." On a cloud Linux server there is <strong>no user interface</strong> to click through the way you do on Windows. You get <strong>one black terminal</strong> and do everything from the command line:</p>
+<div class="vs">
+  <div class="card"><h4>🖱 Desktop OS (what you're used to)</h4><p>Click to open folders, right-click to delete, double-click to edit files, use installer wizards.</p></div>
+  <div class="card"><h4>⌨ Linux server (production)</h4><p>Type commands to create and delete folders, write code, install packages and start your app.</p></div>
+</div>
+
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>ubuntu@ip-172-31-5-20: ~  (a fresh EC2 server)</span></div>
+<pre><code><span class="p">$</span> mkdir cricket-forecast        <span class="c"># create a folder</span>
+<span class="p">$</span> cd cricket-forecast           <span class="c"># go into it</span>
+<span class="p">$</span> nano app.py                   <span class="c"># write code in a terminal editor</span>
+<span class="p">$</span> ls                            <span class="c"># list files</span>
+app.py
+<span class="p">$</span> rm -r old-folder              <span class="c"># delete a folder</span>
+<span class="p">$</span> sudo apt install -y python3-pip   <span class="c"># set up software</span></code></pre></div>
+<p class="fig-sub">A preview of the kind of commands covered in <b>Chapter 06: Required Linux Commands</b>.</p>
+
+<p>So the next session covers the <strong>most-used Linux commands in MLOps</strong>: the ones you need when deploying and running an application in production.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>How this connects to serving your model</h2>
+<div class="callout beyond"><span class="label">Beyond the video · the production path, seen through Linux</span>
+<ul>
+  <li><strong>SSH:</strong> you reach the EC2 server from your laptop with <code>ssh -i key.pem ubuntu@&lt;public-ip&gt;</code>. That terminal is your only way in.</li>
+  <li><strong>Docker is Linux too.</strong> The <code>python:3.11-slim</code> base image in Chapter 03's Dockerfile is Debian Linux. Even on a Mac or Windows laptop, Docker Desktop runs a small Linux VM underneath, so your container is "Linux in production" wherever it runs.</li>
+  <li><strong>Kubernetes, Jenkins, CI runners</strong> (GitHub Actions' <code>ubuntu-latest</code>) all run on Linux. The commands you learn here are the same ones inside Dockerfiles and CI YAML files.</li>
+  <li><strong>Debugging production</strong> means reading logs (<code>tail -f</code>), checking processes (<code>ps</code>, <code>top</code>), ports (<code>ss -tulpn</code>), disk (<code>df -h</code>) and GPUs (<code>nvidia-smi</code>), all from the terminal.</li>
+</ul>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>Interview questions</h2>
+<details class="qa"><summary>Why is Linux preferred for deploying ML models?</summary>
+<p>(1) ML/DL frameworks (scikit-learn, TensorFlow, PyTorch, LangChain) are developed and tested on Linux first, so they install cleanly and run best there. (2) GPU/CUDA setup is much simpler. (3) It's open source and customizable, down to the kernel. (4) Cloud VMs, containers, Kubernetes and CI runners are overwhelmingly Linux. (5) Linux images are small and have no licence fee, so they cost less than Windows.</p></details>
+<details class="qa"><summary>What is a Linux distribution? Which would you use for ML and why?</summary>
+<p>A distro bundles the Linux kernel with system tools, a package manager and defaults for a purpose. Examples: Ubuntu (data science/AI, general development), Kali (security), CentOS/RHEL (enterprise servers), Alpine (minimal containers). For ML, Ubuntu, because most tooling, drivers and cloud images target it first.</p></details>
+<details class="qa"><summary>What is the kernel?</summary>
+<p>The core of the OS that sits between hardware and software. It manages CPU scheduling, memory, files, networking and device drivers (including GPUs). Linux's kernel is open source, so anyone can read and modify it.</p></details>
+<details class="qa"><summary>What's the difference between a development server and a production server?</summary>
+<p>Development is your local machine (localhost), where only you access the app and any OS is fine. Production is a cloud virtual machine (AWS/GCP/Azure) that real users reach over the network with requests and responses. In practice it runs Linux and is managed through a terminal.</p></details>
+<details class="qa"><summary>What is a virtual machine?</summary>
+<p>A virtual computer carved out of a cloud provider's physical hardware. It has its own CPU, RAM, GPU, disk and OS, and you rent it to run your application. On AWS the service is EC2.</p></details>
+<details class="qa"><summary>Can you deploy on Windows servers? Why do teams usually avoid it for ML?</summary>
+<p>Yes, Windows images exist. They're much larger (more storage and cost, slower pulls), carry licence fees, and ML packages need extra setup and break more often after updates. Linux avoids all of that.</p></details>
+<details class="qa"><summary>How do you manage a server with no GUI?</summary>
+<p>Connect over SSH and use shell commands: navigate and manage files (<code>cd</code>, <code>ls</code>, <code>mkdir</code>, <code>rm</code>), edit code (<code>nano</code>/<code>vim</code>), install software (<code>apt</code>, <code>pip</code>), and manage processes and logs (<code>ps</code>, <code>systemctl</code>, <code>tail</code>). In MLOps, most of this is then automated with Docker and CI/CD.</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s11"><span class="num">11</span>Recap</h2>
+<ul>
+  <li>Linux is an <strong>OS</strong> with many <strong>distros</strong>: <strong>Ubuntu</strong> (AI/data science), Kali (hacking), CentOS, Alpine.</li>
+  <li>AI frameworks are <strong>built and tested on Linux first</strong>, then ported to Windows and Mac.</li>
+  <li>Linux is <strong>open source and customizable</strong> (even the kernel), with a large contributor community.</li>
+  <li>Setup is easier: <strong>CUDA/GPU</strong> takes a few commands on Linux and a lot of effort on Windows.</li>
+  <li><strong>Development = any OS on your laptop. Production = a Linux VM in the cloud</strong> (AWS, GCP, Azure, Alibaba). A VM is a virtual computer with CPU, RAM and GPU.</li>
+  <li>Windows server images are <strong>bigger, cost more and are harder to set up</strong>.</li>
+  <li>Production Linux has <strong>no GUI</strong>, so everything is done with <strong>terminal commands</strong>. Those are the next chapters.</li>
+</ul>
+
+<div class="pager">
+  <a href="03_intro_to_mlops_importance.html"><small>← Previous</small>03 · Why MLOps matters</a>
+  <a class="next" href="05_linux_on_aws_ec2.html"><small>Next →</small>05 · Setting up Linux with AWS EC2</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+</body>
+</html>

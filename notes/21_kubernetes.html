@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>21 · Kubernetes — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .steps { counter-reset: st; list-style: none; padding: 0; margin: 16px 0; }
+  .steps > li { counter-increment: st; position: relative; padding: 12px 16px 12px 56px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; margin: 8px 0; }
+  .steps > li::before { content: counter(st); position: absolute; left: 16px; top: 12px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font: 600 13px/26px var(--sans); text-align: center; }
+  .steps p:last-child, .steps pre:last-child { margin-bottom: 0; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+  .cols > * { min-width: 0; }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+  .shot { border: 1px solid var(--rule); border-radius: 10px; display: block; margin: 0 auto; background: #fff; max-width: 100%; }
+  /* manifest explorer */
+  .yx { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 12px; margin: 16px 0; }
+  @media (max-width: 760px) { .yx { grid-template-columns: 1fr; } }
+  .yx .lines { background: var(--code-bg); border-radius: 10px; padding: 8px 0; font: 12.5px/1.5 var(--mono); max-height: 560px; overflow: auto; }
+  .yx button { display: block; width: 100%; text-align: left; background: none; border: 0; color: #e9e8e2; font: inherit; padding: 3px 14px; cursor: pointer; border-left: 3px solid transparent; white-space: pre; }
+  .yx button .k { color: #86b6ef; } .yx button .c { color: #8f8e86; } .yx button .v { color: #e6b36a; }
+  .yx button[aria-pressed="true"] { background: rgba(57,135,229,.22); border-left-color: #3987e5; }
+  .yx button:hover { background: rgba(255,255,255,.06); }
+  .yx .explain { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; position: sticky; top: 12px; }
+  .yx .explain h4 { margin-top: 0; }
+  /* cluster simulator */
+  .ksim { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; margin: 18px 0; }
+  .ksim .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .ksim button { font: 12px var(--sans); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--surface-2); color: var(--ink); cursor: pointer; }
+  .ksim button:hover { border-color: var(--accent); }
+  .ksim button.danger { color: var(--bad); }
+  .ksim .nodes { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; }
+  @media (max-width: 720px) { .ksim .nodes { grid-template-columns: 1fr; } }
+  .ksim .node { border: 1px solid var(--rule); border-radius: 10px; padding: 10px; background: var(--surface-2); min-height: 130px; }
+  .ksim .node.down { opacity: .45; border-style: dashed; }
+  .ksim .node h5 { margin: 0 0 8px; font: 600 13px var(--sans); display: flex; justify-content: space-between; }
+  .ksim .pod { display: flex; align-items: center; gap: 6px; font: 11px var(--mono); background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--ink-3); border-radius: 6px; padding: 4px 7px; margin: 4px 0; }
+  .ksim .pod.ready { border-left-color: #1baf7a; }
+  .ksim .pod.bad { border-left-color: #e34948; }
+  .ksim .pod.pending { border-left-color: #e6b800; border-style: dashed; }
+  .ksim .pod .tag { margin-left: auto; color: var(--ink-3); }
+  .ksim .lb { border: 1px solid var(--rule); border-radius: 10px; padding: 10px; background: var(--accent-soft); font-size: 12px; min-width: 150px; }
+  .ksim .lb b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .ksim .status { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0 0; font-size: 13px; }
+  .ksim .log { margin-top: 10px; font: 11.5px/1.55 var(--mono); background: var(--code-bg); color: #e9e8e2; border-radius: 8px; padding: 8px 12px; height: 132px; overflow: auto; white-space: pre-wrap; }
+  .pill { font: 600 11px var(--sans); padding: 2px 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--rule); }
+  .pill.ok { background: #dff5ea; border-color: #1baf7a; color: #0d6b48; }
+  .pill.bad { background: #fde2e2; border-color: #e34948; color: #9b1c1c; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 21</span></div>
+<div class="eyebrow">Chapter 21 · Kubernetes</div>
+<h1>Kubernetes: run containers so they keep running</h1>
+<p class="lede">Docker packages one container; Kubernetes runs many of them across a cluster of machines and keeps them alive. The instructor covers what it is (open source, from Google, 2014), its four selling points — load balancing, scaling, storage and self-healing — and then deploys a Flask model app to <strong>Google Kubernetes Engine</strong>: build the image, push it to Google's registry, create a cluster, <code>kubectl create deployment</code>, expose it with a LoadBalancer, open the external IP, and delete everything afterwards.</p>
+<div class="meta">
+  <span class="chip">Video 10:18:09 – 10:46:14 (≈ 28 min)</span>
+  <span class="chip">Hands-on: real manifests + a simulated cluster</span>
+  <span class="chip">Uses GCP (the rest of the course uses AWS)</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">What Kubernetes is</a></li>
+    <li><a href="#s2">The four features, and what each really needs</a></li>
+    <li><a href="#s3">How a cluster is put together</a></li>
+    <li><a href="#s4">The objects you actually write</a></li>
+    <li><a href="#s5">The video's demo on GKE, step by step</a></li>
+    <li><a href="#s6">The same deployment as a file (interactive)</a></li>
+    <li><a href="#s7">Try it: a cluster that fights back</a></li>
+    <li><a href="#s8">Rollouts and autoscaling, measured</a></li>
+    <li><a href="#s9">When Kubernetes is worth it</a></li>
+    <li><a href="#s10">Precision notes</a></li>
+    <li><a href="#hands-on">Hands-on files: what we built</a></li>
+    <li><a href="#s11">Interview questions</a></li>
+    <li><a href="#s12">Recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>What Kubernetes is <span class="ts">10:18:11</span></h2>
+<p>The instructor's definition: <strong>a powerful open-source system, developed by Google and released in 2014, for managing containerised applications</strong>. In plainer words: a system for running and coordinating containers <em>across a cluster of machines</em>, which manages the whole lifecycle of those containers.</p>
+<div class="grid">
+  <div class="card"><h4>What you already have (Chapter 16–18)</h4><p>One Docker image, started by hand or by a CI job with <code>docker run</code> on a single EC2 machine. If that container dies, or the machine dies, or traffic doubles, <strong>you</strong> fix it.</p></div>
+  <div class="card"><h4>What Kubernetes adds</h4><p>You declare "I want 3 copies of this image, reachable on port 80". The cluster keeps that true: restarting containers, replacing them, spreading traffic and adding copies when load rises.</p></div>
+</div>
+<div class="callout key"><span class="label">The one idea behind everything</span><p>Kubernetes is <strong>declarative</strong>. You describe the <em>desired state</em>; controllers constantly compare it with the real state and act on the difference. You never say "start a container" — you say "three should exist", and something else works out how.</p></div>
+<p>Kubernetes is often written <strong>K8s</strong> ("k", eight letters, "s"). The name is Greek for helmsman, which is where the ship's-wheel logo comes from. It was donated to the Cloud Native Computing Foundation in 2015.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>The four features, and what each really needs <span class="ts">10:19:14</span></h2>
+<p>The video lists four benefits. Each is real, but each needs something in your configuration before it works:</p>
+<div class="table-wrap"><table>
+  <tr><th>Feature (from the video)</th><th>What it means</th><th>What you must provide</th></tr>
+  <tr><td><strong>Load balancing</strong><br><span style="font-size:12px;color:var(--ink-2)">"automatically distributes the load between the containers"</span></td><td>A <strong>Service</strong> gives the pods one address and spreads connections across them.</td><td>A Service, and more than one replica. With a single pod there is nothing to balance.</td></tr>
+  <tr><td><strong>Scaling</strong><br><span style="font-size:12px;color:var(--ink-2)">"scale up or down at peak hours, weekends and holidays"</span></td><td>Add or remove pods as demand changes.</td><td>A <strong>HorizontalPodAutoscaler</strong> plus <strong>CPU requests</strong> in the pod spec. Without an HPA, the replica count never changes on its own.</td></tr>
+  <tr><td><strong>Storage</strong><br><span style="font-size:12px;color:var(--ink-2)">"keep storage consistent with multiple instances"</span></td><td>Disks that outlive a pod, and can be shared or mounted per replica.</td><td>A <strong>PersistentVolumeClaim</strong> (and a StatefulSet for per-replica disks). Containers are otherwise wiped clean on every restart.</td></tr>
+  <tr><td><strong>Self-healing</strong><br><span style="font-size:12px;color:var(--ink-2)">"restarts containers that fail, kills ones that don't respond to health checks"</span></td><td>Crashed pods come back; unhealthy containers are restarted; pods on a dead node are recreated elsewhere.</td><td>A <strong>Deployment</strong> (so a ReplicaSet is counting) and <strong>liveness / readiness probes</strong>. Without probes, a hung-but-alive process is left running.</td></tr>
+</table></div>
+<div class="callout wrong"><span class="label">Careful with "everything is automatic"</span><p>The video says you don't have to worry about load balancing or scaling because Kubernetes handles it. What it really gives you is the <em>machinery</em>. A plain <code>kubectl create deployment</code>, as in the demo, has one replica, no probes, no resource requests and no autoscaler, so none of the four features is actually doing anything yet. The manifests in the hands-on project fill all of that in.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>How a cluster is put together</h2>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 820 340" role="img" aria-label="A Kubernetes cluster: the control plane holds the API server, etcd, the scheduler and the controller manager. Worker nodes run a kubelet, kube-proxy and a container runtime with pods. kubectl talks to the API server; users reach pods through a Service and cloud load balancer.">
+    <defs><marker id="k1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g data-tip="<b>kubectl</b><br>The command-line client. It only ever talks to the API server; it never contacts nodes directly."><rect x="10" y="130" width="96" height="54" rx="10" class="box"/><text x="58" y="154" text-anchor="middle" class="t-b">kubectl</text><text x="58" y="172" text-anchor="middle" class="t-xs">you</text></g>
+    <g data-tip="<b>Control plane</b><br>The cluster's brain. On GKE, Google runs and patches it for you (and bills about $0.10/hour for it).">
+      <rect x="140" y="20" width="300" height="200" rx="12" fill="var(--accent-soft)"/>
+      <text x="290" y="42" text-anchor="middle" class="t-b">Control plane (managed by GKE)</text></g>
+    <g data-tip="<b>API server</b><br>The only way in. Everything — kubectl, controllers, kubelets — reads and writes objects through it, with authentication and validation."><rect x="158" y="56" width="126" height="48" rx="8" class="box-2"/><text x="221" y="78" text-anchor="middle" class="t-b">API server</text><text x="221" y="94" text-anchor="middle" class="t-xs">the only door in</text></g>
+    <g data-tip="<b>etcd</b><br>A key-value database holding every object: the cluster's single source of truth. Back it up."><rect x="300" y="56" width="122" height="48" rx="8" class="box"/><text x="361" y="78" text-anchor="middle" class="t-b">etcd</text><text x="361" y="94" text-anchor="middle" class="t-xs">stored state</text></g>
+    <g data-tip="<b>Scheduler</b><br>Watches for pods with no node and picks one with enough free CPU/memory that satisfies affinity and taint rules."><rect x="158" y="122" width="126" height="48" rx="8" class="box-2"/><text x="221" y="144" text-anchor="middle" class="t-b">scheduler</text><text x="221" y="160" text-anchor="middle" class="t-xs">pod → node</text></g>
+    <g data-tip="<b>Controller manager</b><br>Runs the control loops: Deployment, ReplicaSet, node, job, endpoint controllers… Each one drives the real state towards the desired state."><rect x="300" y="122" width="122" height="48" rx="8" class="box-2"/><text x="361" y="144" text-anchor="middle" class="t-b">controllers</text><text x="361" y="160" text-anchor="middle" class="t-xs">desired = real</text></g>
+    <text x="290" y="200" text-anchor="middle" class="t-xs">(+ cloud controller: creates load balancers and disks)</text>
+    <g data-tip="<b>Worker node</b><br>A VM. <b>kubelet</b> starts containers and runs the probes; <b>kube-proxy</b> programs the network rules that spread Service traffic; the <b>runtime</b> (containerd) actually runs them.">
+      <rect x="478" y="20" width="330" height="140" rx="12" class="box"/>
+      <text x="643" y="42" text-anchor="middle" class="t-b">Node 1</text>
+      <text x="643" y="60" text-anchor="middle" class="t-xs">kubelet · kube-proxy · containerd</text>
+      <rect x="496" y="74" width="92" height="66" rx="8" class="box-2"/><text x="542" y="100" text-anchor="middle" class="t-xs">pod</text><text x="542" y="118" text-anchor="middle" class="t-xs">api:v2</text>
+      <rect x="600" y="74" width="92" height="66" rx="8" class="box-2"/><text x="646" y="100" text-anchor="middle" class="t-xs">pod</text><text x="646" y="118" text-anchor="middle" class="t-xs">api:v2</text>
+      <rect x="704" y="74" width="88" height="66" rx="8" style="fill:var(--surface-2)"/><text x="748" y="100" text-anchor="middle" class="t-xs">free</text><text x="748" y="118" text-anchor="middle" class="t-xs">capacity</text></g>
+    <g data-tip="A second node. More nodes = more capacity and better spread; a node can be lost without taking the app down."><rect x="478" y="176" width="330" height="96" rx="12" class="box"/>
+      <text x="643" y="198" text-anchor="middle" class="t-b">Node 2</text>
+      <rect x="496" y="210" width="92" height="48" rx="8" class="box-2"/><text x="542" y="238" text-anchor="middle" class="t-xs">pod api:v2</text>
+      <rect x="600" y="210" width="192" height="48" rx="8" style="fill:var(--surface-2)"/><text x="696" y="238" text-anchor="middle" class="t-xs">free capacity</text></g>
+    <g data-tip="<b>Service (type LoadBalancer)</b><br>Asks the cloud for an external IP and sends traffic to the ready pods of the app, wherever they are."><rect x="140" y="252" width="300" height="60" rx="10" fill="var(--warn-soft)"/><text x="290" y="276" text-anchor="middle" class="t-b">Service (LoadBalancer) → external IP</text><text x="290" y="296" text-anchor="middle" class="t-xs">port 80 → targetPort 8080 on every ready pod</text></g>
+    <path d="M106,157 L136,130" class="edge" marker-end="url(#k1)"/>
+    <path d="M440,80 L474,80" class="edge" marker-end="url(#k1)"/><text x="457" y="72" text-anchor="middle" class="t-xs"> </text>
+    <path d="M440,146 L474,200" class="edge" marker-end="url(#k1)"/>
+    <path d="M290,220 L290,248" class="edge" marker-end="url(#k1)"/>
+    <path d="M440,282 L520,282 L520,264" class="edge" fill="none" marker-end="url(#k1)"/>
+    <text x="58" y="250" text-anchor="middle" class="t-xs">users →</text>
+    <path d="M58,258 L58,282 L136,282" class="edge" fill="none" marker-end="url(#k1)"/>
+  </svg>
+  </div>
+  <figcaption><b>One cluster.</b> You talk only to the API server; every other piece watches it and reacts. On GKE the control plane is Google's problem, and the nodes are VMs in your project. Hover each box.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>The objects you actually write</h2>
+<div class="table-wrap"><table>
+  <tr><th>Object</th><th>What it is</th><th>In our project</th></tr>
+  <tr><td><strong>Pod</strong></td><td>the smallest unit: one or more containers that share an IP and lifetime. Pods are disposable and are never edited by hand.</td><td>one sentiment-API container</td></tr>
+  <tr><td><strong>ReplicaSet</strong></td><td>keeps exactly N copies of a pod template alive. You rarely create one directly.</td><td>created by the Deployment; one per version</td></tr>
+  <tr><td><strong>Deployment</strong></td><td>manages ReplicaSets so updates are gradual and reversible (<code>rollout undo</code>).</td><td><code>10-deployment.yaml</code>, 3 replicas</td></tr>
+  <tr><td><strong>Service</strong></td><td>a stable name, IP and load balancer for a set of pods (<em>ClusterIP</em> internal, <em>NodePort</em>, <em>LoadBalancer</em> external).</td><td><code>20-service.yaml</code>, type LoadBalancer, 80 → 8080</td></tr>
+  <tr><td><strong>Ingress</strong> / Gateway</td><td>HTTP routing by host and path, plus TLS, in front of several Services.</td><td>not used; one LoadBalancer per app is fine to start</td></tr>
+  <tr><td><strong>ConfigMap / Secret</strong></td><td>configuration and credentials injected as environment variables or files.</td><td>where the MLflow URI or an API key would go</td></tr>
+  <tr><td><strong>PersistentVolumeClaim</strong></td><td>a request for a disk that survives pod restarts.</td><td>not needed: the model is baked into the image</td></tr>
+  <tr><td><strong>HorizontalPodAutoscaler</strong></td><td>changes a Deployment's replica count from metrics.</td><td><code>30-hpa.yaml</code>, CPU 60%, 2–8 pods</td></tr>
+  <tr><td><strong>Namespace</strong></td><td>a folder for objects, with its own quotas and access rules.</td><td><code>mlops</code></td></tr>
+  <tr><td><strong>Job / CronJob</strong></td><td>run-to-completion work, once or on a schedule.</td><td>where nightly retraining would live</td></tr>
+</table></div>
+<div class="callout beyond"><span class="label">The reconciliation loop, concretely</span>
+<p>You apply a Deployment asking for 3 replicas of <code>api:v2</code>:</p>
+<ol>
+  <li>The <strong>Deployment controller</strong> creates a ReplicaSet for v2.</li>
+  <li>The <strong>ReplicaSet controller</strong> sees 0 pods but wants 3, and creates 3 pod objects.</li>
+  <li>The <strong>scheduler</strong> sees 3 pods with no node and assigns each to a node with room.</li>
+  <li>Each node's <strong>kubelet</strong> pulls the image, starts the container and runs the probes.</li>
+  <li>When a pod passes its readiness probe, the <strong>endpoint controller</strong> adds it to the Service, and traffic starts flowing.</li>
+</ol>
+<p>Kill a pod and the same loop replaces it within seconds. That's all "self-healing" is.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>The video's demo on GKE, step by step <span class="ts">10:20:18</span></h2>
+<p>The instructor uses <strong>Google Cloud</strong> here, not AWS, because GKE makes a cluster easy and "a local Kubernetes on Windows causes lots of setup issues and takes a lot of space". A new Google Cloud account gets <strong>$300 in free credit</strong>, which is plenty for this.</p>
+<p>The app is a ready-made <strong>PyCaret</strong> example: a Flask page that predicts <em>medical insurance charges</em> from age, sex, BMI, children, smoker and region — a regression model, with <code>templates/</code>, <code>static/</code>, a training notebook, a saved model and a Dockerfile. Any containerised app would do.</p>
+<ol class="steps">
+  <li><p><strong>Enable the services</strong>: search for <em>Container Registry</em> and enable it (this is where images go, "like Docker Hub"), then <em>Kubernetes Engine</em> and enable that too.</p></li>
+  <li><p><strong>Open Cloud Shell</strong> from the console (a free Linux terminal with <code>gcloud</code>, <code>docker</code> and <code>kubectl</code> already installed), and check you're in the right project.</p></li>
+  <li><p><strong>Clone and set the project id</strong>:</p>
+<pre><code>git clone &lt;the app repo&gt; &amp;&amp; cd &lt;repo&gt;
+export PROJECT_ID=&lt;your-project-id&gt;      <span class="c"># shown in the console header</span></code></pre></li>
+  <li><p><strong>Build the image</strong>, tagged so it can be pushed to Google's registry:</p>
+<pre><code>docker build -t gcr.io/$PROJECT_ID/insurance-app:v1 .</code></pre>
+    <p>This failed twice in the video, and the fixes are worth remembering: the Dockerfile's <strong>Python 3.7</strong> base was too old for the requirements (changed to 3.9), and a <strong>pinned PyCaret version</strong> no longer installs (the pin was removed). "Old packages get deprecated — take care of that when you build the image."</p></li>
+  <li><p><strong>Push it</strong>:</p>
+<pre><code>gcloud auth configure-docker gcr.io       <span class="c"># let docker log in to the registry</span>
+docker push gcr.io/$PROJECT_ID/insurance-app:v1
+docker images                             <span class="c"># check it locally</span></code></pre>
+    <p>The image then appears in Container Registry.</p></li>
+  <li><p><strong>Create the cluster</strong> (console or CLI). In the console: name it, pick a region (<code>us-central1</code>), choose the <em>Standard</em> tier rather than <em>Enterprise</em>, and create. It takes about <strong>5 minutes</strong> until the status turns green.</p>
+<pre><code>gcloud config set compute/zone us-central1
+gcloud container clusters create ml-cluster --num-nodes=1   <span class="c"># more nodes = more cost</span></code></pre></li>
+  <li><p><strong>Deploy and expose</strong>:</p>
+<pre><code>kubectl create deployment insurance-app --image=gcr.io/$PROJECT_ID/insurance-app:v1
+kubectl expose deployment insurance-app --type=LoadBalancer --port 80 --target-port 8080
+kubectl get service                      <span class="c"># wait for EXTERNAL-IP</span></code></pre>
+    <p>The app listens on 8080 inside the container; the Service publishes it on port 80. Open <code>http://&lt;external-ip&gt;</code>, fill in the form, click <strong>Predict</strong>, and the model answers. "Now load balancing and scaling are handled automatically."</p></li>
+  <li><p><strong>Delete everything</strong> <span class="ts">10:44:36</span>: select the cluster → Delete → type its name to confirm; then delete the image from the registry. "Make sure you delete it if you're not using it, otherwise it will charge you."</p></li>
+</ol>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>The same deployment as a file <span class="ts">10:41:23</span></h2>
+<p><code>kubectl create deployment</code> is fine for a demo, but the version you keep is a file. <strong>Click any line</strong> of our Chapter 17 API deployment:</p>
+<div class="yx">
+  <div class="lines" id="yx"></div>
+  <div class="explain" id="yx-explain"></div>
+</div>
+<p style="font-size:13px;color:var(--ink-2)">Apply it with <code>kubectl apply -f manifests/</code>, and review changes to it in git like any other code. This is what "GitOps" means: the repo is the desired state.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>Try it: a cluster that fights back</h2>
+<p>Two nodes, three replicas, a Service in front. Break things and watch the controllers repair them. (A simplified model of the real loops — the same one the hands-on notebook runs in Python.)</p>
+<div class="ksim" id="ksim">
+  <div class="btns">
+    <button data-a="kill">kubectl delete pod (random)</button>
+    <button data-a="hang">break a liveness probe</button>
+    <button data-a="scale-up">scale +1</button>
+    <button data-a="scale-down">scale −1</button>
+    <button data-a="v2">roll out v2</button>
+    <button data-a="bad" class="danger">roll out a broken v3</button>
+    <button data-a="undo">rollout undo</button>
+    <button data-a="node" class="danger">node-1 fails</button>
+    <button data-a="reset">reset</button>
+  </div>
+  <div class="nodes">
+    <div class="node" id="n1"><h5>node-1 <span class="pill" id="n1cap">0/6</span></h5><div id="n1p"></div></div>
+    <div class="node" id="n2"><h5>node-2 <span class="pill" id="n2cap">0/6</span></h5><div id="n2p"></div></div>
+    <div class="lb"><b>Service</b>
+      <div>type: LoadBalancer</div>
+      <div>34.118.0.42:80 → 8080</div>
+      <div style="margin-top:8px">endpoints: <span class="pill ok" id="eps">0</span></div>
+      <div style="margin-top:6px" id="served"></div>
+    </div>
+  </div>
+  <div class="status">
+    <span>desired replicas: <b id="st-desired">3</b></span>
+    <span>ready: <b id="st-ready">0</b></span>
+    <span>version: <b id="st-image">v1</b></span>
+    <span id="st-note"></span>
+  </div>
+  <div class="log" id="ksim-log"></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>Rollouts and autoscaling, measured</h2>
+<div class="cols">
+<figure style="margin:0">
+  <img class="shot" src="assets/img/ch21_rollout.png" alt="Line chart: during a rolling update the total pod count rises to 4 while the number of ready pods never drops below 3">
+  <figcaption><b>A rolling update with <code>maxUnavailable: 0</code>.</b> The total climbs to 4 (the surge pod), and ready never dips below 3 — no request is dropped. Compare that with Chapter 18's deploy script, which stops the old container before starting the new one.</figcaption>
+</figure>
+<figure style="margin:0">
+  <img class="shot" src="assets/img/ch21_hpa.png" alt="Chart: as requests per second rise, the number of ready pods rises to 8; when load falls the pod count drops back to 2 after a delay">
+  <figcaption><b>The autoscaler following load.</b> Scaling up is immediate; scaling down waits out a stabilisation window (5 minutes by default) so a brief lull doesn't kill pods that are about to be needed again.</figcaption>
+</figure>
+</div>
+<figure>
+  <img class="shot" src="assets/img/ch21_routing.png" alt="Two bar charts: 300 requests split evenly over 3 pods (100 each), then over 5 pods (60 each)" style="width:100%;max-width:760px">
+  <figcaption><b>Load balancing is just arithmetic.</b> 300 requests over 3 ready pods is 100 each; scale to 5 and it's 60 each. Only <em>ready</em> pods are in the Service, which is why the readiness probe matters so much.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>When Kubernetes is worth it</h2>
+<div class="cols">
+<div class="card"><h4 style="color:var(--good)">Good reasons</h4>
+<ul>
+  <li>Many services, or many teams, sharing infrastructure.</li>
+  <li>You need rolling updates, health checks, autoscaling and self-healing as standard behaviour.</li>
+  <li>GPU scheduling and batch jobs beside online serving.</li>
+  <li>You want the same setup on any cloud, or on-premises.</li>
+  <li>The ML platform you want runs on it: KServe or Seldon for serving, Kubeflow or Argo for pipelines, Ray for distributed training.</li>
+</ul></div>
+<div class="card"><h4 style="color:var(--warn)">Reasons to wait</h4>
+<ul>
+  <li>One small model API with modest traffic. The cluster costs more than the app, and you now own YAML, upgrades, RBAC and networking.</li>
+  <li>Simpler options do the same job: <strong>Cloud Run</strong>, <strong>AWS App Runner</strong>, <strong>ECS Fargate</strong>, <strong>Azure Container Apps</strong>, or a managed endpoint such as SageMaker or Vertex AI. They give scaling, health checks and rolling deploys with no cluster.</li>
+  <li>Nobody on the team has operated a cluster before.</li>
+</ul></div>
+</div>
+<p>For interviews, that trade-off matters more than the commands: Kubernetes is the general answer, and the managed services are the pragmatic one for a single model.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>Precision notes</h2>
+<ul>
+  <li><strong>Container Registry (<code>gcr.io</code>) is deprecated.</strong> Google has moved to <strong>Artifact Registry</strong> (<code>&lt;region&gt;-docker.pkg.dev/&lt;project&gt;/&lt;repo&gt;/&lt;image&gt;</code>), which the instructor briefly calls it by name. New projects should push there; <code>gcloud auth configure-docker &lt;region&gt;-docker.pkg.dev</code>.</li>
+  <li><strong>"Everything is automatic" needs configuration.</strong> The demo deploys one replica with no probes, no resource requests and no HPA, so there is nothing to load-balance across, nothing to restart on a hang, and nothing to scale. See section 2.</li>
+  <li><strong>Imperative commands don't survive.</strong> <code>kubectl create deployment</code> and <code>kubectl expose</code> leave no record of what the cluster should look like. Keep manifests in git and <code>kubectl apply -f</code>; you also get diffs, reviews and rollbacks.</li>
+  <li><strong>`latest`-style tags and <code>:v1</code> by hand.</strong> Tag images with the commit SHA (as Chapter 18's workflow does) so you can tell what's running and roll back precisely.</li>
+  <li><strong>The image size claim.</strong> The instructor says the push is "around 140 GB"; a PyCaret image is more like 1–4 GB. Still large: use slim bases and multi-stage builds, since every node pulls the image.</li>
+  <li><strong>One node, one replica, one point of failure.</strong> <code>--num-nodes=1</code> is fine for a demo, but a node upgrade or failure then takes the app down. Use at least 2–3 nodes across zones, plus a PodDisruptionBudget.</li>
+  <li><strong>Cost adds up quietly:</strong> the GKE control plane (about $0.10/hour per cluster beyond the free one), the node VMs, the cloud load balancer, stored images and any leftover persistent disks. The video's advice to delete the cluster is the important part; also delete the Service (it owns the load balancer) and the images.</li>
+  <li><strong>Security defaults are weak.</strong> A plain deployment runs as root with no limits. Set <code>runAsNonRoot</code>, drop capabilities, add a read-only root filesystem and resource limits, and use Workload Identity instead of service-account keys. Our manifest does all of these.</li>
+  <li><strong>No health checks means no self-healing.</strong> Kubernetes restarts a container that <em>exits</em>, but a process that's alive yet stuck is only caught by a <strong>liveness</strong> probe. A <strong>readiness</strong> probe is what keeps traffic off a pod that is still loading a model.</li>
+  <li><strong>Memory limits kill containers.</strong> Exceed the memory limit and the pod is OOMKilled and restarted; exceed the CPU limit and it is merely throttled. Model servers often need a generous memory limit and a modest CPU request.</li>
+  <li><strong>The app in the demo is a Flask dev server</strong> in one container behind a public load balancer. In production, use gunicorn or uvicorn workers (our image does) and put an Ingress with TLS in front.</li>
+  <li><strong>Deleting the cluster doesn't delete everything.</strong> Load balancers, static IPs, disks made by PVCs and registry images can survive it. Check the billing page a day later.</li>
+</ul>
+
+<!-- ───────────────────────────── -->
+<h2 id="hands-on"><span class="num">▶</span>Hands-on files: what we built</h2>
+<div class="handson">
+<span class="label">Hands-on project · no cluster needed; manifests validated for real, cluster behaviour simulated</span>
+<div class="files">
+  <a href="../projects/ch21_kubernetes/kubernetes_walkthrough.ipynb">kubernetes_walkthrough.ipynb</a>
+  <a href="../projects/ch21_kubernetes/manifests/">manifests/</a>
+  <a href="../projects/ch21_kubernetes/manifests/10-deployment.yaml">10-deployment.yaml</a>
+  <a href="../projects/ch21_kubernetes/toy_k8s.py">toy_k8s.py</a>
+</div>
+<pre style="margin:0 0 12px"><code>projects/ch21_kubernetes/
+├── manifests/            <span class="c"># the Chapter 17 API, as real Kubernetes objects</span>
+│   ├── 00-namespace.yaml · 10-deployment.yaml · 20-service.yaml
+│   └── 30-hpa.yaml · 40-pdb.yaml
+├── toy_k8s.py            <span class="c"># ~300 lines: the control loops made visible</span>
+└── kubernetes_walkthrough.ipynb
+projects/_tools/bin/kubeconform   <span class="c"># manifest validator (prebuilt binary)</span></code></pre>
+<h4>1 · The manifests validate against the real Kubernetes schemas</h4>
+<div class="result">$ kubeconform -summary -strict -kubernetes-version 1.31.0 manifests/*.yaml
+Summary: 5 resources found in 5 files - Valid: 5, Invalid: 0, Errors: 0, Skipped: 0
+
+# and with two deliberate typos:
+Deployment yt-sentiment is invalid:
+  at '/spec/replicas': got string, want null or integer
+  at '/spec/template/spec/containers/0/ports/0/containerPort': got string, want integer</div>
+<h4>2 · Applying them to the simulated cluster</h4>
+<div class="result">   0s  deployment created yt-sentiment (replicas=3, image=yt-sentiment:v1)
+   0s  service    created yt-sentiment (LoadBalancer, external IP 34.118.0.42)
+   5s  replicaset created yt-sentiment-0001 for revision 1
+   5s  replicaset yt-sentiment-0001 created pod …0002 (have 1/3) …0003 (2/3) …0004 (3/3)
+   5s  scheduler  assigned …0002 → node-1 · …0003 → node-2 · …0004 → node-1
+  15s  kubelet    …0002 is Ready · …0003 is Ready · …0004 is Ready
+
+NAME                      READY  STATUS      RESTARTS  NODE     IMAGE       AGE
+yt-sentiment-0001-0002    1/1    Running     0         node-1   v1          25s
+yt-sentiment-0001-0003    1/1    Running     0         node-2   v1          25s
+yt-sentiment-0001-0004    1/1    Running     0         node-1   v1          25s</div>
+<h4>3 · Self-healing: a deleted pod and a hung container</h4>
+<div class="result">$ kubectl delete pod yt-sentiment-0001-0002
+  35s  replicaset yt-sentiment-0001 created pod yt-sentiment-0001-0005 (have 3/3)
+  45s  kubelet    yt-sentiment-0001-0005 is Ready          ← replaced in 10 seconds
+
+  60s  probe      liveness probe failing on yt-sentiment-0001-0004
+  65s  kubelet    restarted yt-sentiment-0001-0004 (restart count 1)
+  75s  kubelet    yt-sentiment-0001-0004 is Ready</div>
+<h4>4 · A rolling update, then a broken release</h4>
+<div class="result">rollout complete: True     lowest ready count during the update: 3 of 3  → no downtime
+NAME                      DESIRED  CURRENT  READY  REVISION IMAGE
+yt-sentiment-0001         0        0        0      1        v1        ← old ReplicaSet retired
+yt-sentiment-0008         3        3        3      2        v2
+
+# now a v3 whose readiness probe never passes:
+rollout complete: False    ← `kubectl rollout status` fails with 'progress deadline exceeded'
+yt-sentiment-000c-000d    0/1    Running     0    node-1   v3-bad    15s   ← never joins the Service
+ready pods during the failed rollout: [3]  → users never noticed; v2 kept serving
+$ kubectl rollout undo deployment/yt-sentiment   → the v3 ReplicaSet goes to 0</div>
+<h4>5 · Autoscaling and a node failure</h4>
+<div class="result">300s  hpa        cpu 480% of request > target 60% → scale up to 8
+420s  hpa        cpu 40% < target, but still inside the stabilisation window (3 checks to go)
+480s  hpa        cpu 40% < target for a while → scale down to 6
+510s  hpa        cpu 7% < target for a while → scale down to 2
+
+$ node-1 goes NotReady — 4 pod(s) lost
+one node left → room for 6 pods, 2 pod(s) stuck Pending
+yt-sentiment-0008-001c    0/1    Pending     0    &lt;none&gt;   v2     ← waiting for capacity (a Cluster Autoscaler would add a node)</div>
+<p><strong>Not run here</strong> (it's on your <a href="todo_after_course.html">after-course to-do list</a>): a real cluster. The free way is <code>minikube</code> on this Mac, where the same <code>kubectl apply -f manifests/</code> works; the paid way is the video's GKE path.</p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s11"><span class="num">11</span>Interview questions</h2>
+<details class="qa"><summary>What problem does Kubernetes solve that Docker doesn't?</summary>
+<p>Docker builds and runs a container on one machine. Kubernetes runs many containers across many machines and keeps them in the state you asked for: scheduling them onto nodes, restarting failures, replacing pods when a node dies, rolling out new versions gradually, load-balancing traffic, scaling on demand, and managing config, secrets and storage. Docker is the packaging; Kubernetes is the operations.</p></details>
+<details class="qa"><summary>Explain Pod vs ReplicaSet vs Deployment.</summary>
+<p>A <strong>Pod</strong> is one running instance (one or more containers sharing a network namespace). A <strong>ReplicaSet</strong> keeps a fixed number of identical pods alive. A <strong>Deployment</strong> manages ReplicaSets over time: on an update it creates a new one and shifts pods over gradually, keeping the old one around so <code>kubectl rollout undo</code> works. You write the Deployment; the other two are created for you.</p></details>
+<details class="qa"><summary>Readiness vs liveness vs startup probes?</summary>
+<ul>
+  <li><strong>Readiness:</strong> "can I serve traffic?" Failing removes the pod from the Service, but doesn't restart it. Use it while a model loads.</li>
+  <li><strong>Liveness:</strong> "am I still working?" Failing restarts the container. Use it for deadlocks and hangs.</li>
+  <li><strong>Startup:</strong> protects a slow starter — the other two only take effect after it passes.</li>
+</ul>
+<p>A common mistake is a liveness probe that's too aggressive on a slow-loading model server, which puts it in a restart loop.</p></details>
+<details class="qa"><summary>How does a request reach a pod?</summary>
+<p>Client → cloud load balancer (for a <code>type: LoadBalancer</code> Service) or Ingress → a node → <strong>kube-proxy</strong>'s rules (iptables or IPVS) → one of the Service's endpoints, which are the <em>ready</em> pods matching its label selector → the container's <code>targetPort</code>. Inside the cluster, other pods just use the DNS name <code>service.namespace.svc.cluster.local</code>.</p></details>
+<details class="qa"><summary>How do rolling updates work, and how do you roll back?</summary>
+<p>Changing the pod template creates a new ReplicaSet. The Deployment scales it up and the old one down, respecting <code>maxSurge</code> (extra pods allowed) and <code>maxUnavailable</code> (how many may be missing). With <code>maxUnavailable: 0</code> a new pod must become ready before an old one goes. If new pods never become ready, the rollout stalls at the progress deadline and the old version keeps serving. <code>kubectl rollout undo</code> goes back to the previous revision (kept up to <code>revisionHistoryLimit</code>).</p></details>
+<details class="qa"><summary>Requests vs limits, and how do they relate to autoscaling?</summary>
+<p><strong>Requests</strong> are what the scheduler reserves and what the HPA measures utilisation against; <strong>limits</strong> are the ceiling (over the memory limit the container is OOMKilled; over the CPU limit it's throttled). No requests means no sensible scheduling and no CPU-based autoscaling. The HPA scales pods; the <strong>Cluster Autoscaler</strong> adds nodes when pods can't be placed; <strong>VPA</strong> tunes the requests themselves.</p></details>
+<details class="qa"><summary>A pod is stuck in Pending / CrashLoopBackOff / ImagePullBackOff. What do you do?</summary>
+<ul>
+  <li><strong>Pending:</strong> nothing can schedule it — not enough CPU or memory, a node selector or taint that doesn't match, or an unbound PVC. <code>kubectl describe pod</code> shows the scheduler's reason.</li>
+  <li><strong>ImagePullBackOff:</strong> wrong image name or tag, or missing registry credentials (<code>imagePullSecrets</code>, or Workload Identity).</li>
+  <li><strong>CrashLoopBackOff:</strong> the container keeps exiting — read <code>kubectl logs --previous</code>; often a missing env var, a missing file, or a too-strict liveness probe.</li>
+</ul></details>
+<details class="qa"><summary>How would you serve an ML model on Kubernetes?</summary>
+<p>Simplest: containerise the API (Chapter 17), keep the model in the image or pull it from a registry or bucket at startup, then Deployment + Service + HPA + probes, as in our manifests. At larger scale, use a serving layer such as <strong>KServe</strong> or <strong>Seldon</strong> for canary traffic splitting, autoscaling to zero and standard inference protocols; schedule GPUs with node selectors and resource limits; run pipelines with Kubeflow or Argo; and keep the model registry (MLflow) as the source of truth for which version is deployed.</p></details>
+<details class="qa"><summary>What runs in the control plane?</summary>
+<p><strong>API server</strong> (the only entry point, with auth and validation), <strong>etcd</strong> (the state store), <strong>scheduler</strong> (assigns pods to nodes) and <strong>controller manager</strong> (the reconciliation loops), plus a cloud controller for load balancers and disks. Each node runs a <strong>kubelet</strong> (starts containers, runs probes), <strong>kube-proxy</strong> (service networking) and a container runtime such as containerd. Managed services (GKE, EKS, AKS) run the control plane for you.</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s12"><span class="num">12</span>Recap</h2>
+<ul>
+  <li><strong>What:</strong> Kubernetes (Google, 2014, open source) runs containerised apps across a cluster and manages their whole lifecycle. You declare the desired state; controllers make it true.</li>
+  <li><strong>Features:</strong> load balancing, scaling, storage and self-healing — each needs a Service, an HPA with CPU requests, a PVC, and probes respectively.</li>
+  <li><strong>Pieces:</strong> control plane (API server, etcd, scheduler, controllers) and nodes (kubelet, kube-proxy, runtime). Objects: Pod → ReplicaSet → Deployment, plus Service, Ingress, ConfigMap/Secret, PVC, HPA, Namespace, Job.</li>
+  <li><strong>The demo:</strong> enable Container Registry and Kubernetes Engine → Cloud Shell → clone → <code>export PROJECT_ID</code> → <code>docker build -t gcr.io/$PROJECT_ID/insurance-app:v1 .</code> → <code>gcloud auth configure-docker</code> → <code>docker push</code> → create a cluster (about 5 min) → <code>kubectl create deployment</code> → <code>kubectl expose --type=LoadBalancer --port 80 --target-port 8080</code> → open the external IP → predict.</li>
+  <li><strong>Build failures to expect:</strong> an outdated Python base image and pinned library versions that no longer install.</li>
+  <li><strong>Prefer manifests</strong> in git over one-off commands, and add probes, resource requests, an HPA and a non-root security context.</li>
+  <li><strong>Delete the cluster, the Service and the images</strong> when you're done, or the bill keeps running.</li>
+</ul>
+
+<div class="pager">
+  <a href="20_cicd_circleci.html"><small>← Previous</small>20 · CI/CD with CircleCI (not written)</a>
+  <a class="next" href="22_sagemaker.html"><small>Next →</small>22 · ML project using AWS SageMaker</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+<script>
+// ---- manifest explorer
+(function () {
+  const L = [
+    ["apiVersion: apps/v1\nkind: Deployment", "Which object, which API version", "Every manifest starts with these two. <code>apps/v1</code> is the stable API group that contains Deployments, ReplicaSets, StatefulSets and DaemonSets."],
+    ["metadata:\n  name: yt-sentiment\n  namespace: mlops\n  labels: { app: yt-sentiment }", "Name, namespace, labels", "The name is unique inside the namespace. <b>Labels</b> are key/value tags — the whole system works by selecting objects by label rather than by name."],
+    ["spec:\n  replicas: 3", "How many copies", "The desired number of pods. Change it and re-apply (or let the HorizontalPodAutoscaler change it). This single number is what makes load balancing and rolling updates possible."],
+    ["  revisionHistoryLimit: 5", "Rollback history", "Keeps the last 5 ReplicaSets so <code>kubectl rollout undo</code> has something to go back to."],
+    ["  selector:\n    matchLabels: { app: yt-sentiment }", "Which pods belong to me", "The Deployment owns every pod carrying this label. It must match the template's labels below, otherwise the API server rejects the manifest."],
+    ["  strategy:\n    type: RollingUpdate\n    rollingUpdate:\n      maxSurge: 1\n      maxUnavailable: 0", "Update strategy", "<b>maxSurge: 1</b> — at most one extra pod during an update.<br><b>maxUnavailable: 0</b> — never fewer ready pods than <code>replicas</code>, so no request is dropped. The other option, <code>Recreate</code>, stops everything first (that's what Chapter 18's deploy script effectively did)."],
+    ["  template:\n    metadata:\n      labels: { app: yt-sentiment }", "The pod template", "The blueprint for every pod. Changing <em>anything</em> in this template starts a new rollout; changing <code>replicas</code> alone does not."],
+    ["      containers:\n        - name: api\n          image: REGION-docker.pkg.dev/PROJECT_ID/ml/yt-sentiment:v1", "The image", "The image built in Chapter 17 and pushed by Chapter 18's pipeline. Use an immutable tag (a commit SHA) rather than <code>latest</code>, so you always know what is running."],
+    ["          ports:\n            - name: http\n              containerPort: 8080", "The container's port", "Documentation plus a name the Service and probes can refer to. The app itself listens on 8080 (gunicorn)."],
+    ["          env:\n            - name: PORT\n              value: \"8080\"", "Configuration", "Simple values inline; real configuration comes from a <b>ConfigMap</b>, and credentials from a <b>Secret</b> (mounted as env vars or files)."],
+    ["          resources:\n            requests:\n              cpu: 250m\n              memory: 512Mi", "Requests: what is reserved", "The scheduler uses these to choose a node and will leave a pod <b>Pending</b> if nothing has room. The HPA also compares actual CPU against the request — with no request there is no percentage, and no CPU autoscaling."],
+    ["            limits:\n              cpu: \"1\"\n              memory: 1Gi", "Limits: the ceiling", "Over the <b>memory</b> limit the container is killed (OOMKilled) and restarted. Over the <b>CPU</b> limit it is only throttled. Model servers usually want a comfortable memory limit."],
+    ["          startupProbe:\n            httpGet: { path: /, port: http }\n            failureThreshold: 30\n            periodSeconds: 5", "Startup probe", "Gives a slow start (loading a model) up to 30 × 5 s before the liveness probe applies. Without it, a strict liveness probe restarts the pod forever."],
+    ["          readinessProbe:\n            httpGet: { path: /, port: http }\n            periodSeconds: 10", "Readiness probe", "\"Can I take traffic?\" Failing removes the pod from the Service's endpoints but leaves it running. This is what makes a rolling update safe, and what kept the broken v3 out of the load balancer in the simulator."],
+    ["          livenessProbe:\n            httpGet: { path: /, port: http }\n            periodSeconds: 20\n            failureThreshold: 3", "Liveness probe", "\"Am I still alive?\" Three failures in a row and the kubelet restarts the container. This is the \"kills containers that don't respond to health checks\" from the video."],
+    ["          securityContext:\n            runAsNonRoot: true\n            runAsUser: 10001\n            allowPrivilegeEscalation: false\n            readOnlyRootFilesystem: true\n            capabilities: { drop: [\"ALL\"] }", "Security context", "Containers run as root by default. This drops every Linux capability, forbids privilege escalation and makes the filesystem read-only, so a compromised process has very little to work with."],
+    ["          volumeMounts:\n            - name: tmp\n              mountPath: /tmp\n      volumes:\n        - name: tmp\n          emptyDir: {}", "A writable /tmp", "With a read-only root filesystem, the app still needs somewhere to write — matplotlib and gunicorn use <code>/tmp</code>. <code>emptyDir</code> lives and dies with the pod. Data that must survive needs a <b>PersistentVolumeClaim</b>."],
+    ["      terminationGracePeriodSeconds: 30", "Graceful shutdown", "On deletion the pod leaves the Service, gets SIGTERM, and has 30 s to finish in-flight requests before SIGKILL. Handling SIGTERM in the app is what makes restarts invisible to users."],
+  ];
+  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  const paint = s => esc(s)
+    .replace(/(#.*)$/gm, '<span class="c">$1</span>')
+    .replace(/^(\s*-?\s*)([A-Za-z][\w.\/-]*):/gm, '$1<span class="k">$2</span>:');
+  const host = document.getElementById("yx"), box = document.getElementById("yx-explain");
+  const btns = [];
+  L.forEach(([code, title, text], i) => {
+    const b = document.createElement("button");
+    b.innerHTML = paint(code);
+    b.dataset.i = i;
+    b.addEventListener("click", () => show(i));
+    host.appendChild(b); btns.push(b);
+  });
+  function show(i) {
+    btns.forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.i === i)));
+    box.innerHTML = `<h4>${L[i][1]}</h4><p style="margin:0">${L[i][2]}</p>`;
+  }
+  show(2);
+})();
+
+// ---- cluster simulator
+(function () {
+  const $ = id => document.getElementById(id);
+  const CAP = 6;                     // pods per node
+  let S, timer, seq;
+
+  function reset() {
+    clearInterval(timer);
+    S = { desired: 3, image: "v1", pods: [], nodes: { "node-1": true, "node-2": true }, log: [], t: 0, rev: 1, prev: null, served: 0 };
+    seq = 1;
+    for (let i = 0; i < S.desired; i++) {          // start from a healthy cluster
+      const pod = { name: `yt-sentiment-${(seq++).toString(16).padStart(4, "0")}`, image: S.image, ready: true, node: null, restarts: 0, born: 0 };
+      S.pods.push(pod); pod.node = freeNode();
+    }
+    log("# apply -f manifests/  → Deployment + Service created");
+    log("  3 pods Running and Ready. Now break something.");
+    draw();
+    timer = setInterval(tick, 900);
+  }
+  function log(s) { S.log.push(s); if (S.log.length > 60) S.log.shift(); }
+  function freeNode() {
+    const counts = {};
+    for (const n in S.nodes) counts[n] = S.pods.filter(p => p.node === n).length;
+    const fits = Object.keys(S.nodes).filter(n => S.nodes[n] && counts[n] < CAP);
+    if (!fits.length) return null;
+    return fits.sort((a, b) => counts[a] - counts[b])[0];
+  }
+  function tick() {
+    S.t++;
+    // ReplicaSet controller: keep `desired` pods of the current image
+    const current = S.pods.filter(p => p.image === S.image);
+    const old = S.pods.filter(p => p.image !== S.image);
+    const readyCurrent = current.filter(p => p.ready).length;
+    if (readyCurrent >= S.desired && old.length) {
+      old.forEach(p => log(`  replicaset  removed ${p.name} (revision retired)`));
+      S.pods = current;
+    } else if (current.length < S.desired || (old.length && current.length < S.desired + 1)) {
+      const total = S.pods.length;
+      if (current.length < S.desired && (!old.length || total < S.desired + 1)) {
+        const p = { name: `yt-sentiment-${(seq++).toString(16).padStart(4, "0")}`, image: S.image, ready: false, node: null, restarts: 0, born: S.t };
+        S.pods.push(p);
+        log(`  replicaset  created pod ${p.name} (${current.length + 1}/${S.desired})`);
+      }
+    }
+    if (S.pods.length > S.desired && !old.length) {
+      const victim = S.pods.find(p => !p.ready) || S.pods[S.pods.length - 1];
+      S.pods = S.pods.filter(p => p !== victim);
+      log(`  replicaset  removed ${victim.name} (scaled down)`);
+    }
+    // old pods retire one at a time once the new ones are ready
+    if (old.length && current.filter(p => p.ready).length > 0 && S.pods.filter(p => p.ready).length > S.desired) {
+      const victim = old[0];
+      S.pods = S.pods.filter(p => p !== victim);
+      log(`  replicaset  removed ${victim.name} (old version)`);
+    }
+    // scheduler
+    S.pods.filter(p => !p.node).forEach(p => {
+      const n = freeNode();
+      if (n) { p.node = n; p.born = S.t; log(`  scheduler   assigned ${p.name} → ${n}`); }
+      else if (S.t % 4 === 0) log(`  scheduler   ${p.name} stays Pending: no node has room`);
+    });
+    // kubelet + probes
+    S.pods.forEach(p => {
+      if (p.node && !p.ready && S.t - p.born >= 2) {
+        if (p.image.includes("bad")) {
+          if ((S.t - p.born) % 3 === 0) log(`  probe       readiness failed on ${p.name} (${p.image})`);
+        } else { p.ready = true; log(`  kubelet     ${p.name} is Ready`); }
+      }
+    });
+    S.served += S.pods.filter(p => p.ready).length ? 10 : 0;
+    draw();
+  }
+  function act(a) {
+    const ready = S.pods.filter(p => p.ready);
+    if (a === "reset") return reset();
+    if (a === "kill" && S.pods.length) {
+      const p = S.pods[Math.floor(Math.random() * S.pods.length)];
+      S.pods = S.pods.filter(x => x !== p);
+      log(`$ kubectl delete pod ${p.name}`);
+    }
+    if (a === "hang" && ready.length) {
+      const p = ready[0];
+      p.ready = false; p.restarts++; p.born = S.t;
+      log(`  probe       liveness failed on ${p.name} → kubelet restarts it (restarts ${p.restarts})`);
+    }
+    if (a === "scale-up") { S.desired++; log(`$ kubectl scale --replicas=${S.desired}`); }
+    if (a === "scale-down" && S.desired > 1) { S.desired--; log(`$ kubectl scale --replicas=${S.desired}`); }
+    if (a === "v2" || a === "bad") {
+      S.prev = S.image;
+      S.image = a === "v2" ? "v2" : "v3-bad";
+      S.rev++;
+      log(`$ kubectl set image … api=${S.image}   (revision ${S.rev})`);
+      if (a === "bad") log("  # this image starts but never passes its readiness probe");
+    }
+    if (a === "undo") {
+      if (!S.prev) return log("  # nothing to undo");
+      const back = S.prev;
+      S.prev = S.image; S.image = back; S.rev++;
+      log(`$ kubectl rollout undo → revision ${S.rev} (${back})`);
+    }
+    if (a === "node") {
+      const n = S.nodes["node-1"] ? "node-1" : "node-2";
+      S.nodes[n] = false;
+      const lost = S.pods.filter(p => p.node === n).length;
+      S.pods = S.pods.filter(p => p.node !== n);
+      log(`  node        ${n} went NotReady — ${lost} pod(s) lost`);
+    }
+    draw();
+  }
+  function draw() {
+    for (const n of ["node-1", "node-2"]) {
+      const id = n === "node-1" ? "n1" : "n2";
+      const pods = S.pods.filter(p => p.node === n);
+      $(id).className = "node" + (S.nodes[n] ? "" : " down");
+      $(id + "cap").textContent = `${pods.length}/${CAP}`;
+      $(id + "p").innerHTML = pods.map(p => {
+        const cls = p.ready ? "ready" : p.image.includes("bad") ? "bad" : "pending";
+        return `<div class="pod ${cls}"><span>${p.name.replace("yt-sentiment-", "pod/")}</span><span class="tag">${p.image}${p.restarts ? " ↻" + p.restarts : ""} ${p.ready ? "1/1" : "0/1"}</span></div>`;
+      }).join("") || '<div style="font-size:12px;color:var(--ink-3)">no pods</div>';
+    }
+    const pending = S.pods.filter(p => !p.node);
+    if (pending.length) $("n1p").insertAdjacentHTML("beforeend",
+      pending.map(p => `<div class="pod pending"><span>${p.name.replace("yt-sentiment-", "pod/")}</span><span class="tag">Pending</span></div>`).join(""));
+    const ready = S.pods.filter(p => p.ready).length;
+    $("eps").textContent = ready;
+    $("eps").className = "pill " + (ready ? "ok" : "bad");
+    $("served").innerHTML = ready
+      ? `each pod gets <b>${Math.round(300 / ready)}</b> of 300 requests`
+      : '<span style="color:var(--bad)">503 — no ready endpoints</span>';
+    $("st-desired").textContent = S.desired;
+    $("st-ready").textContent = ready;
+    $("st-image").textContent = S.image;
+    const stuck = S.pods.some(p => p.image.includes("bad"));
+    $("st-note").innerHTML = stuck
+      ? '<span class="pill bad">rollout stuck: readiness never passes → press “rollout undo”</span>'
+      : (ready < S.desired ? '<span class="pill">converging…</span>' : '<span class="pill ok">desired state reached</span>');
+    $("ksim-log").textContent = S.log.join("\n");
+    $("ksim-log").scrollTop = 1e6;
+  }
+  document.querySelectorAll("#ksim .btns button").forEach(b => b.addEventListener("click", () => act(b.dataset.a)));
+  reset();
+})();
+</script>
+</body>
+</html>

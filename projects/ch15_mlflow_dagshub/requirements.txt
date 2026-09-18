@@ -1,0 +1,6 @@
+mlflow          # the course pins mlflow==2.2.2; this project was run with MLflow 3.x
+dagshub         # only needed for the DagsHub remote
+scikit-learn
+pandas
+numpy
+certifi

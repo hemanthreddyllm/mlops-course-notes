@@ -1,0 +1,84 @@
+schema: '2.0'
+stages:
+  data_ingestion:
+    cmd: python src/data_ingestion.py
+    deps:
+    - path: src/data_ingestion.py
+      hash: md5
+      md5: d9c536572a7b02f4ae15797bffb64359
+      size: 1802
+    outs:
+    - path: data/raw
+      hash: md5
+      md5: 6d7c9717b531961233cd66af69381384.dir
+      size: 817597
+      nfiles: 2
+  data_preprocessing:
+    cmd: python src/data_preprocessing.py
+    deps:
+    - path: data/raw
+      hash: md5
+      md5: 6d7c9717b531961233cd66af69381384.dir
+      size: 817597
+      nfiles: 2
+    - path: src/data_preprocessing.py
+      hash: md5
+      md5: 23398037cab5f4fcc322f5268d7f1afe
+      size: 1727
+    outs:
+    - path: data/processed
+      hash: md5
+      md5: 0f142ce51fdef3a58fb9c7187137e9f3.dir
+      size: 527987
+      nfiles: 2
+  feature_engineering:
+    cmd: python src/feature_engineering.py
+    deps:
+    - path: data/processed
+      hash: md5
+      md5: 0f142ce51fdef3a58fb9c7187137e9f3.dir
+      size: 527987
+      nfiles: 2
+    - path: src/feature_engineering.py
+      hash: md5
+      md5: f09bad4a4a413573f6acc98e28200014
+      size: 1572
+    outs:
+    - path: data/features
+      hash: md5
+      md5: 94da89901c618310ed50b4054485f4cc.dir
+      size: 20804489
+      nfiles: 3
+  model_building:
+    cmd: python src/model_building.py
+    deps:
+    - path: data/features
+      hash: md5
+      md5: 94da89901c618310ed50b4054485f4cc.dir
+      size: 20804489
+      nfiles: 3
+    - path: src/model_building.py
+      hash: md5
+      md5: eeaac071b35b16b347d096607c1ab66c
+      size: 938
+    outs:
+    - path: model.pkl
+      hash: md5
+      md5: 09421fffde9363f307e49c7710b228dd
+      size: 176818
+  model_evaluation:
+    cmd: python src/model_evaluation.py
+    deps:
+    - path: model.pkl
+      hash: md5
+      md5: 09421fffde9363f307e49c7710b228dd
+      size: 176818
+    - path: src/model_evaluation.py
+      hash: md5
+      md5: ff314617d651ccb61332cae4013e9ccc
+      size: 1287
+    outs:
+    - path: metrics.json
+      hash: md5
+      md5: 23291f3a5b78a460f992eec61d2ef8ad
+      size: 92

@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>14 · Introduction to MLflow & Experiment Tracking — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .sheet { border-collapse: collapse; font: 13px var(--mono); width: 100%; }
+  .sheet th, .sheet td { border: 1px solid var(--rule); padding: 6px 10px; }
+  .sheet th { background: #e8f0e4; color: #1d4d1a; text-align: center; font-weight: 600; }
+  .sheet td.rowh { background: var(--surface-2); color: var(--ink-3); text-align: center; width: 34px; }
+  .sheet tr.best td:not(.rowh) { background: var(--good-soft); font-weight: 600; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sheet th { background: #1f2d1c; color: #bfe3b8; } }
+  :root[data-theme="dark"] .sheet th { background: #1f2d1c; color: #bfe3b8; }
+  .heat { display: grid; grid-template-columns: 90px repeat(3, 1fr); gap: 4px; max-width: 520px; margin: 10px 0; font: 13px var(--mono); }
+  .heat div { padding: 10px 6px; text-align: center; border-radius: 6px; }
+  .heat .h { background: none; color: var(--ink-3); font: 600 12px var(--sans); }
+  .heat .c { cursor: default; }
+  .shot { border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; margin: 10px 0 4px; }
+  .shot img { display: block; width: 100%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 14</span></div>
+<div class="eyebrow">Chapter 14 · Introduction to MLflow &amp; Experiment Tracking</div>
+<h1>From an Excel sheet of experiments to MLflow</h1>
+<p class="lede">The instructor introduces <strong>experiment tracking</strong>. First comes hyperparameter tuning: try parameter combinations, compare the scores, keep the best. Tuning is cheap for small ML models but very expensive for deep learning. Tracking the trials by hand in a spreadsheet is slow and error-prone, and <strong>MLflow</strong> automates it: a few lines of code record every run, and a UI with plots such as parallel coordinates lets you pick the best model.</p>
+<div class="meta">
+  <span class="chip">Video 03:26:39 – 03:42:34</span>
+  <span class="chip">Concepts (demo continues in Ch 15)</span>
+  <span class="chip">Hands-on: ElasticNet + MLflow, executed</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">What this part of the course covers</a></li>
+    <li><a href="#s2">Hyperparameter tuning in one picture</a></li>
+    <li><a href="#s3">Why tuning deep learning is expensive</a></li>
+    <li><a href="#s4">The ElasticNet scenario</a></li>
+    <li><a href="#s5">Tracking by hand: the Excel sheet</a></li>
+    <li><a href="#s6">MLflow: automating the tracking</a></li>
+    <li><a href="#s7">Reading a parallel coordinates plot (interactive)</a></li>
+    <li><a href="#s8">MLflow today, and where to learn more</a></li>
+    <li><a href="#hands-on">Hands-on files: what we built</a></li>
+    <li><a href="#s9">Interview questions</a></li>
+    <li><a href="#s10">Recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>What this part of the course covers <span class="ts">03:26:40</span></h2>
+<div class="grid">
+  <div class="card"><span class="tag">1 · THIS PAGE</span><h4>Hyperparameter tuning</h4><p>What it is, and why it's a problem for complex models.</p></div>
+  <div class="card"><span class="tag">2 · THIS PAGE</span><h4>Experiment tracking</h4><p>Why you need it, and how MLflow does it.</p></div>
+  <div class="card"><span class="tag">3 · CHAPTER 15</span><h4>Practical demo</h4><p>MLflow with different parameters, tracked on a remote server (DagsHub).</p></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>Hyperparameter tuning in one picture <span class="ts">03:27:45</span></h2>
+<p>You have <strong>lists of candidate values</strong>, for example P1 = learning rates <code>0.001, 0.002, 0.003</code> and P2 = optimizers <code>SGD, Adam, RMSprop</code>. For each combination, <strong>train the model, record the score</strong>, then <strong>compare and keep the best</strong>.</p>
+<figure>
+  <p class="fig-title">Tuning loop (the instructor's example scores)</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 230" role="img" aria-label="Three parameter settings are each used to train the model, giving scores 0.88, 0.89 and 0.91; the best, 0.91, is selected">
+    <defs><marker id="m14a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <rect x="10" y="20" width="180" height="190" rx="10" class="box-2"/>
+    <text x="100" y="44" text-anchor="middle" class="t-sm t-b">Candidate values</text>
+    <text x="24" y="72" class="t-xs"><tspan class="t-b">P1 · learning rate</tspan></text>
+    <text x="24" y="90" class="t-xs">0.001 · 0.002 · 0.003</text>
+    <text x="24" y="120" class="t-xs"><tspan class="t-b">P2 · optimizer</tspan></text>
+    <text x="24" y="138" class="t-xs">SGD · Adam · RMSprop</text>
+    <text x="24" y="176" class="t-xs t-mute">3 × 3 = 9 possible</text>
+    <text x="24" y="192" class="t-xs t-mute">combinations</text>
+    <g class="t-xs">
+      <rect x="250" y="24" width="150" height="40" rx="8" class="box"/><text x="325" y="48" text-anchor="middle">setting 1 → train</text>
+      <rect x="250" y="94" width="150" height="40" rx="8" class="box"/><text x="325" y="118" text-anchor="middle">setting 2 → train</text>
+      <rect x="250" y="164" width="150" height="40" rx="8" class="box"/><text x="325" y="188" text-anchor="middle">setting 3 → train</text>
+    </g>
+    <path d="M190,70 L248,44" class="edge" marker-end="url(#m14a)"/><path d="M190,114 L248,114" class="edge" marker-end="url(#m14a)"/><path d="M190,160 L248,184" class="edge" marker-end="url(#m14a)"/>
+    <g class="t-sm t-b">
+      <rect x="440" y="24" width="100" height="40" rx="8" class="box"/><text x="490" y="49" text-anchor="middle">0.88</text>
+      <rect x="440" y="94" width="100" height="40" rx="8" class="box"/><text x="490" y="119" text-anchor="middle">0.89</text>
+      <rect x="440" y="164" width="100" height="40" rx="8" fill="var(--good-soft)" stroke="var(--good)" stroke-width="2"/><text x="490" y="189" text-anchor="middle">0.91 ✓</text>
+    </g>
+    <path d="M400,44 L438,44" class="edge" marker-end="url(#m14a)"/><path d="M400,114 L438,114" class="edge" marker-end="url(#m14a)"/><path d="M400,184 L438,184" class="edge" marker-end="url(#m14a)"/>
+    <text x="490" y="16" text-anchor="middle" class="t-xs">accuracy</text>
+    <rect x="590" y="94" width="160" height="60" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+    <text x="670" y="118" text-anchor="middle" class="t-sm t-b">compare → pick best</text>
+    <text x="670" y="138" text-anchor="middle" class="t-xs">finalise setting 3</text>
+    <path d="M540,184 Q570,160 588,140" class="edge" marker-end="url(#m14a)"/>
+  </svg>
+  </div>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>Why tuning deep learning is expensive <span class="ts">03:29:52</span></h2>
+<div class="grid">
+  <div class="card"><h4>Classic ML = small statistical models</h4><p>Linear regression is <code>y = m·x + c</code>, with <strong>2 weights</strong> to learn. Training is simple arithmetic, so tuning runs happily on a <strong>CPU</strong>.</p></div>
+  <div class="card"><h4>Deep learning = many interconnected neurons</h4><p>Input nodes, hidden layers and output nodes, each connection with a weight, plus biases. The instructor's small drawing already has <strong>12 weights</strong>. With 100 layers the count explodes, and you need a <strong>GPU</strong>.</p></div>
+</div>
+
+<figure>
+  <p class="fig-title">The instructor's small network: 3 inputs → 2 → 2 → 1 output</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 220" role="img" aria-label="Neural network with three inputs, two hidden layers of two neurons, one output: 3×2 + 2×2 + 2×1 = 12 weights plus 5 biases">
+    <g stroke="var(--rule)" stroke-width="1.3">
+      <line x1="120" y1="50" x2="300" y2="80"/><line x1="120" y1="50" x2="300" y2="150"/>
+      <line x1="120" y1="115" x2="300" y2="80"/><line x1="120" y1="115" x2="300" y2="150"/>
+      <line x1="120" y1="180" x2="300" y2="80"/><line x1="120" y1="180" x2="300" y2="150"/>
+      <line x1="300" y1="80" x2="480" y2="80"/><line x1="300" y1="80" x2="480" y2="150"/>
+      <line x1="300" y1="150" x2="480" y2="80"/><line x1="300" y1="150" x2="480" y2="150"/>
+      <line x1="480" y1="80" x2="640" y2="115"/><line x1="480" y1="150" x2="640" y2="115"/>
+    </g>
+    <g>
+      <circle cx="120" cy="50" r="18" fill="var(--surface)" stroke="var(--s1)" stroke-width="2"/><text x="120" y="54" text-anchor="middle" class="t-xs t-b">x1</text>
+      <circle cx="120" cy="115" r="18" fill="var(--surface)" stroke="var(--s1)" stroke-width="2"/><text x="120" y="119" text-anchor="middle" class="t-xs t-b">x2</text>
+      <circle cx="120" cy="180" r="18" fill="var(--surface)" stroke="var(--s1)" stroke-width="2"/><text x="120" y="184" text-anchor="middle" class="t-xs t-b">x3</text>
+      <circle cx="300" cy="80" r="18" fill="var(--accent-soft)" stroke="var(--s1)" stroke-width="2"/><text x="300" y="84" text-anchor="middle" class="t-xs">b1</text>
+      <circle cx="300" cy="150" r="18" fill="var(--accent-soft)" stroke="var(--s1)" stroke-width="2"/><text x="300" y="154" text-anchor="middle" class="t-xs">b2</text>
+      <circle cx="480" cy="80" r="18" fill="var(--accent-soft)" stroke="var(--s1)" stroke-width="2"/><text x="480" y="84" text-anchor="middle" class="t-xs">b3</text>
+      <circle cx="480" cy="150" r="18" fill="var(--accent-soft)" stroke="var(--s1)" stroke-width="2"/><text x="480" y="154" text-anchor="middle" class="t-xs">b4</text>
+      <circle cx="640" cy="115" r="18" fill="var(--surface)" stroke="var(--s2)" stroke-width="2"/><text x="640" y="119" text-anchor="middle" class="t-xs t-b">ŷ</text>
+    </g>
+    <g class="t-xs">
+      <text x="120" y="212" text-anchor="middle">input</text><text x="300" y="212" text-anchor="middle">hidden 1</text><text x="480" y="212" text-anchor="middle">hidden 2</text><text x="640" y="212" text-anchor="middle">output</text>
+      <text x="210" y="30" text-anchor="middle">3×2 = 6 weights</text><text x="390" y="30" text-anchor="middle">2×2 = 4</text><text x="560" y="30" text-anchor="middle">2×1 = 2</text>
+      <text x="706" y="52" text-anchor="middle" class="t-b">= 12 weights</text><text x="706" y="68" text-anchor="middle">+ 5 biases</text><text x="706" y="84" text-anchor="middle">= 17 params</text>
+    </g>
+  </svg>
+  </div>
+  <figcaption>All of these are updated during backpropagation. Now imagine 100 layers.</figcaption>
+</figure>
+
+<figure>
+  <p class="fig-title">Trainable parameters, from linear regression to ResNet-50 (log scale)</p>
+  <p class="fig-sub">Computed in the hands-on notebook. ResNet-50 and BERT-base are their published sizes. Hover a bar.</p>
+  <div class="legend"><span><i style="background:var(--s1)"></i>CPU is fine</span><span><i style="background:var(--s2)"></i>needs a GPU in practice</span></div>
+  <div class="scroll">
+  <svg viewBox="0 0 760 250" role="img" aria-label="Log scale bars: linear regression 2, ElasticNet on wine 12, small network 17, 100-layer MLP of width 512 about 26 million, ResNet-50 25.6 million, BERT-base 110 million">
+    <!-- x: 10^0 at 250 → 10^9 at 730 : 53.33 px per decade -->
+    <g class="t-xs">
+      <line x1="250" y1="12" x2="250" y2="214" class="axis"/>
+      <line x1="356.7" y1="12" x2="356.7" y2="214" class="grid-line"/><line x1="463.3" y1="12" x2="463.3" y2="214" class="grid-line"/><line x1="570" y1="12" x2="570" y2="214" class="grid-line"/><line x1="676.7" y1="12" x2="676.7" y2="214" class="grid-line"/>
+      <text x="250" y="230" text-anchor="middle">1</text><text x="356.7" y="230" text-anchor="middle">100</text><text x="463.3" y="230" text-anchor="middle">10k</text><text x="570" y="230" text-anchor="middle">1M</text><text x="676.7" y="230" text-anchor="middle">100M</text>
+      <text x="490" y="246" text-anchor="middle">trainable parameters</text>
+    </g>
+    <g data-tip="<b>Linear regression</b><br>2 parameters (m and c)"><text x="240" y="30" text-anchor="end" class="t-sm">linear regression</text><rect x="250" y="18" width="16" height="18" rx="3" fill="var(--s1)"/><text x="272" y="31" class="t-xs t-b">2</text></g>
+    <g data-tip="<b>ElasticNet on the wine data</b><br>11 coefficients + intercept = 12"><text x="240" y="62" text-anchor="end" class="t-sm">ElasticNet (wine)</text><rect x="250" y="50" width="57.5" height="18" rx="3" fill="var(--s1)"/><text x="313" y="63" class="t-xs t-b">12</text></g>
+    <g data-tip="<b>The instructor's 3-2-2-1 network</b><br>12 weights + 5 biases = 17"><text x="240" y="94" text-anchor="end" class="t-sm">small net 3-2-2-1</text><rect x="250" y="82" width="65.6" height="18" rx="3" fill="var(--s1)"/><text x="322" y="95" class="t-xs t-b">17</text></g>
+    <g data-tip="<b>100-layer MLP, width 512</b><br>26,266,113 parameters"><text x="240" y="126" text-anchor="end" class="t-sm">100-layer MLP ×512</text><rect x="250" y="114" width="395.2" height="18" rx="3" fill="var(--s2)"/><text x="651" y="127" class="t-xs t-b">26.3M</text></g>
+    <g data-tip="<b>ResNet-50</b><br>≈ 25.6 million parameters · the instructor: 1–2 hours per run on free Colab"><text x="240" y="158" text-anchor="end" class="t-sm">ResNet-50</text><rect x="250" y="146" width="394.6" height="18" rx="3" fill="var(--s2)"/><text x="651" y="159" class="t-xs t-b">25.6M</text></g>
+    <g data-tip="<b>BERT-base</b><br>≈ 110 million parameters"><text x="240" y="190" text-anchor="end" class="t-sm">BERT-base</text><rect x="250" y="178" width="428.4" height="18" rx="3" fill="var(--s2)"/><text x="684" y="191" class="t-xs t-b">110M</text></g>
+  </svg>
+  </div>
+  <figcaption>In the notebook one ElasticNet fit took <b>≈ 1.4 ms</b> on a laptop CPU. The instructor mentions ResNet-50 training taking <b>1–2 hours per run</b> on free Colab. Multiply that by every hyperparameter combination and the cost of tuning deep learning is clear.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>The ElasticNet scenario <span class="ts">03:33:02</span></h2>
+<p>A second scenario: no big tuning search, just a few candidate values you already suspect are good. The model is scikit-learn's <strong>ElasticNet</strong>, linear regression with L1 + L2 <strong>regularisation</strong>, used when a model over- or under-fits. It has several parameters: <code>alpha</code>, <code>l1_ratio</code>, <code>fit_intercept</code>, <code>precompute</code>, <code>max_iter</code>… The instructor focuses on two:</p>
+<div class="grid">
+  <div class="card"><h4><code>l1_ratio</code></h4><p>Candidates chosen from experience: <strong>0.5, 0.3, 0.4</strong>.</p></div>
+  <div class="card"><h4><code>alpha</code></h4><p>Candidates: <strong>0.1, 0.9, 0.2</strong>.</p></div>
+</div>
+<p>An experienced data scientist narrows the options like this, the same way you'd usually start with a learning rate of <code>0.001</code> without searching. The best value is somewhere among the candidates, and experiments find which one:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Experiment</th><th>l1_ratio</th><th>alpha</th><th class="num">score (video)</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>0.5</td><td>0.1</td><td class="num">0.59</td></tr>
+    <tr><td>2</td><td>0.3</td><td>0.9</td><td class="num">0.77</td></tr>
+    <tr><td><strong>3</strong></td><td><strong>0.4</strong></td><td><strong>0.2</strong></td><td class="num"><strong>0.91 ✓</strong></td></tr>
+  </tbody>
+</table>
+</div>
+<div class="callout wrong"><span class="label">Three precision notes</span>
+<ul>
+  <li><strong>"Accuracy" isn't the right metric here.</strong> ElasticNet is a <em>regression</em> model, so you evaluate it with RMSE / MAE (lower is better) and R² (higher is better). The instructor's own demo code logs exactly these. The scores above are illustrative numbers from the whiteboard.</li>
+  <li><strong>Three experiments aren't the full search.</strong> Pairing the lists position by position tests 3 of the 3 × 3 = <strong>9</strong> combinations. The <a href="#hands-on">hands-on run</a> shows that the full grid finds a better setting.</li>
+  <li><strong>"You already know the learning rate" is a starting point, not a rule.</strong> 0.001 is a common default (e.g. for Adam), but the best learning rate varies by model and data, and it's usually among the first things people tune.</li>
+</ul></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>Tracking by hand: the Excel sheet <span class="ts">03:37:11</span></h2>
+<p>With 50 or 100 candidate values you'd run 50 or 100 experiments. To remember the results, the traditional approach is a <strong>spreadsheet</strong>: one column for the iteration, one for each parameter, one for the score.</p>
+<div class="table-wrap" style="max-width:560px">
+<table class="sheet">
+  <thead><tr><th></th><th>A · iteration</th><th>B · l1_ratio</th><th>C · alpha</th><th>D · score</th></tr></thead>
+  <tbody>
+    <tr><td class="rowh">2</td><td>1</td><td>0.5</td><td>0.1</td><td>0.59</td></tr>
+    <tr><td class="rowh">3</td><td>2</td><td>0.3</td><td>0.9</td><td>0.77</td></tr>
+    <tr class="best"><td class="rowh">4</td><td>3</td><td>0.4</td><td>0.2</td><td>0.91</td></tr>
+    <tr><td class="rowh">5</td><td>…</td><td>…</td><td>…</td><td>…</td></tr>
+    <tr><td class="rowh">101</td><td>100</td><td>?</td><td>?</td><td>?</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="grid">
+  <div class="card"><h4 style="color:var(--bad)">It's all manual</h4><p>Collecting values, typing them in, and scanning rows by eye to find the best model and parameters.</p></div>
+  <div class="card"><h4 style="color:var(--bad)">It's disconnected</h4><p>Beyond the video: a row doesn't record which <strong>code version</strong>, <strong>data</strong> or <strong>model file</strong> produced it, and sharing the sheet across a team gets messy fast.</p></div>
+</div>
+<div class="callout key"><span class="label">The instructor's reminder</span><p>MLOps tools exist to <strong>automate the work you'd otherwise do by hand</strong>. Manual experiment tracking is exactly that kind of work, and that's where MLflow comes in.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>MLflow: automating the tracking <span class="ts">03:39:16</span></h2>
+<p>Add a few <strong>MLflow calls</strong> to your training code and it <strong>automatically records every experiment</strong>. You then get a <strong>web UI</strong> where you can look at plots, graphs, loss and accuracy, and choose the best model.</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 230" role="img" aria-label="Training code with mlflow log calls sends params, metrics and model artifacts to a tracking store; the MLflow UI reads it to compare runs, plot charts and pick the best model">
+    <defs><marker id="m14b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker></defs>
+    <rect x="10" y="20" width="250" height="190" rx="10" fill="var(--code-bg)"/>
+    <text x="26" y="44" style="font:12px var(--mono);fill:#8f8e86"># train.py</text>
+    <text x="26" y="66" style="font:12px var(--mono);fill:#f1f0ea">for l1, a in grid:</text>
+    <text x="26" y="86" style="font:12px var(--mono);fill:#86b6ef">  with mlflow.start_run():</text>
+    <text x="26" y="106" style="font:12px var(--mono);fill:#f1f0ea">    model.fit(X, y)</text>
+    <text x="26" y="126" style="font:12px var(--mono);fill:#86b6ef">    mlflow.log_params(...)</text>
+    <text x="26" y="146" style="font:12px var(--mono);fill:#86b6ef">    mlflow.log_metrics(...)</text>
+    <text x="26" y="166" style="font:12px var(--mono);fill:#86b6ef">    mlflow.sklearn.log_model(</text>
+    <text x="26" y="186" style="font:12px var(--mono);fill:#86b6ef">        model, name="model")</text>
+    <path d="M260,115 L318,115" class="edge-accent" marker-end="url(#m14b)"/>
+    <rect x="320" y="40" width="190" height="150" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+    <text x="415" y="64" text-anchor="middle" class="t-sm t-b">Tracking store</text>
+    <text x="415" y="82" text-anchor="middle" class="t-xs">local file / database, or a</text>
+    <text x="415" y="96" text-anchor="middle" class="t-xs">remote server (Ch 15: DagsHub)</text>
+    <text x="336" y="124" class="t-xs">• parameters (alpha, l1_ratio)</text>
+    <text x="336" y="144" class="t-xs">• metrics (rmse, mae, r2)</text>
+    <text x="336" y="164" class="t-xs">• artifacts (model files, plots)</text>
+    <text x="336" y="184" class="t-xs">• tags, timestamps, run name</text>
+    <path d="M510,115 L568,115" class="edge-accent" marker-end="url(#m14b)"/>
+    <rect x="570" y="40" width="180" height="150" rx="10" class="box"/>
+    <text x="660" y="64" text-anchor="middle" class="t-sm t-b">MLflow UI</text>
+    <text x="586" y="94" class="t-xs">• table of all runs</text>
+    <text x="586" y="114" class="t-xs">• compare selected runs</text>
+    <text x="586" y="134" class="t-xs">• parallel coordinates,</text>
+    <text x="586" y="150" class="t-xs">  scatter, contour plots</text>
+    <text x="586" y="172" class="t-xs">• pick &amp; reuse best model</text>
+  </svg>
+  </div>
+  <figcaption>The code sketch is simplified from the hands-on notebook. The instructor's demo in Chapter 15 uses the same calls with a remote tracking server.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>Reading a parallel coordinates plot <span class="ts">03:40:19</span></h2>
+<p>On the MLflow website the instructor points to a <strong>parallel coordinates plot</strong> and says it's how you identify the best model. Each vertical axis is one parameter or metric, and each line is one run, passing through its values. Lines that end low on the error axis are the good runs, and you can trace them back to their parameter values.</p>
+<p>This one uses <strong>real results from the hands-on notebook</strong>: 9 ElasticNet runs on the wine-quality data. Hover a line.</p>
+<figure>
+  <p class="fig-title">9 runs: alpha → l1_ratio → RMSE</p>
+  <div class="legend"><span><i style="background:var(--s2)"></i>best run (lowest RMSE)</span><span><i style="background:var(--s1)"></i>other runs (darker = lower RMSE)</span></div>
+  <div class="scroll"><svg id="pc" viewBox="0 0 760 300" role="img" aria-label="Parallel coordinates of nine runs; the best run has alpha 0.1, l1_ratio 0.3 and RMSE 0.6855; alpha 0.9 runs have the highest RMSE"></svg></div>
+  <figcaption>The pattern is easy to read: <b>alpha = 0.1</b> (weak regularisation) always gives the lowest error, <b>alpha = 0.9</b> the highest, and l1_ratio matters much less. MLflow's UI draws the same chart under <em>Compare → Parallel Coordinates Plot</em> (screenshot below).</figcaption>
+</figure>
+
+<p class="fig-title">The same results as a grid: RMSE for every combination</p>
+<div class="heat" id="heat"></div>
+<p class="fig-sub">Lower is better. Darker blue means lower error. Hover a cell for R².</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>MLflow today, and where to learn more <span class="ts">03:40:19</span></h2>
+<ul>
+  <li><strong>More than classic ML.</strong> MLflow started with machine learning, added deep learning, and now also supports <strong>generative AI and LLM evaluation</strong> ("ML and GenAI made simple").</li>
+  <li><strong>Open source and end to end</strong>: an MLOps platform for building better models and GenAI apps.</li>
+  <li><strong>Production grade.</strong> Many large tech companies use it; it isn't a proof-of-concept tool.</li>
+  <li><strong>Documentation.</strong> Use <em>Get started</em>, the blog, integration guides and the <strong>tracking quickstart</strong> code. The instructor simplified that quickstart for his demo (Chapter 15).</li>
+</ul>
+<div class="callout beyond"><span class="label">Beyond the video · MLflow's main parts</span>
+<div class="table-wrap" style="margin:8px 0 0">
+<table>
+  <thead><tr><th>Component</th><th>What it does</th><th>In this course</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Tracking</strong></td><td>Log params, metrics, artifacts per run; compare in the UI</td><td>Ch 14–15</td></tr>
+    <tr><td><strong>Models</strong></td><td>A standard format to save and load models (<code>runs:/&lt;id&gt;/model</code>)</td><td>hands-on below</td></tr>
+    <tr><td><strong>Model Registry</strong></td><td>Named, versioned models with aliases (e.g. <em>champion</em>) for promotion to production</td><td>Ch 15 (registered model)</td></tr>
+    <tr><td><strong>Serving</strong></td><td><code>mlflow models serve -m runs:/…</code> exposes a REST endpoint</td><td>useful for your deployment practice</td></tr>
+    <tr><td><strong>Evaluation &amp; tracing</strong></td><td>LLM/GenAI evaluation and tracing of agent calls</td><td>the "GenAI" side of the UI</td></tr>
+  </tbody>
+</table>
+</div></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="hands-on"><span class="num">▶</span>Hands-on files: what we built</h2>
+<div class="handson">
+<span class="label">Hands-on notebook · executed, with a local MLflow tracking store</span>
+<div class="files"><a href="../projects/ch14_mlflow_experiment_tracking/experiment_tracking_intro.ipynb">projects/ch14_mlflow_experiment_tracking/experiment_tracking_intro.ipynb</a><a href="../projects/ch14_mlflow_experiment_tracking/manual_experiments.csv">manual_experiments.csv</a></div>
+<p>Red-wine quality data (1,599 wines, 11 features), 75/25 split, ElasticNet, MLflow 3.16 with a SQLite store (<code>mlflow.db</code>).</p>
+
+<h4>1 · The instructor's 3 experiments, tracked "by hand" (a CSV standing in for the Excel sheet)</h4>
+<div class="result">experiment  l1_ratio  alpha    rmse     mae      r2
+         1       0.5    0.1  0.6916  0.5514  0.2267   ← best by hand
+         2       0.3    0.9  0.7560  0.6168  0.0761
+         3       0.4    0.2  0.6985  0.5594  0.2112</div>
+
+<h4>2 · All 9 combinations with MLflow, then <code>mlflow.search_runs(order_by=["metrics.rmse ASC"])</code></h4>
+<p>The best run was <strong>l1_ratio = 0.3, alpha = 0.1 → RMSE 0.6855, R² 0.240</strong>, a combination the three hand-picked experiments never tried. The notebook reloads that run's model with <code>mlflow.sklearn.load_model("runs:/&lt;id&gt;/model")</code> and predicts with it.</p>
+<p>Screenshots of this experiment in the MLflow UI (<code>mlflow ui --backend-store-uri sqlite:///mlflow.db</code>):</p>
+<div class="shot"><img src="assets/img/ch14_mlflow_runs.png" alt="MLflow UI: Training runs table for experiment elasticnet-wine-quality listing 10 runs"></div>
+<p class="fig-sub">Training runs: the 9 grid runs plus the autolog demo run.</p>
+<div class="shot"><img src="assets/img/ch14_mlflow_parallel.png" alt="MLflow UI: Compare 9 runs, parallel coordinates plot of alpha, l1_ratio and rmse"></div>
+<p class="fig-sub">Compare → Parallel Coordinates Plot, the chart the instructor points to, drawn by MLflow from our runs.</p>
+
+<h4>3 · Autologging</h4>
+<p><code>mlflow.sklearn.autolog()</code> logged <strong>11 parameters</strong> (alpha, l1_ratio, max_iter…) and training metrics (training RMSE 0.680, R² 0.301) with <strong>no explicit log calls</strong>.</p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>Interview questions</h2>
+<details class="qa"><summary>What is experiment tracking, and what should you log?</summary>
+<p>Systematically recording every training run so it can be compared and reproduced. Log hyperparameters, metrics (and their curves), the model artifact, the code version (Git commit), the data version (DVC hash or dataset ID), the environment (package versions) and tags or notes. MLflow records the Git commit and source automatically when available.</p></details>
+<details class="qa"><summary>Grid search vs random search vs Bayesian optimisation?</summary>
+<p>Grid tries every combination: exhaustive, but it explodes combinatorially. Random samples combinations and often finds good regions with far fewer runs. Bayesian or adaptive methods (Optuna, Hyperopt) use past results to choose the next trial. For expensive deep learning, add early stopping or pruning (ASHA/Hyperband), tune on a data subset, or start from known-good defaults.</p></details>
+<details class="qa"><summary>Why is hyperparameter tuning harder for deep learning than for classic ML?</summary>
+<p>Millions of parameters make each training run take GPU-hours, the search space is larger (learning rate, batch size, architecture, optimizer, regularisation), and results vary with random seeds. So each trial is costly, and tracking every trial matters even more.</p></details>
+<details class="qa"><summary>How do you pick and reuse the best run in MLflow?</summary>
+<p><code>mlflow.search_runs(experiment_names=[...], order_by=["metrics.rmse ASC"])</code> gives a DataFrame, and the first row is the best. Load it with <code>mlflow.&lt;flavor&gt;.load_model(f"runs:/{run_id}/model")</code>, or register it in the Model Registry and point production at an alias such as <code>models:/wine@champion</code>.</p></details>
+<details class="qa"><summary>What does mlflow.autolog() do, and when would you avoid it?</summary>
+<p>It patches supported libraries (scikit-learn, XGBoost, PyTorch Lightning…) to log parameters, metrics and models automatically. Avoid or limit it when you need custom evaluation metrics on a held-out set, want to control artifact size, or log many tiny runs (you can pass <code>log_models=False</code>).</p></details>
+<details class="qa"><summary>Local MLflow vs a tracking server?</summary>
+<p>Local (<code>mlruns/</code> or a SQLite file) suits solo experiments. A tracking server with a database backend and remote artifact store (S3/GCS), or a hosted service such as DagsHub or Databricks, lets a team share runs, use the Model Registry, and log from CI and cloud jobs.</p></details>
+<details class="qa"><summary>Which regression metrics would you report, and why not accuracy?</summary>
+<p>Accuracy counts exact class matches, which is meaningless for continuous predictions. Use RMSE (penalises large errors, same units as the target), MAE (robust, easy to read) and R² (share of variance explained).</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>Recap</h2>
+<ul>
+  <li><strong>Hyperparameter tuning</strong>: train with each candidate combination (e.g. learning rates × optimizers), compare the scores, keep the best.</li>
+  <li>Easy for small <strong>statistical ML models</strong> on a CPU. Costly for <strong>deep learning</strong>, where millions of weights need a GPU and hours per run.</li>
+  <li>The ElasticNet example: candidate <code>l1_ratio</code> and <code>alpha</code> values, several experiments, pick the best.</li>
+  <li>Tracking them in <strong>Excel</strong> is manual and error-prone. MLOps is about automating that.</li>
+  <li><strong>MLflow</strong> logs every run from a few lines of code and gives a UI with plots (parallel coordinates) for choosing the best model. It now covers ML, deep learning and GenAI, and it's production grade.</li>
+  <li>Hands-on: the full 9-run grid found a better setting (l1_ratio 0.3, alpha 0.1, RMSE 0.6855) than the 3 hand-picked runs.</li>
+</ul>
+
+<div class="pager">
+  <a href="13_cloud_fundamentals_for_mlops.html"><small>← Previous</small>13 · Fundamentals of cloud for MLOps</a>
+  <a class="next" href="15_mlflow_tracking_with_dagshub.html"><small>Next →</small>15 · MLflow experiment tracking with DagsHub</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+<script>
+// Real results from projects/ch14_mlflow_experiment_tracking (9 grid runs)
+const RUNS = [
+  {alpha: 0.1, l1: 0.3, rmse: 0.6855, r2: 0.2404},
+  {alpha: 0.1, l1: 0.4, rmse: 0.6905, r2: 0.2291},
+  {alpha: 0.1, l1: 0.5, rmse: 0.6916, r2: 0.2267},
+  {alpha: 0.2, l1: 0.3, rmse: 0.6953, r2: 0.2184},
+  {alpha: 0.2, l1: 0.4, rmse: 0.6985, r2: 0.2112},
+  {alpha: 0.2, l1: 0.5, rmse: 0.7023, r2: 0.2026},
+  {alpha: 0.9, l1: 0.3, rmse: 0.7560, r2: 0.0761},
+  {alpha: 0.9, l1: 0.4, rmse: 0.7784, r2: 0.0205},
+  {alpha: 0.9, l1: 0.5, rmse: 0.7845, r2: 0.0051},
+];
+// sequential blue ramp (light → dark)
+const RAMP = ['#cde2fb', '#b7d3f6', '#9ec5f4', '#86b6ef', '#6da7ec', '#5598e7', '#3987e5', '#2a78d6', '#256abf', '#1c5cab', '#184f95'];
+const rmin = Math.min(...RUNS.map(r => r.rmse)), rmax = Math.max(...RUNS.map(r => r.rmse));
+const shade = v => RAMP[Math.round((1 - (v - rmin) / (rmax - rmin)) * (RAMP.length - 1))];
+
+(function parallel() {
+  const svg = document.getElementById('pc'), NS = 'http://www.w3.org/2000/svg';
+  const el = (n, a) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); svg.appendChild(e); return e; };
+  const axes = [
+    {key: 'alpha', label: 'alpha', min: 0.1, max: 0.9},
+    {key: 'l1', label: 'l1_ratio', min: 0.3, max: 0.5},
+    {key: 'rmse', label: 'RMSE (lower = better)', min: 0.68, max: 0.79},
+  ];
+  const X = [110, 380, 650], top = 40, bot = 260;
+  const labels = [];
+  const Y = (ax, v) => bot - (v - ax.min) / (ax.max - ax.min) * (bot - top);
+  axes.forEach((ax, i) => {
+    el('line', {x1: X[i], x2: X[i], y1: top, y2: bot, class: 'axis'});
+    el('text', {x: X[i], y: 14, 'text-anchor': 'middle', class: 't-sm t-b'}).textContent = ax.label;
+    const ticks = ax.key === 'alpha' ? [0.1, 0.2, 0.9] : ax.key === 'l1' ? [0.3, 0.4, 0.5] : [0.68, 0.72, 0.74, 0.76, 0.78];
+    ticks.forEach(t => {
+      if (i === 2) {           // metric axis: ticks and labels on the outer (right) side
+        el('line', {x1: X[i], x2: X[i] + 4, y1: Y(ax, t), y2: Y(ax, t), class: 'axis'});
+        labels.push([X[i] + 8, Y(ax, t) + 4, t, 'start']);
+      } else if (i === 1) {    // middle axis: label above-left of the node
+        labels.push([X[i] - 10, Y(ax, t) - 8, t, 'end']);
+      } else {
+        el('line', {x1: X[i] - 4, x2: X[i], y1: Y(ax, t), y2: Y(ax, t), class: 'axis'});
+        labels.push([X[i] - 8, Y(ax, t) + 4, t, 'end']);
+      }
+    });
+  });
+  const best = RUNS.reduce((a, b) => a.rmse < b.rmse ? a : b);
+  [...RUNS].sort((a, b) => b.rmse - a.rmse).forEach(r => {
+    const isBest = r === best;
+    const pts = axes.map((ax, i) => `${X[i]},${Y(ax, r[ax.key])}`).join(' ');
+    const tip = `<b>alpha ${r.alpha} · l1_ratio ${r.l1}</b><br>RMSE ${r.rmse} · R² ${r.r2}${isBest ? '<br>★ best run' : ''}`;
+    const g = el('g', {'data-tip': tip});
+    const line = document.createElementNS(NS, 'polyline');
+    line.setAttribute('points', pts); line.setAttribute('fill', 'none');
+    line.setAttribute('stroke', isBest ? 'var(--s2)' : shade(r.rmse));
+    line.setAttribute('stroke-width', isBest ? 3 : 2);
+    g.appendChild(line);
+    const hit = document.createElementNS(NS, 'polyline');
+    hit.setAttribute('points', pts); hit.setAttribute('fill', 'none'); hit.setAttribute('stroke', 'transparent'); hit.setAttribute('stroke-width', 12);
+    g.appendChild(hit);
+    axes.forEach((ax, i) => {
+      const c = document.createElementNS(NS, 'circle');
+      c.setAttribute('cx', X[i]); c.setAttribute('cy', Y(ax, r[ax.key])); c.setAttribute('r', isBest ? 5 : 3.5);
+      c.setAttribute('fill', isBest ? 'var(--s2)' : shade(r.rmse)); c.setAttribute('stroke', 'var(--surface)'); c.setAttribute('stroke-width', 1.5);
+      g.appendChild(c);
+    });
+  });
+  // tick labels last, with a halo, so the lines never hide them
+  labels.forEach(([x, y, t, anchor]) => {
+    el('text', {x, y, 'text-anchor': anchor, class: 't-xs', style: 'paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round'}).textContent = t;
+  });
+  el('text', {x: X[2] - 10, y: Y(axes[2], best.rmse) + 20, 'text-anchor': 'end', class: 't-xs t-b', style: 'fill: var(--s2)'}).textContent = `best: ${best.rmse}`;
+})();
+
+(function heatmap() {
+  const box = document.getElementById('heat');
+  const alphas = [0.1, 0.2, 0.9], l1s = [0.3, 0.4, 0.5];
+  let html = '<div class="h">α ↓ / l1 →</div>' + l1s.map(l => `<div class="h">${l}</div>`).join('');
+  alphas.forEach(a => {
+    html += `<div class="h">${a}</div>`;
+    l1s.forEach(l => {
+      const r = RUNS.find(x => x.alpha === a && x.l1 === l);
+      const bg = shade(r.rmse), dark = RAMP.indexOf(bg) >= 6;
+      const best = r.rmse === rmin;
+      html += `<div class="c" style="background:${bg};color:${dark ? '#fff' : '#0b0b0b'};${best ? 'outline:3px solid var(--s2);outline-offset:-3px;font-weight:700' : ''}" data-tip="<b>alpha ${a} · l1_ratio ${l}</b><br>RMSE ${r.rmse}<br>R² ${r.r2}">${r.rmse.toFixed(4)}</div>`;
+    });
+  });
+  box.innerHTML = html;
+})();
+</script>
+</body>
+</html>

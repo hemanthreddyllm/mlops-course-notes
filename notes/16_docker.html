@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>16 · Docker — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .term { background: var(--code-bg); border-radius: 10px; overflow: hidden; margin: 14px 0; }
+  .term .bar { display: flex; gap: 6px; padding: 9px 12px; background: #2b2b29; }
+  .term .bar i { width: 10px; height: 10px; border-radius: 50%; background: #5b5a55; }
+  .term .bar span { margin-left: 8px; font: 12px var(--mono); color: #a8a79f; }
+  .term pre { margin: 0; border-radius: 0; }
+  .term .p { color: #7fc79a; }
+  .term .o { color: #c3c2b7; }
+  .cmd { font: 600 13px var(--mono); white-space: nowrap; }
+  .steps { counter-reset: st; list-style: none; padding: 0; margin: 16px 0; }
+  .steps > li { counter-increment: st; position: relative; padding: 12px 16px 12px 56px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; margin: 8px 0; }
+  .steps > li::before { content: counter(st); position: absolute; left: 16px; top: 12px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font: 600 13px/26px var(--sans); text-align: center; }
+  .steps p:last-child { margin-bottom: 0; }
+  /* Dockerfile explorer */
+  .dfx { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 12px; margin: 16px 0; }
+  @media (max-width: 720px) { .dfx { grid-template-columns: 1fr; } }
+  .dfx .lines { background: var(--code-bg); border-radius: 10px; padding: 10px 0; font: 13px/1.5 var(--mono); }
+  .dfx button { display: block; width: 100%; text-align: left; background: none; border: 0; color: #f1f0ea; font: inherit; padding: 5px 16px; cursor: pointer; border-left: 3px solid transparent; }
+  .dfx button .kw { color: #86b6ef; font-weight: 600; }
+  .dfx button .cm { color: #8f8e86; }
+  .dfx button[aria-pressed="true"] { background: rgba(57,135,229,.22); border-left-color: #3987e5; }
+  .dfx .explain { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; }
+  .dfx .explain h4 { margin-top: 0; }
+  /* docker simulator */
+  .dsim { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; margin: 18px 0; }
+  .dsim .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  .dsim button { font: 12px var(--mono); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--code-bg); background: var(--code-bg); color: #f1f0ea; cursor: pointer; }
+  .dsim button.reset { background: var(--surface); color: var(--ink); border-color: var(--rule); }
+  .dsim .panes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 12px 0; }
+  @media (max-width: 720px) { .dsim .panes { grid-template-columns: 1fr; } }
+  .dsim .pane { background: var(--surface-2); border-radius: 10px; padding: 10px; min-height: 110px; }
+  .dsim .pane h5 { margin: 0 0 6px; font: 600 13px var(--sans); }
+  .dsim .item { font: 12px var(--mono); background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 8px; margin: 4px 0; display: flex; justify-content: space-between; gap: 6px; }
+  .dsim .item.up { border-color: var(--good); }
+  .dsim .item.exited { border-color: var(--ink-3); color: var(--ink-3); }
+  .dsim .pane.hub { background: var(--accent-soft); }
+  .dsim pre { margin: 0; max-height: 180px; overflow: auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 16</span></div>
+<div class="eyebrow">Chapter 16 · Docker (introduction · installation · practical demo · custom images)</div>
+<h1>Docker: package once, run the same everywhere</h1>
+<p class="lede">Containerisation is the next MLOps concept. The instructor explains why code that works on your laptop breaks on a server or a teammate's machine, how Docker fixes that (the Maggi-masala analogy), and Docker's building blocks: engine, image, Dockerfile, container and registry. He then installs Docker Desktop, runs <code>hello-world</code>, and containerises a Flask calculator app: write a Dockerfile, <code>docker build</code>, <code>docker run -p</code>, run detached with <code>-d</code>, and <code>docker push</code> to Docker Hub.</p>
+<div class="meta">
+  <span class="chip">Video 04:05:17 – 04:52:33 (4 TOC entries)</span>
+  <span class="chip">Hands-on: calculator image + model API</span>
+  <span class="chip">Used heavily in CI/CD later</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">Why Docker? "It works on my machine"</a></li>
+    <li><a href="#s2">The Maggi-noodles analogy</a></li>
+    <li><a href="#s3">Consistency and isolation</a></li>
+    <li><a href="#s4">The components of Docker</a></li>
+    <li><a href="#s5">How it all fits together</a></li>
+    <li><a href="#s6">Benefits and use cases</a></li>
+    <li><a href="#s7">Containers vs virtual machines</a></li>
+    <li><a href="#s8">Installation</a></li>
+    <li><a href="#s9">Practical demo: hello-world</a></li>
+    <li><a href="#s10">Try it: a Docker command simulator</a></li>
+    <li><a href="#s11">Custom image: the calculator app</a></li>
+    <li><a href="#s12">The Dockerfile, line by line (interactive)</a></li>
+    <li><a href="#s13">Build, run, detach, push, pull</a></li>
+    <li><a href="#s14">Precision notes</a></li>
+    <li><a href="#hands-on">Hands-on files: what we built</a></li>
+    <li><a href="#s15">Interview questions</a></li>
+    <li><a href="#s16">Recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>Why Docker? "It works on my machine" <span class="ts">04:05:18</span></h2>
+<p>The official definition: <strong>Docker is a platform designed to help developers build, share and run container applications.</strong> Two everyday problems explain why it exists:</p>
+<div class="grid">
+  <div class="card"><h4 style="color:var(--bad)">Problem 1 · Deploying</h4><p>You build on your laptop, then move the project to a cloud VM (e.g. an Ubuntu EC2 instance) and install the packages there. It <strong>throws errors</strong> because some specific package version isn't satisfied in that environment.</p></div>
+  <div class="card"><h4 style="color:var(--bad)">Problem 2 · Sharing</h4><p>A teammate or tester has to recreate your environment and install everything, and they hit the <strong>same version problems</strong>.</p></div>
+</div>
+<div class="callout key"><span class="label">Docker's answer</span><p>Build an <strong>image</strong> of your entire source code and its environment, then run that image on a <strong>Docker engine</strong>, which creates a <strong>container</strong>. The same image runs the same way on a cloud server, a Mac or any other developer's machine. The only requirement is that the machine has a Docker engine running.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>The Maggi-noodles analogy <span class="ts">04:08:27</span></h2>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 230" role="img" aria-label="Maggi noodles with a sealed masala packet taste the same in India and the USA; with only a recipe book, each cook adds different salt and chilli and the taste varies. The masala packet is like a Docker image.">
+    <defs><marker id="m16" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <rect x="10" y="20" width="360" height="190" rx="12" fill="var(--good-soft)" stroke="var(--good)"/>
+    <text x="190" y="46" text-anchor="middle" class="t-sm t-b">✓ Masala sealed in the packet (containerised)</text>
+    <rect x="130" y="62" width="120" height="50" rx="8" class="box"/><text x="190" y="84" text-anchor="middle" class="t-sm t-b">🍜 + 📦 masala</text><text x="190" y="102" text-anchor="middle" class="t-xs">one packet</text>
+    <rect x="30" y="148" width="140" height="44" rx="8" class="box"/><text x="100" y="175" text-anchor="middle" class="t-xs t-b">🇮🇳 cooked in India</text>
+    <rect x="210" y="148" width="140" height="44" rx="8" class="box"/><text x="280" y="175" text-anchor="middle" class="t-xs t-b">🇺🇸 cooked in the USA</text>
+    <path d="M170,112 L120,146" class="edge" marker-end="url(#m16)"/><path d="M210,112 L260,146" class="edge" marker-end="url(#m16)"/>
+    <text x="190" y="138" text-anchor="middle" class="t-xs" style="fill:var(--good)">same taste</text>
+    <rect x="390" y="20" width="360" height="190" rx="12" fill="var(--bad-soft)" stroke="var(--bad)"/>
+    <text x="570" y="46" text-anchor="middle" class="t-sm t-b">✗ Noodles + a recipe book for the masala</text>
+    <rect x="510" y="62" width="120" height="50" rx="8" class="box"/><text x="570" y="84" text-anchor="middle" class="t-sm t-b">🍜 + 📖 recipe</text><text x="570" y="102" text-anchor="middle" class="t-xs">make it yourself</text>
+    <rect x="410" y="148" width="140" height="44" rx="8" class="box"/><text x="480" y="168" text-anchor="middle" class="t-xs t-b">cook A</text><text x="480" y="184" text-anchor="middle" class="t-xs">too much salt</text>
+    <rect x="590" y="148" width="140" height="44" rx="8" class="box"/><text x="660" y="168" text-anchor="middle" class="t-xs t-b">cook B</text><text x="660" y="184" text-anchor="middle" class="t-xs">too much chilli</text>
+    <path d="M550,112 L500,146" class="edge" marker-end="url(#m16)"/><path d="M590,112 L640,146" class="edge" marker-end="url(#m16)"/>
+    <text x="570" y="138" text-anchor="middle" class="t-xs" style="fill:var(--bad)">taste varies</text>
+  </svg>
+  </div>
+  <figcaption><b>Packet = Docker image.</b> The app and everything it needs are sealed together, so every "kitchen" (laptop, server, cloud) gets the same result. <b>Recipe book = a README of install steps</b>, where every machine ends up slightly different.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>Consistency and isolation <span class="ts">04:09:30</span></h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Problem</th><th>Without Docker</th><th>With Docker</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Consistency across environments</strong></td><td>Apps behave differently in development, testing and production because configuration, dependencies and infrastructure differ.</td><td>Containers carry all the components they need, so the app runs the same everywhere.</td></tr>
+    <tr><td><strong>Isolation</strong></td><td>Several apps on one host clash: dependency conflicts and competition for resources.</td><td>Each app runs in its own isolated environment, so they don't interfere and performance stays stable.</td></tr>
+  </tbody>
+</table>
+</div>
+<figure>
+  <p class="fig-title">The instructor's example: three apps on one machine</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 210" role="img" aria-label="Without containers, one app with heavy traffic takes most resources and the other two go down; with containers, each app runs in its own isolated container on the same machine">
+    <rect x="10" y="20" width="360" height="170" rx="12" class="box-2"/>
+    <text x="190" y="44" text-anchor="middle" class="t-sm t-b">Without containers</text>
+    <rect x="30" y="60" width="200" height="110" rx="8" fill="var(--bad-soft)" stroke="var(--bad)"/><text x="130" y="100" text-anchor="middle" class="t-sm t-b">App A 🔥 traffic spike</text><text x="130" y="120" text-anchor="middle" class="t-xs">grabs most RAM/CPU</text>
+    <rect x="240" y="60" width="110" height="50" rx="8" class="box" stroke-dasharray="4 3"/><text x="295" y="90" text-anchor="middle" class="t-xs">App B ⬇ down</text>
+    <rect x="240" y="120" width="110" height="50" rx="8" class="box" stroke-dasharray="4 3"/><text x="295" y="150" text-anchor="middle" class="t-xs">App C ⬇ down</text>
+    <rect x="390" y="20" width="360" height="170" rx="12" class="box-2"/>
+    <text x="570" y="44" text-anchor="middle" class="t-sm t-b">With containers (same machine)</text>
+    <g><rect x="410" y="60" width="100" height="110" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="460" y="104" text-anchor="middle" class="t-xs t-b">🐳 App A</text><text x="460" y="122" text-anchor="middle" class="t-xs">own deps</text></g>
+    <g><rect x="520" y="60" width="100" height="110" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="570" y="104" text-anchor="middle" class="t-xs t-b">🐳 App B</text><text x="570" y="122" text-anchor="middle" class="t-xs">own deps</text></g>
+    <g><rect x="630" y="60" width="100" height="110" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="680" y="104" text-anchor="middle" class="t-xs t-b">🐳 App C</text><text x="680" y="122" text-anchor="middle" class="t-xs">own deps</text></g>
+  </svg>
+  </div>
+  <figcaption>Each container is isolated. To actually <b>cap</b> how much CPU or memory one container can take, you also set limits, e.g. <code>docker run --memory 512m --cpus 1 …</code> (see Precision notes).</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>The components of Docker <span class="ts">04:12:38</span></h2>
+
+<h3>① Docker Engine (container engine)</h3>
+<p>The <strong>core of Docker</strong>. It creates, runs and manages containers, and is the runtime behind Docker's containerisation.</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 200" role="img" aria-label="Docker engine: the user types commands into the Docker CLI, which calls the REST API, which talks to the Docker daemon; the daemon manages images, containers, networks and volumes">
+    <defs><marker id="m16b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker></defs>
+    <rect x="10" y="60" width="130" height="70" rx="10" class="box"/><text x="75" y="90" text-anchor="middle" class="t-sm t-b">👤 You</text><text x="75" y="110" text-anchor="middle" class="t-xs">docker build / run …</text>
+    <rect x="180" y="20" width="570" height="160" rx="12" class="box-2"/>
+    <text x="465" y="42" text-anchor="middle" class="t-sm t-b">Docker Engine</text>
+    <g data-tip="<b>Docker CLI</b><br>The command-line tool you type docker … into"><rect x="200" y="60" width="130" height="70" rx="10" class="box"/><text x="265" y="92" text-anchor="middle" class="t-sm t-b">Docker CLI</text><text x="265" y="110" text-anchor="middle" class="t-xs">command line</text></g>
+    <g data-tip="<b>REST API</b><br>The CLI never talks to the daemon directly; every command goes through this API"><rect x="370" y="60" width="130" height="70" rx="10" class="box"/><text x="435" y="92" text-anchor="middle" class="t-sm t-b">REST API</text><text x="435" y="110" text-anchor="middle" class="t-xs">the go-between</text></g>
+    <g data-tip="<b>Docker daemon (dockerd)</b><br>Background service that does the actual work"><rect x="540" y="60" width="190" height="100" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="635" y="86" text-anchor="middle" class="t-sm t-b">Docker daemon</text><text x="635" y="106" text-anchor="middle" class="t-xs">manages: images · containers</text><text x="635" y="122" text-anchor="middle" class="t-xs">networks · volumes</text><text x="635" y="146" text-anchor="middle" class="t-xs">"does all the jobs"</text></g>
+    <path d="M140,95 L198,95" class="edge-accent" marker-end="url(#m16b)"/><path d="M330,95 L368,95" class="edge-accent" marker-end="url(#m16b)"/><path d="M500,95 L538,95" class="edge-accent" marker-end="url(#m16b)"/>
+  </svg>
+  </div>
+</figure>
+
+<h3>② Docker image</h3>
+<p>A <strong>lightweight, standalone, executable package</strong> containing everything the software needs to run: code, runtime, libraries, environment variables and configuration files. Containers are created from images.</p>
+<div class="grid">
+  <div class="card"><span class="tag">COMPONENT</span><h4>Base image</h4><p>The starting point, usually a minimal OS such as <strong>Alpine</strong> (a small Linux) or Ubuntu, often with a language runtime such as Python already installed.</p></div>
+  <div class="card"><span class="tag">COMPONENT</span><h4>Application code</h4><p>Your project files.</p></div>
+  <div class="card"><span class="tag">COMPONENT</span><h4>Dependencies</h4><p>Libraries from <code>requirements.txt</code> and similar.</p></div>
+  <div class="card"><span class="tag">COMPONENT</span><h4>Metadata</h4><p>Exposed port, start command, labels, environment.</p></div>
+</div>
+<p><strong>Image lifecycle:</strong> <strong>create</strong> → <strong>store</strong> (locally or in a registry) → <strong>distribute</strong> → someone pulls and <strong>executes</strong> it.</p>
+
+<h3>③ Dockerfile</h3>
+<p>A <strong>text file with a series of instructions</strong> for building an image. <strong>Each instruction creates a layer</strong>, and layers are cached and reused, which makes rebuilds efficient. Instructions are written layer by layer in order, not randomly, and Dockerfiles automate image creation in a consistent, reproducible way. (Walkthrough in <a href="#s12">section 12</a>.)</p>
+
+<h3>④ Docker container</h3>
+<p>A <strong>lightweight, portable, isolated environment</strong> that wraps an application and its dependencies so it runs the same across environments. Containers are <strong>instances of images</strong>, and images themselves are immutable.</p>
+<div class="callout key"><span class="label">The DVD analogy</span><p>An image is like a music <strong>DVD</strong>. Play it on a computer or on a smart TV, and each player becomes the "container" running that same content. Run a Python image and you get a running Python container.</p></div>
+
+<h3>⑤ Docker registry</h3>
+<p>A service that <strong>stores and distributes images</strong>. You can publish your own images and <strong>tag</strong> versions (e.g. <code>v1</code>, <code>latest</code>) so users can tell which one is newest.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Registry</th><th>Typical use</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Docker Hub</strong></td><td>The public library (Python, NGINX, PyTorch, TensorFlow…) and a place to publish your own images</td></tr>
+    <tr><td><strong>Amazon ECR</strong></td><td>Private images on AWS (Chapter 13)</td></tr>
+    <tr><td><strong>Google Container Registry</strong></td><td>Private images on GCP. It's being replaced by <strong>Artifact Registry</strong>.</td></tr>
+    <tr><td><strong>Azure Container Registry</strong></td><td>Private images on Azure</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>How it all fits together <span class="ts">04:21:01</span></h2>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 260" role="img" aria-label="Developer writes a Dockerfile, builds an image, runs it as a container to test, pushes the image to a registry; a tester with the Docker engine pulls the image and runs the same container">
+    <defs><marker id="m16c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker></defs>
+    <text x="20" y="20" class="t-xs t-b">DEVELOPER · Docker engine installed</text>
+    <rect x="10" y="30" width="470" height="110" rx="12" class="box-2"/>
+    <g class="t-sm">
+      <rect x="24" y="60" width="110" height="56" rx="8" class="box"/><text x="79" y="84" text-anchor="middle" class="t-b">📄 Dockerfile</text><text x="79" y="102" text-anchor="middle" class="t-xs">instructions</text>
+      <rect x="180" y="60" width="110" height="56" rx="8" class="box"/><text x="235" y="84" text-anchor="middle" class="t-b">💿 Image</text><text x="235" y="102" text-anchor="middle" class="t-xs">user/app:latest</text>
+      <rect x="336" y="60" width="130" height="56" rx="8" fill="var(--good-soft)" stroke="var(--good)"/><text x="401" y="84" text-anchor="middle" class="t-b">📦 Container</text><text x="401" y="102" text-anchor="middle" class="t-xs">test: works? ✓</text>
+    </g>
+    <path d="M134,88 L178,88" class="edge-accent" marker-end="url(#m16c)"/><text x="156" y="80" text-anchor="middle" class="t-xs">build</text>
+    <path d="M290,88 L334,88" class="edge-accent" marker-end="url(#m16c)"/><text x="312" y="80" text-anchor="middle" class="t-xs">run</text>
+    <rect x="540" y="40" width="210" height="80" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+    <text x="645" y="72" text-anchor="middle" class="t-sm t-b">🗄 Registry</text><text x="645" y="92" text-anchor="middle" class="t-xs">Docker Hub / ECR / …</text>
+    <path d="M290,64 Q400,20 538,60" class="edge-accent" marker-end="url(#m16c)"/><text x="420" y="30" text-anchor="middle" class="t-xs t-b" style="fill:var(--accent)">push (image)</text>
+    <text x="400" y="178" class="t-xs t-b">TESTER / SERVER · Docker engine installed</text>
+    <rect x="390" y="186" width="360" height="66" rx="12" class="box-2"/>
+    <rect x="410" y="198" width="140" height="44" rx="8" class="box"/><text x="480" y="224" text-anchor="middle" class="t-sm t-b">💿 same image</text>
+    <rect x="590" y="198" width="140" height="44" rx="8" fill="var(--good-soft)" stroke="var(--good)"/><text x="660" y="224" text-anchor="middle" class="t-sm t-b">📦 same container</text>
+    <path d="M645,120 Q645,160 490,196" class="edge-accent" marker-end="url(#m16c)"/><text x="600" y="156" class="t-xs t-b" style="fill:var(--accent)">pull</text>
+    <path d="M550,220 L588,220" class="edge-accent" marker-end="url(#m16c)"/><text x="569" y="212" text-anchor="middle" class="t-xs">run</text>
+    <text x="30" y="200" class="t-xs">No dependency errors on the other side:</text>
+    <text x="30" y="216" class="t-xs">everything the app needs is inside the image.</text>
+  </svg>
+  </div>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>Benefits and use cases <span class="ts">04:23:07</span></h2>
+<div class="grid">
+  <div class="card"><h4>Benefits</h4><ul><li><strong>Centralised image management</strong></li><li><strong>Versioning</strong> with tags (v1, latest)</li><li><strong>Collaboration</strong>: share through Docker Hub so others pull the image</li><li><strong>Security</strong> through isolation</li><li><strong>CI/CD integration</strong>, used a lot in deployment</li></ul></div>
+  <div class="card"><h4>Use cases</h4><ul><li><strong>Microservices</strong> architecture</li><li><strong>CI/CD</strong> pipelines</li><li><strong>Cloud migration</strong>: move a site from AWS to GCP by running the same container, without reconfiguring everything</li><li><strong>Testing</strong></li><li><strong>ML &amp; AI</strong>, where many libraries have tangled version dependencies</li></ul></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>Containers vs virtual machines</h2>
+<figure>
+  <p class="fig-title">Beyond the video: a classic interview question</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 250" role="img" aria-label="Virtual machines each run a full guest OS on a hypervisor; containers share the host OS kernel through the container engine and only package the app and its libraries">
+    <g class="t-xs">
+      <text x="190" y="18" text-anchor="middle" class="t-sm t-b">Virtual machines</text>
+      <rect x="20" y="30" width="105" height="30" rx="5" class="box"/><text x="72" y="50" text-anchor="middle" class="t-b">App A</text>
+      <rect x="137" y="30" width="105" height="30" rx="5" class="box"/><text x="189" y="50" text-anchor="middle" class="t-b">App B</text>
+      <rect x="254" y="30" width="105" height="30" rx="5" class="box"/><text x="306" y="50" text-anchor="middle" class="t-b">App C</text>
+      <rect x="20" y="64" width="105" height="26" rx="5" class="box-2"/><text x="72" y="81" text-anchor="middle">libs</text>
+      <rect x="137" y="64" width="105" height="26" rx="5" class="box-2"/><text x="189" y="81" text-anchor="middle">libs</text>
+      <rect x="254" y="64" width="105" height="26" rx="5" class="box-2"/><text x="306" y="81" text-anchor="middle">libs</text>
+      <rect x="20" y="94" width="105" height="40" rx="5" fill="var(--warn-soft)" stroke="var(--s4)"/><text x="72" y="112" text-anchor="middle" class="t-b">Guest OS</text><text x="72" y="126" text-anchor="middle">GBs · minutes</text>
+      <rect x="137" y="94" width="105" height="40" rx="5" fill="var(--warn-soft)" stroke="var(--s4)"/><text x="189" y="112" text-anchor="middle" class="t-b">Guest OS</text><text x="189" y="126" text-anchor="middle">GBs · minutes</text>
+      <rect x="254" y="94" width="105" height="40" rx="5" fill="var(--warn-soft)" stroke="var(--s4)"/><text x="306" y="112" text-anchor="middle" class="t-b">Guest OS</text><text x="306" y="126" text-anchor="middle">GBs · minutes</text>
+      <rect x="20" y="140" width="339" height="30" rx="5" class="box-2"/><text x="190" y="160" text-anchor="middle" class="t-b">Hypervisor</text>
+      <rect x="20" y="176" width="339" height="30" rx="5" class="box-2"/><text x="190" y="196" text-anchor="middle" class="t-b">Host OS</text>
+      <rect x="20" y="212" width="339" height="30" rx="5" class="box-2"/><text x="190" y="232" text-anchor="middle" class="t-b">Hardware</text>
+
+      <text x="570" y="18" text-anchor="middle" class="t-sm t-b">Containers</text>
+      <rect x="400" y="30" width="105" height="30" rx="5" class="box"/><text x="452" y="50" text-anchor="middle" class="t-b">App A</text>
+      <rect x="517" y="30" width="105" height="30" rx="5" class="box"/><text x="569" y="50" text-anchor="middle" class="t-b">App B</text>
+      <rect x="634" y="30" width="105" height="30" rx="5" class="box"/><text x="686" y="50" text-anchor="middle" class="t-b">App C</text>
+      <rect x="400" y="64" width="105" height="26" rx="5" class="box-2"/><text x="452" y="81" text-anchor="middle">libs</text>
+      <rect x="517" y="64" width="105" height="26" rx="5" class="box-2"/><text x="569" y="81" text-anchor="middle">libs</text>
+      <rect x="634" y="64" width="105" height="26" rx="5" class="box-2"/><text x="686" y="81" text-anchor="middle">libs</text>
+      <text x="570" y="118" text-anchor="middle">no guest OS: MBs · seconds to start</text>
+      <rect x="400" y="140" width="339" height="30" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="570" y="160" text-anchor="middle" class="t-b">Container engine (Docker)</text>
+      <rect x="400" y="176" width="339" height="30" rx="5" class="box-2"/><text x="570" y="196" text-anchor="middle" class="t-b">Host OS (shared Linux kernel)</text>
+      <rect x="400" y="212" width="339" height="30" rx="5" class="box-2"/><text x="570" y="232" text-anchor="middle" class="t-b">Hardware</text>
+    </g>
+  </svg>
+  </div>
+  <figcaption>VMs virtualise <b>hardware</b>, so each carries a full OS: stronger isolation, but heavier. Containers virtualise the <b>OS</b> and share the host's Linux kernel: lighter and faster. On macOS and Windows, Docker Desktop runs a small Linux VM to provide that kernel (hence WSL 2 on Windows).</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>Installation <span class="ts">04:25:32</span></h2>
+<p><strong>Linux and macOS</strong> are straightforward: follow <em>Install Docker Engine</em> on docs.docker.com (the Ubuntu page lists every command), or install <strong>Docker Desktop</strong> on a Mac. <strong>Windows</strong> needs a few extra steps, because Docker runs on Linux:</p>
+<ol class="steps">
+  <li><p>Download <strong>Docker Desktop</strong> for Windows (search "docker install windows").</p></li>
+  <li><p>Install the <strong>WSL 2</strong> update package (the instructor shares the installer in the course resources).</p></li>
+  <li><p>Open <strong>Turn Windows features on or off</strong> and enable <strong>Virtual Machine Platform</strong> and <strong>Windows Subsystem for Linux</strong>, then restart.</p></li>
+  <li><p>From the Microsoft Store, install <strong>Ubuntu</strong> (the latest version), open it, and create a username and password. A Linux kernel is now running on Windows.</p></li>
+  <li><p>Run the Docker Desktop installer (Next, Next…), then open <strong>Docker Desktop</strong> and wait for the <strong>engine to be running</strong>. The first start can take 10–15 minutes.</p></li>
+  <li><p><strong>Settings → Resources → WSL integration</strong>: enable your Ubuntu distro.</p></li>
+  <li><p>Verify in a terminal: <code>docker --version</code> should print a version, and <code>docker ps</code> should print an empty table. An error means the install didn't finish.</p></li>
+</ol>
+<div class="callout beyond"><span class="label">Beyond the video · your Mac</span><p>Install <strong>Docker Desktop for Mac</strong>, picking the Apple-silicon or Intel build to match your chip. Lighter alternatives are <strong>Colima</strong> and <strong>OrbStack</strong>. On a work laptop, note that Docker Desktop needs a paid subscription at larger companies. Docker Engine on a Linux server (such as EC2) is free.</p>
+<pre><code><span class="c"># Ubuntu EC2 quick install (convenience script from Docker)</span>
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker ubuntu     <span class="c"># run docker without sudo (log out and back in)</span>
+docker run hello-world</code></pre></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>Practical demo: hello-world <span class="ts">04:30:14</span></h2>
+<ol>
+  <li>Docker Desktop is empty at first: no containers, no images. <strong>Sign in with a Docker Hub account</strong> (create one at hub.docker.com, e.g. with Gmail).</li>
+  <li>Docker Hub → <strong>Explore</strong> shows images for TensorFlow, PyTorch, LangChain, NGINX, BusyBox, Alpine, Grafana and more. Search <em>python</em> and you'll find many version <strong>tags</strong>.</li>
+  <li>Open the <strong>hello-world</strong> image, copy its pull command, and run it:</li>
+</ol>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>terminal</span></div>
+<pre><code><span class="p">$</span> docker pull hello-world          <span class="c"># downloads layer by layer (only if not already local)</span>
+<span class="p">$</span> docker images                     <span class="c"># REPOSITORY  TAG  IMAGE ID  …  → hello-world</span>
+<span class="p">$</span> docker run hello-world
+<span class="o">Hello from Docker!
+This message shows that your installation appears to be working correctly.</span>
+<span class="p">$</span> docker ps -a                      <span class="c"># the container, with a random name, status "Exited"</span>
+<span class="p">$</span> docker rm &lt;container-id&gt;          <span class="c"># delete the container (ID from ps -a)</span>
+<span class="p">$</span> docker rmi hello-world            <span class="c"># delete the image</span>
+<span class="p">$</span> docker pull hello-world           <span class="c"># pull it again: image present, no container yet</span></code></pre></div>
+<p>Each <code>docker run</code> creates a <strong>new container</strong> with a random name (the instructor's was "happy_summit"). <code>hello-world</code> prints its message and exits, so it isn't "running" afterwards. On a cloud server there's no Docker Desktop, so learn the <strong>terminal commands</strong>.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td class="cmd">docker ps</td><td>List <em>running</em> containers</td></tr>
+    <tr><td class="cmd">docker ps -a</td><td>List <em>all</em> containers, including stopped ones</td></tr>
+    <tr><td class="cmd">docker rm &lt;id&gt;</td><td>Remove a container</td></tr>
+    <tr><td class="cmd">docker rm $(docker ps -aq)</td><td>Remove all (stopped) containers. Add <code>-f</code> to also stop running ones.</td></tr>
+    <tr><td class="cmd">docker images -a</td><td>List all images</td></tr>
+    <tr><td class="cmd">docker rmi &lt;image&gt;</td><td>Remove an image</td></tr>
+    <tr><td class="cmd">docker rmi $(docker images -q)</td><td>Remove all images</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>Try it: a Docker command simulator</h2>
+<p>Click the commands to see how images, containers and the registry change. Try the video's sequence: pull → run → ps -a → rm → rmi. Then build the calculator image, run it detached, stop it and push it.</p>
+<div class="dsim" id="dsim">
+  <div class="btns">
+    <button data-c="pull hello-world">docker pull hello-world</button>
+    <button data-c="run hello-world">docker run hello-world</button>
+    <button data-c="build">docker build -t you/mycalapp:latest .</button>
+    <button data-c="run -p">docker run -p 8080:8080 you/mycalapp</button>
+    <button data-c="run -d">docker run -d -p 8080:8080 you/mycalapp</button>
+    <button data-c="ps">docker ps</button>
+    <button data-c="ps -a">docker ps -a</button>
+    <button data-c="stop">docker stop &lt;running&gt;</button>
+    <button data-c="rm">docker rm &lt;stopped&gt;</button>
+    <button data-c="rmi hello-world">docker rmi hello-world</button>
+    <button data-c="push">docker push you/mycalapp:latest</button>
+    <button class="reset" data-c="reset">↺ reset</button>
+  </div>
+  <div class="panes">
+    <div class="pane"><h5>💿 Local images</h5><div id="ds-img"></div></div>
+    <div class="pane"><h5>📦 Containers</h5><div id="ds-ctr"></div></div>
+    <div class="pane hub"><h5>🗄 Docker Hub (your repos)</h5><div id="ds-hub"></div></div>
+  </div>
+  <div class="term" style="margin:0"><div class="bar"><i></i><i></i><i></i><span>simulated terminal</span></div><pre><code id="ds-out"></code></pre></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s11"><span class="num">11</span>Custom image: the calculator app <span class="ts">04:37:43</span></h2>
+<p>The instructor containerises a simple <strong>Flask calculator</strong>: two numbers, then add, subtract, multiply or divide, with an HTML template and a CSS file. The app doesn't matter: <strong>the same steps work for any ML or DL project</strong>. What you need to learn is how to write the Dockerfile, build the image, run it, and push it.</p>
+<ol>
+  <li>Activate the environment and <code>pip install -r requirements.txt</code>. The instructor points out that these exact pinned versions are what might break on an Ubuntu server, which is the reason to containerise.</li>
+  <li><code>python app.py</code>, then open <strong>localhost:8080</strong> and try an addition (23 + 4…). It works.</li>
+  <li>Create a file named <strong><code>Dockerfile</code></strong> (capital D, no extension).</li>
+</ol>
+
+<!-- ───────────────────────────── -->
+<h2 id="s12"><span class="num">12</span>The Dockerfile, line by line <span class="ts">04:40:52</span></h2>
+<p>The instructor's Dockerfile. Click a line.</p>
+<div class="dfx" id="dfx">
+  <div class="lines">
+    <button data-i="0" aria-pressed="true"><span class="cm"># base image</span></button>
+    <button data-i="1"><span class="kw">FROM</span> python:3.11-slim-buster</button>
+    <button data-i="2"><span class="kw">WORKDIR</span> /app</button>
+    <button data-i="3"><span class="kw">COPY</span> . /app</button>
+    <button data-i="4"><span class="kw">RUN</span> pip install -r requirements.txt</button>
+    <button data-i="5"><span class="kw">EXPOSE</span> 8080</button>
+    <button data-i="6"><span class="kw">CMD</span> ["python3", "app.py"]</button>
+  </div>
+  <div class="explain" id="dfx-explain" aria-live="polite"></div>
+</div>
+
+<div class="callout beyond"><span class="label">Beyond the video · the improved version used in the hands-on project</span>
+<pre><code><span class="kw">FROM</span> python:3.11-slim                     <span class="c"># maintained Debian base (buster is end-of-life)</span>
+<span class="kw">WORKDIR</span> /app
+<span class="kw">COPY</span> requirements.txt .                   <span class="c"># dependencies first → cached layer</span>
+<span class="kw">RUN</span> pip install --no-cache-dir -r requirements.txt
+<span class="kw">COPY</span> . .                                  <span class="c"># code changes don't re-install packages</span>
+<span class="kw">EXPOSE</span> 8080
+<span class="kw">CMD</span> ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "app:app"]   <span class="c"># production server</span></code></pre>
+<p>Plus a <code>.dockerignore</code> (<code>__pycache__/</code>, <code>.venv/</code>, <code>.git/</code>, <code>.env</code>…) so junk and secrets never get copied into the image.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s13"><span class="num">13</span>Build, run, detach, push, pull <span class="ts">04:42:58</span></h2>
+<figure>
+  <p class="fig-title">Anatomy of the two key commands</p>
+  <pre style="font-size:15px;margin:8px 0"><code>docker build -t <span style="color:#86b6ef">entbappy</span>/<span style="color:#7fc79a">mycalapp</span>:<span style="color:#f0c36a">latest</span> <span style="color:#f08a82">.</span></code></pre>
+  <div class="legend"><span><i style="background:#86b6ef"></i>Docker Hub username (keeps the name unique)</span><span><i style="background:#7fc79a"></i>image name</span><span><i style="background:#f0c36a"></i>tag (version label)</span><span><i style="background:#f08a82"></i>build context: the folder with the Dockerfile</span></div>
+  <pre style="font-size:15px;margin:14px 0 8px"><code>docker run <span style="color:#c9a0f5">-d</span> -p <span style="color:#86b6ef">8080</span>:<span style="color:#7fc79a">8080</span> <span style="color:#f0c36a">entbappy/mycalapp:latest</span></code></pre>
+  <div class="legend"><span><i style="background:#c9a0f5"></i>detached (runs in the background)</span><span><i style="background:#86b6ef"></i>host port (what your browser uses)</span><span><i style="background:#7fc79a"></i>container port (the app / EXPOSE)</span><span><i style="background:#f0c36a"></i>which image to run</span></div>
+  <figcaption><code>-p 5000:8080</code> would make the same app reachable at <code>localhost:5000</code> while it still listens on 8080 inside the container.</figcaption>
+</figure>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>the video's sequence</span></div>
+<pre><code><span class="p">$</span> docker build -t entbappy/mycalapp:latest .     <span class="c"># pulls the base, installs deps, bakes the image</span>
+<span class="p">$</span> docker images                                  <span class="c"># the new image appears (also in Docker Desktop)</span>
+<span class="p">$</span> docker run -p 8080:8080 entbappy/mycalapp:latest
+<span class="c">  → allow the firewall prompt on Windows; open localhost:8080 → the calculator now runs FROM THE CONTAINER</span>
+<span class="p">$</span> docker ps                                      <span class="c"># (second terminal) the container is Up</span>
+<span class="c">  Ctrl+C in the first terminal → the container stops too</span>
+<span class="p">$</span> docker run -d -p 8080:8080 entbappy/mycalapp:latest   <span class="c"># detached: keeps running</span>
+<span class="p">$</span> docker stop &lt;id&gt;                               <span class="c"># or the Stop button in Docker Desktop</span>
+<span class="p">$</span> docker login                                   <span class="c"># authenticate to Docker Hub</span>
+<span class="p">$</span> docker push entbappy/mycalapp:latest           <span class="c"># now listed under your Docker Hub repositories</span>
+<span class="c">  … anyone can find it on Docker Hub (the instructor checks in an incognito window) …</span>
+<span class="p">$</span> docker rm -f $(docker ps -aq)                  <span class="c"># remove all containers (then the local image)</span>
+<span class="p">$</span> docker pull entbappy/mycalapp:latest           <span class="c"># download it back from the Hub</span>
+<span class="p">$</span> docker run -p 8080:8080 entbappy/mycalapp:latest   <span class="c"># works exactly the same</span></code></pre></div>
+<div class="callout key"><span class="label">Why this matters for the rest of the course</span><p>Every CI/CD deployment follows this pattern: <strong>containerise the app → build the image → run it on a server</strong>. Docker has more (Compose, volumes…), but the instructor covers only what the course's projects use. His homework: <strong>containerise any project of your own, push it to Docker Hub, and run it.</strong></p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s14"><span class="num">14</span>Precision notes</h2>
+<div class="callout wrong"><span class="label">Things to fix or know when you copy the video's setup</span>
+<ul>
+  <li><strong><code>python:3.11-slim-buster</code> is outdated.</strong> Debian 10 "buster" is end-of-life, so use <code>python:3.11-slim</code> (current Debian). Also, <code>slim</code> images are <strong>Debian-based, not Alpine</strong>. Alpine variants are named <code>-alpine</code>.</li>
+  <li><strong>Copy <code>requirements.txt</code> before the code.</strong> With <code>COPY . /app</code> first, any code change invalidates the cache and reinstalls every package on each build.</li>
+  <li><strong>The Flask development server isn't for production.</strong> The course's requirements already include <code>gunicorn</code>. Use it as the <code>CMD</code>. Also bind to <code>0.0.0.0</code>, not <code>127.0.0.1</code>, or the app is unreachable from outside the container.</li>
+  <li><strong>Old pins.</strong> The course app pins <code>Flask==1.1.2</code> / <code>Jinja2==2.11.2</code> (2020), which have known vulnerabilities and don't install cleanly on new Pythons. The hands-on project uses Flask 3.1.</li>
+  <li><strong>Isolation isn't a resource limit.</strong> Containers isolate processes and files, but a busy container can still use all the CPU and RAM unless you set <code>--memory</code> / <code>--cpus</code> (or Kubernetes limits).</li>
+  <li><strong>Ctrl+C stopped the container</strong> because it was running attached in the foreground. With <code>-d</code> it keeps running until <code>docker stop</code>.</li>
+  <li><strong>Docker Hub isn't only public</strong>: it offers private repositories too. Google Container Registry has been replaced by <strong>Artifact Registry</strong>.</li>
+  <li><strong>Apple-silicon Macs build <code>arm64</code> images.</strong> An x86 EC2 server needs <code>docker build --platform linux/amd64 …</code> (or a multi-arch build with <code>docker buildx</code>), otherwise you get <em>exec format error</em>.</li>
+</ul></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="hands-on"><span class="num">▶</span>Hands-on files: what we built</h2>
+<div class="handson">
+<span class="label">Hands-on project · apps tested; Docker steps run as soon as Docker is installed</span>
+<div class="files">
+  <a href="../projects/ch16_docker/docker_walkthrough.ipynb">docker_walkthrough.ipynb</a>
+  <a href="../projects/ch16_docker/calculator_app/">calculator_app/</a>
+  <a href="../projects/ch16_docker/calculator_app/Dockerfile">calculator_app/Dockerfile</a>
+  <a href="../projects/ch16_docker/wine_api/">wine_api/</a>
+  <a href="../projects/ch16_docker/wine_api/Dockerfile">wine_api/Dockerfile</a>
+</div>
+<pre style="margin:0 0 12px"><code>projects/ch16_docker/
+├── docker_walkthrough.ipynb     <span class="c"># hello-world → calculator image → model API image</span>
+├── calculator_app/              <span class="c"># Flask app (own code) + Dockerfile + .dockerignore</span>
+│   ├── app.py · calculator.py · templates/index.html · static/style.css
+│   └── requirements.txt (flask 3.1.3, gunicorn)
+└── wine_api/                    <span class="c"># beyond the video</span>
+    ├── export_model.py          <span class="c"># pulls ElasticnetWineModel@champion out of Chapter 15's MLflow</span>
+    ├── app.py                   <span class="c"># FastAPI: GET /health, POST /predict (validated input)</span>
+    ├── model/model.joblib · requirements.txt
+    └── Dockerfile               <span class="c"># slim base, non-root user, HEALTHCHECK, uvicorn</span></code></pre>
+<p><strong>Docker isn't installed on this Mac</strong>, so the notebook's Docker cells printed their commands and <em>skipped</em>. They'll run for real after you install Docker Desktop (it's on your <a href="todo_after_course.html">after-course to-do list</a>). Everything else ran:</p>
+<h4>Calculator app, served over HTTP (the video's "before Docker" step)</h4>
+<div class="result">add       23, 4   →  23 + 4 = 27
+subtract  133, 7  →  133 − 7 = 126
+multiply  6, 7    →  6 × 7 = 42
+divide    1, 0    →  cannot divide by zero</div>
+<h4>Chapter 15's champion model as an API</h4>
+<div class="result">exported ElasticnetWineModel v2 (@champion) → model/model.joblib (1183 bytes) | alpha=0.3, l1_ratio=0.6
+GET  /health  → {'status': 'ok', 'model': 'model.joblib'}
+POST /predict → 200 {'predictions': [5.497, 5.463]}
+POST /predict with missing fields → HTTP 422: Field required (10 errors)
+auto-generated docs at /docs · endpoints: ['/health', '/predict']</div>
+<p>That's a complete deployable unit: model file + API + Dockerfile. Chapter 17 onwards (the end-to-end project and CI/CD) builds on exactly this.</p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s15"><span class="num">15</span>Interview questions</h2>
+<details class="qa"><summary>Image vs container?</summary>
+<p>An image is an immutable, layered template (filesystem plus metadata). A container is a running, or stopped, instance of an image with its own writable layer, process space and network. One image can back many containers.</p></details>
+<details class="qa"><summary>Container vs virtual machine?</summary>
+<p>A VM virtualises hardware and runs a full guest OS on a hypervisor: strong isolation, but GBs in size and minutes to boot. A container shares the host OS kernel and isolates processes with namespaces and cgroups: MBs, starts in seconds, higher density, but weaker isolation than a VM.</p></details>
+<details class="qa"><summary>How does Docker layer caching work, and how do you use it well?</summary>
+<p>Each instruction produces a layer. On rebuild, Docker reuses cached layers until one changes, and everything after that is rebuilt. So order instructions from least to most frequently changing: base image → system packages → <code>COPY requirements.txt</code> + <code>pip install</code> → <code>COPY</code> the code.</p></details>
+<details class="qa"><summary>CMD vs ENTRYPOINT? COPY vs ADD? EXPOSE vs -p?</summary>
+<p><code>ENTRYPOINT</code> sets the executable. <code>CMD</code> gives default arguments (or the default command) and is easily overridden at <code>docker run</code>. <code>COPY</code> copies local files. <code>ADD</code> can also fetch URLs and extract tar files, so prefer <code>COPY</code> for clarity. <code>EXPOSE</code> only documents a port. <code>-p host:container</code> actually publishes it.</p></details>
+<details class="qa"><summary>How do you keep an ML image small and secure?</summary>
+<p>Use slim bases, <code>--no-cache-dir</code>, a <code>.dockerignore</code>, and multi-stage builds (compile or train in one stage, copy only the artefacts into the runtime stage). Pin versions, run as a non-root user, never bake secrets in (pass them as env vars or secrets at runtime), scan images (e.g. <code>docker scout</code>, Trivy), and keep large models out of the image when possible (pull them from S3 or a registry at start-up).</p></details>
+<details class="qa"><summary>How do you persist data or debug a running container?</summary>
+<p>Persist with <strong>volumes</strong> (<code>-v name:/path</code>) or bind mounts, since a container's own writable layer disappears with it. Debug with <code>docker logs -f</code>, <code>docker exec -it &lt;name&gt; sh</code>, <code>docker inspect</code> and <code>docker stats</code>.</p></details>
+<details class="qa"><summary>What is Docker Compose?</summary>
+<p>A YAML file describing a multi-container app (e.g. an API, a database and an MLflow server) with networks, volumes and environment variables, started with <code>docker compose up</code>. It's great for local stacks. Kubernetes (Chapter 21) orchestrates containers across a cluster.</p></details>
+<details class="qa"><summary>Your image runs on your Mac but fails on EC2 with "exec format error". Why?</summary>
+<p>An architecture mismatch: the image was built for arm64 (Apple silicon) and the server is amd64. Rebuild with <code>--platform linux/amd64</code>, or publish a multi-arch image with <code>docker buildx build --platform linux/amd64,linux/arm64 --push</code>.</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s16"><span class="num">16</span>Recap</h2>
+<ul>
+  <li>Docker solves "works on my machine": package the app and its environment as an <strong>image</strong>, run it as a <strong>container</strong> on any Docker engine. (Maggi masala packet = image.)</li>
+  <li>Benefits: <strong>consistency</strong> across dev, test and prod, and <strong>isolation</strong> between apps on one host.</li>
+  <li>Components: <strong>Engine</strong> (CLI → REST API → daemon), <strong>image</strong> (base + code + deps + metadata), <strong>Dockerfile</strong> (instructions = layers), <strong>container</strong> (an image instance), <strong>registry</strong> (Docker Hub, ECR, GCR/Artifact Registry, ACR, with tags).</li>
+  <li>Install: Docker Desktop. On Windows, add WSL 2, enable the VM Platform and WSL features, install Ubuntu, and turn on WSL integration. Verify with <code>docker --version</code> and <code>docker ps</code>.</li>
+  <li>Demo: <code>pull</code>, <code>images</code>, <code>run</code>, <code>ps -a</code>, <code>rm</code>, <code>rmi</code> with <code>hello-world</code>.</li>
+  <li>Custom image: Dockerfile (FROM, WORKDIR, COPY, RUN, EXPOSE, CMD) → <code>docker build -t user/app:tag .</code> → <code>docker run -p 8080:8080</code> (add <code>-d</code> for background) → <code>docker login</code> / <code>push</code> → anyone can <code>pull</code> and <code>run</code>.</li>
+</ul>
+
+<div class="pager">
+  <a href="15_mlflow_tracking_with_dagshub.html"><small>← Previous</small>15 · MLflow experiment tracking with DagsHub</a>
+  <a class="next" href="17_end_to_end_youtube_sentiment.html"><small>Next →</small>17 · End-to-end ML project with MLOps</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+<script>
+// Dockerfile explorer
+(function () {
+  const info = [
+    ['A comment', 'Lines starting with <code>#</code> are comments. The instructor labels each block (<em>base image, workdir, copy, run, port, commands</em>) so the file reads top to bottom as layers.'],
+    ['FROM: the base image', 'The environment the app runs on. Python 3.11 matches the version used locally. The image comes from Docker Hub and bundles a small Linux plus Python.<br><br><b>Note:</b> <code>slim-buster</code> is Debian 10, now end-of-life. Use <code>python:3.11-slim</code>. <em>slim</em> is Debian-based; Alpine images are tagged <code>-alpine</code>.'],
+    ['WORKDIR: the folder inside the image', 'Creates <code>/app</code> and makes it the current directory for every following instruction. That folder is what gets containerised.'],
+    ['COPY: bring the source code in', 'Copies everything in the build context (the <code>.</code> in <code>docker build</code>) into <code>/app</code>.<br><br><b>Better:</b> copy <code>requirements.txt</code> first and install, then copy the code, so code edits don\'t invalidate the dependency layer. Add a <code>.dockerignore</code>.'],
+    ['RUN: install dependencies', 'Runs at <b>build time</b> and bakes the installed packages into a layer.<br><br><b>Tip:</b> <code>pip install --no-cache-dir</code> keeps the image smaller.'],
+    ['EXPOSE: document the port', 'The app listens on 8080 (use 5000 if your app does). <code>EXPOSE</code> is documentation only; <code>docker run -p 8080:8080</code> is what actually publishes the port.'],
+    ['CMD: the start command', 'Runs when a <b>container starts</b> (not at build). <code>python3</code> because the image is Linux; the Python images also provide <code>python</code>.<br><br><b>Production:</b> use a real server, e.g. <code>gunicorn --bind 0.0.0.0:8080 app:app</code>, and make sure the app binds to <code>0.0.0.0</code>.'],
+  ];
+  const btns = document.querySelectorAll('#dfx button');
+  const box = document.getElementById('dfx-explain');
+  function show(i) {
+    btns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.i == i)));
+    box.innerHTML = `<h4>${info[i][0]}</h4><p style="margin:0">${info[i][1]}</p>`;
+  }
+  btns.forEach(b => b.addEventListener('click', () => show(+b.dataset.i)));
+  show(1);
+})();
+
+// Docker command simulator
+(function () {
+  const $ = id => document.getElementById(id);
+  const names = ['happy_summit', 'eager_turing', 'brave_lovelace', 'quiet_hopper', 'jolly_curie', 'sharp_babbage'];
+  let S, lines;
+  const hex = () => Math.random().toString(16).slice(2, 14);
+  function reset() {
+    S = {images: [], containers: [], hub: [], n: 0};
+    lines = ['# Docker Desktop is empty. Try: docker pull hello-world'];
+    draw();
+  }
+  const img = n => S.images.find(i => i.name === n);
+  function out(...l) { lines.push(...l); }
+  function draw() {
+    $('ds-img').innerHTML = S.images.map(i => `<div class="item"><span>${i.name}</span><span>${i.id.slice(0, 6)}</span></div>`).join('') || '<small>none</small>';
+    $('ds-ctr').innerHTML = S.containers.map(c => `<div class="item ${c.status === 'Up' ? 'up' : 'exited'}"><span>${c.name}</span><span>${c.status}${c.ports ? ' · ' + c.ports : ''}</span></div>`).join('') || '<small>none</small>';
+    $('ds-hub').innerHTML = S.hub.map(h => `<div class="item"><span>${h}</span><span>public</span></div>`).join('') || '<small>nothing pushed yet</small>';
+    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    $('ds-out').innerHTML = lines.slice(-30).map(l => l.startsWith('$') ? `<span class="p">$</span>${esc(l.slice(1))}` : l.startsWith('#') ? `<span class="c">${esc(l)}</span>` : `<span class="o">${esc(l)}</span>`).join('\n');
+    $('ds-out').parentElement.scrollTop = 1e6;
+  }
+  function newContainer(image, status, ports) {
+    const c = {id: hex(), name: names[S.n++ % names.length], image, status, ports};
+    S.containers.push(c); return c;
+  }
+  const acts = {
+    'pull hello-world'() {
+      out('$ docker pull hello-world');
+      if (img('hello-world')) return out('Status: Image is up to date for hello-world:latest');
+      S.images.push({name: 'hello-world', id: hex()}); out('latest: Pulling from library/hello-world', 'Status: Downloaded newer image for hello-world:latest');
+    },
+    'run hello-world'() {
+      out('$ docker run hello-world');
+      if (!img('hello-world')) { S.images.push({name: 'hello-world', id: hex()}); out("Unable to find image 'hello-world:latest' locally", 'latest: Pulling from library/hello-world'); }
+      newContainer('hello-world', 'Exited (0)'); out('Hello from Docker!', 'This message shows that your installation appears to be working correctly.');
+    },
+    build() {
+      out('$ docker build -t you/mycalapp:latest .', ' => [1/5] FROM python:3.11-slim', ' => [2/5] WORKDIR /app', ' => [3/5] COPY requirements.txt .', ' => [4/5] RUN pip install --no-cache-dir -r requirements.txt', ' => [5/5] COPY . .', ' => naming to docker.io/you/mycalapp:latest');
+      if (!img('you/mycalapp:latest')) S.images.push({name: 'you/mycalapp:latest', id: hex()});
+    },
+    'run -p'() {
+      out('$ docker run -p 8080:8080 you/mycalapp:latest');
+      if (!img('you/mycalapp:latest')) return out("Unable to find image 'you/mycalapp:latest' locally", 'Error: pull access denied (build it first)');
+      if (S.containers.some(c => c.status === 'Up' && c.ports)) return out('Error: Bind for 0.0.0.0:8080 failed: port is already allocated');
+      newContainer('you/mycalapp:latest', 'Up', '8080→8080');
+      out('[INFO] Listening at: http://0.0.0.0:8080', '# attached to the terminal: Ctrl+C would stop it. Open http://localhost:8080');
+    },
+    'run -d'() {
+      out('$ docker run -d -p 8080:8080 you/mycalapp:latest');
+      if (!img('you/mycalapp:latest')) return out("Unable to find image 'you/mycalapp:latest' locally", 'Error: pull access denied (build it first)');
+      if (S.containers.some(c => c.status === 'Up' && c.ports)) return out('Error: Bind for 0.0.0.0:8080 failed: port is already allocated');
+      const c = newContainer('you/mycalapp:latest', 'Up', '8080→8080'); out(c.id + hex() + hex(), '# detached: the prompt comes back and the container keeps running');
+    },
+    ps() {
+      out('$ docker ps', 'CONTAINER ID   IMAGE                 STATUS   PORTS              NAMES');
+      S.containers.filter(c => c.status === 'Up').forEach(c => out(`${c.id}   ${c.image.padEnd(20)}  Up       0.0.0.0:8080->8080 ${c.name}`));
+    },
+    'ps -a'() {
+      out('$ docker ps -a', 'CONTAINER ID   IMAGE                 STATUS        NAMES');
+      S.containers.forEach(c => out(`${c.id}   ${c.image.padEnd(20)}  ${c.status.padEnd(12)}  ${c.name}`));
+    },
+    stop() {
+      const c = S.containers.find(x => x.status === 'Up');
+      out('$ docker stop ' + (c ? c.name : '<name>'));
+      if (!c) return out('# nothing is running');
+      c.status = 'Exited (0)'; c.ports = ''; out(c.name);
+    },
+    rm() {
+      const c = S.containers.find(x => x.status !== 'Up');
+      if (!c) { const up = S.containers.find(x => x.status === 'Up'); out('$ docker rm ' + (up ? up.id : '<id>')); return out(up ? 'Error: cannot remove a running container: stop it first (or rm -f)' : '# no containers'); }
+      out('$ docker rm ' + c.id); S.containers = S.containers.filter(x => x !== c); out(c.id);
+    },
+    'rmi hello-world'() {
+      out('$ docker rmi hello-world');
+      if (!img('hello-world')) return out('Error: No such image: hello-world');
+      const user = S.containers.find(c => c.image === 'hello-world');
+      if (user) return out(`Error: conflict: unable to remove image - container ${user.id} is using it (docker rm it first)`);
+      S.images = S.images.filter(i => i.name !== 'hello-world'); out('Untagged: hello-world:latest', 'Deleted: sha256:' + hex());
+    },
+    push() {
+      out('$ docker push you/mycalapp:latest');
+      if (!img('you/mycalapp:latest')) return out('Error: An image does not exist locally with the tag: you/mycalapp');
+      if (!S.loggedIn) { S.loggedIn = true; out('$ docker login', 'Login Succeeded'); }
+      if (!S.hub.includes('you/mycalapp:latest')) S.hub.push('you/mycalapp:latest');
+      out('The push refers to repository [docker.io/you/mycalapp]', 'latest: digest: sha256:' + hex() + ' size: 1996');
+    },
+    reset,
+  };
+  document.querySelectorAll('#dsim button').forEach(b => b.addEventListener('click', () => { acts[b.dataset.c](); draw(); }));
+  reset();
+})();
+</script>
+</body>
+</html>

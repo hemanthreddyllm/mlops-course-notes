@@ -1,0 +1,9 @@
+apiVersion: 1
+providers:
+  - name: mlops
+    type: file
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: DASHBOARD_DIR
+      foldersFromFilesStructure: false

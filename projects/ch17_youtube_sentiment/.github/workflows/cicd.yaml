@@ -1,0 +1,123 @@
+# CI/CD for the sentiment API: test → build & push to Amazon ECR → deploy on EC2 (self-hosted runner).
+# Walkthrough: notes/18_cicd_github_actions.html · projects/ch18_github_actions/
+# Repository secrets (Settings → Secrets and variables → Actions → Secrets):   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+# Repository variables (same page → Variables tab; not secret, so they aren't masked): AWS_REGION, ECR_REPOSITORY_NAME
+# (GitHub drops any job output that contains a secret value, so non-secret settings belong in variables.)
+name: cicd
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["README.md"]
+  workflow_dispatch:            # also allow a manual "Run workflow" button
+
+permissions:
+  contents: read
+
+env:
+  CONTAINER: yt-sentiment
+  PORT: "8080"
+
+jobs:
+  # ---------------------------------------------------------------- continuous integration
+  test:
+    name: Continuous Integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements-api.txt dvc imbalanced-learn pytest
+          python -m nltk.downloader stopwords wordnet omw-1.4
+
+      # lgbm_model.pkl / tfidf_vectorizer.pkl are DVC outputs, so they are NOT in git.
+      # Rebuild them here (data is downloaded from a public URL). With a DVC remote you would `dvc pull` instead.
+      - name: Train the model (DVC)
+        run: dvc repro model_building
+
+      - name: Run tests
+        run: pytest -q tests
+
+      - name: Keep the model files for the next job
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-files
+          path: |
+            lgbm_model.pkl
+            tfidf_vectorizer.pkl
+          retention-days: 7
+
+  # ---------------------------------------------------------------- continuous delivery
+  build-and-push:
+    name: Continuous Delivery
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: model-files
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag and push the image
+        env:
+          IMAGE: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY_NAME }}
+        run: |
+          docker build --platform linux/amd64 -t "$IMAGE:${{ github.sha }}" -t "$IMAGE:latest" .
+          docker push --all-tags "$IMAGE"
+
+  # ---------------------------------------------------------------- continuous deployment
+  deploy:
+    name: Continuous Deployment
+    needs: build-and-push
+    runs-on: self-hosted          # the runner installed on the EC2 instance
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # the exact image this commit built (tagged with the commit SHA → easy rollback to an older tag)
+      - name: Pull the new image
+        run: |
+          IMAGE="${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY_NAME }}:${{ github.sha }}"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          docker pull "$IMAGE"
+
+      # The course keeps these lines commented out, so the second deployment fails with
+      # "container name already in use". Removing the old container first makes every push work.
+      - name: Replace the running container
+        run: |
+          docker rm -f "$CONTAINER" 2>/dev/null || true
+          docker run -d --name "$CONTAINER" --restart unless-stopped -p "$PORT:8080" \
+            "$IMAGE"
+
+      - name: Smoke test
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS "http://localhost:$PORT/" && exit 0
+            sleep 2
+          done
+          docker logs "$CONTAINER"; exit 1
+
+      - name: Clean up old images
+        run: docker image prune -af --filter "until=24h"

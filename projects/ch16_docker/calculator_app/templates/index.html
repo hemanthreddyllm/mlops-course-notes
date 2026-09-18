@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calculator</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="card">
+    <h1>Calculator</h1>
+    <form method="post">
+      <input name="a" type="number" step="any" placeholder="first number" value="{{ form.a }}" required>
+      <select name="operation">
+        {% for key, (symbol, _) in operations.items() %}
+          <option value="{{ key }}" {% if form.operation == key %}selected{% endif %}>{{ symbol }} {{ key }}</option>
+        {% endfor %}
+      </select>
+      <input name="b" type="number" step="any" placeholder="second number" value="{{ form.b }}" required>
+      <button type="submit">Calculate</button>
+    </form>
+    {% if result %}<p class="result" id="result">{{ result }}</p>{% endif %}
+    {% if error %}<p class="error" id="error">{{ error }}</p>{% endif %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>YouTube Sentiment Insights (offline preview)</title>
+  <style>
+    body { width: 420px; margin: 0; font: 13px/1.45 -apple-system, "Segoe UI", sans-serif; color: #0b0b0b; background: #f7f6f2; }
+    header { background: #0b0b0b; color: #fff; padding: 12px 14px; }
+    header h1 { margin: 0; font-size: 15px; }
+    header p { margin: 2px 0 0; font-size: 11px; color: #c3c2b7; }
+    main { padding: 12px 14px 16px; }
+    .status { font-size: 12px; color: #52514e; margin-bottom: 8px; }
+    .status.error { color: #b3261e; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .metric { background: #fff; border: 1px solid #dcdbd5; border-radius: 8px; padding: 8px 10px; }
+    .metric b { display: block; font-size: 18px; }
+    .metric span { color: #7a7974; font-size: 11px; }
+    .bar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; margin: 12px 0 4px; background: #e7e6e1; }
+    .bar div { height: 100%; }
+    .legend { display: flex; justify-content: space-between; font-size: 11px; color: #52514e; }
+    h2 { font-size: 13px; margin: 16px 0 6px; }
+    img { width: 100%; background: #fff; border: 1px solid #dcdbd5; border-radius: 8px; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { background: #fff; border: 1px solid #dcdbd5; border-left: 4px solid #9a9890; border-radius: 6px; padding: 6px 8px; margin: 5px 0; }
+    li.pos { border-left-color: #1baf7a; } li.neg { border-left-color: #e34948; }
+    li small { color: #7a7974; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>YouTube Sentiment Insights</h1>
+    <p>Comment sentiment for the current video</p>
+  </header>
+  <main>
+    <div id="status" class="status">Starting…</div>
+    <section id="results" hidden>
+      <div class="grid">
+        <div class="metric"><b id="m-total">–</b><span>comments analysed</span></div>
+        <div class="metric"><b id="m-unique">–</b><span>unique commenters</span></div>
+        <div class="metric"><b id="m-length">–</b><span>avg words / comment</span></div>
+        <div class="metric"><b id="m-score">–</b><span>sentiment score (0–10)</span></div>
+      </div>
+      <div class="bar" id="bar"></div>
+      <div class="legend" id="bar-legend"></div>
+      <h2>Sentiment split</h2>
+      <img id="chart" alt="Pie chart of positive, neutral and negative comments">
+      <h2>Trend over time</h2>
+      <img id="trend" alt="Monthly share of each sentiment">
+      <h2>Word cloud</h2>
+      <img id="cloud" alt="Most frequent words in the comments">
+      <h2>Top comments</h2>
+      <ul id="comments"></ul>
+    </section>
+  </main>
+  <script src="dev/chrome_mock.js"></script>
+  <script src="dev/demo_comments.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

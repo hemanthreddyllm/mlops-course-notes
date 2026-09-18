@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>09 · Code Management using Git — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .term { background: var(--code-bg); border-radius: 10px; overflow: hidden; margin: 14px 0; }
+  .term .bar { display: flex; gap: 6px; padding: 9px 12px; background: #2b2b29; }
+  .term .bar i { width: 10px; height: 10px; border-radius: 50%; background: #5b5a55; }
+  .term .bar span { margin-left: 8px; font: 12px var(--mono); color: #a8a79f; }
+  .term pre { margin: 0; border-radius: 0; }
+  .term .p { color: #7fc79a; }
+  .term .o { color: #c3c2b7; }
+  .term .r { color: #f08a82; }
+  .term .g { color: #7fc79a; }
+  .cmd { font: 600 13px var(--mono); white-space: nowrap; }
+  /* simulator */
+  .sim { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; margin: 18px 0; }
+  .sim .zones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0; }
+  @media (max-width: 700px) { .sim .zones { grid-template-columns: 1fr 1fr; } }
+  .zone { background: var(--surface-2); border-radius: 10px; padding: 10px; min-height: 130px; }
+  .zone h5 { margin: 0 0 2px; font: 600 13px var(--sans); }
+  .zone small { display: block; color: var(--ink-3); font-size: 11px; margin-bottom: 8px; }
+  .zone.remote { background: var(--accent-soft); }
+  .chipf { display: flex; justify-content: space-between; gap: 6px; font: 12px var(--mono); background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 8px; margin: 4px 0; }
+  .chipf em { font-style: normal; color: var(--ink-3); }
+  .chipf.u { border-color: var(--s8); }
+  .chipf.m { border-color: var(--s4); }
+  .chipf.s { border-color: var(--good); }
+  .sim .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sim .btns span { font-size: 11px; color: var(--ink-3); align-self: center; margin-right: 2px; text-transform: uppercase; letter-spacing: .05em; }
+  .sim button { font: 12px var(--mono); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); cursor: pointer; }
+  .sim button:hover { border-color: var(--accent); }
+  .sim button.git { background: var(--code-bg); color: #f1f0ea; border-color: var(--code-bg); }
+  .sim pre { margin: 10px 0 0; max-height: 220px; overflow: auto; }
+  .sim .log { font: 12px var(--mono); color: var(--ink-2); margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 09</span></div>
+<div class="eyebrow">Chapter 09 · How to do Code Management using Git</div>
+<h1>status → add → commit → push (and pull)</h1>
+<p class="lede">Working in the repo cloned in Chapter 08, the instructor creates Python files, checks them with <code>git status</code>, stages them with <code>git add</code>, saves a version with <code>git commit</code>, uploads it with <code>git push origin main</code>, and shows how teammates get it with <code>git pull</code>. He then plays a second developer who adds a feature, and shows how to find an older version on GitHub when the new one has a bug.</p>
+<div class="meta">
+  <span class="chip">Video 02:13:16 – 02:22:01</span>
+  <span class="chip">Hands-on · VS Code + terminal</span>
+  <span class="chip">Repo: github-learning-test</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">Why not just zip the code?</a></li>
+    <li><a href="#s2">The four places your code lives</a></li>
+    <li><a href="#s3">Step 1: git status</a></li>
+    <li><a href="#s4">Step 2: git add (staging)</a></li>
+    <li><a href="#s5">Step 3: git commit</a></li>
+    <li><a href="#s6">Step 4: git push origin main</a></li>
+    <li><a href="#s7">git pull, and a second developer's change</a></li>
+    <li><a href="#s8">Interactive: practise the workflow</a></li>
+    <li><a href="#s9">Going back to a previous version</a></li>
+    <li><a href="#s10">Committing everything with git add .</a></li>
+    <li><a href="#s11">Cheat sheet</a></li>
+    <li><a href="#hands-on">Hands-on files: what we built</a></li>
+    <li><a href="#s12">Interview questions</a></li>
+    <li><a href="#s13">Recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>Why not just zip the code? <span class="ts">02:13:16</span></h2>
+<p>The instructor creates <code>test.py</code> with a simple <code>print</code>, which stands in for <strong>version 1</strong> of a project with <strong>feature 1</strong> added. The code exists only on his machine. To share it the old way, he'd zip it and upload it to Google Drive, and with <strong>100 developers</strong> each of them would have to download and open it. That's tedious and error-prone.</p>
+<div class="callout key"><span class="label">Instead</span><p><strong>Commit</strong> the code from your machine and <strong>push</strong> it to the GitHub server. Everyone else just <strong>pulls</strong>. Four commands make this work.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>The four places your code lives</h2>
+<p>Each command moves changes one step to the right:</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 230" role="img" aria-label="Working directory, staging area, local repository and remote repository; git add moves changes to staging, git commit to the local repo, git push to GitHub, git pull brings changes back">
+    <defs>
+      <marker id="k1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker>
+      <marker id="k2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--s2)"/></marker>
+    </defs>
+    <text x="20" y="20" class="t-xs t-b">YOUR LAPTOP</text>
+    <rect x="12" y="28" width="552" height="140" rx="12" fill="none" stroke="var(--rule)" stroke-dasharray="5 4"/>
+    <g data-tip="<b>Working directory</b><br>The files you see and edit in VS Code. New files start as <i>untracked</i>, edited ones become <i>modified</i>.">
+      <rect x="24" y="46" width="160" height="104" rx="10" class="box"/><text x="104" y="74" text-anchor="middle" class="t-sm t-b">① Working dir</text><text x="104" y="96" text-anchor="middle" class="t-xs">test.py, test2.py</text><text x="104" y="116" text-anchor="middle" class="t-xs">what you edit</text><text x="104" y="136" text-anchor="middle" class="t-xs t-mute">untracked / modified</text></g>
+    <g data-tip="<b>Staging area</b><br>A waiting room: the exact changes that will go into the next commit. The captions write it as 'stressing area'.">
+      <rect x="214" y="46" width="160" height="104" rx="10" class="box"/><text x="294" y="74" text-anchor="middle" class="t-sm t-b">② Staging area</text><text x="294" y="96" text-anchor="middle" class="t-xs">"index"</text><text x="294" y="116" text-anchor="middle" class="t-xs">next commit's contents</text><text x="294" y="136" text-anchor="middle" class="t-xs t-mute">staged</text></g>
+    <g data-tip="<b>Local repository</b><br>The .git folder: every commit you've made, still only on your machine.">
+      <rect x="404" y="46" width="150" height="104" rx="10" class="box-2"/><text x="479" y="74" text-anchor="middle" class="t-sm t-b">③ Local repo</text><text x="479" y="96" text-anchor="middle" class="t-xs">.git history</text><text x="479" y="116" text-anchor="middle" class="t-xs">commits (versions)</text><text x="479" y="136" text-anchor="middle" class="t-xs t-mute">committed</text></g>
+    <g data-tip="<b>Remote repository</b><br>GitHub (origin). What teammates see and pull from.">
+      <rect x="600" y="46" width="150" height="104" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="675" y="74" text-anchor="middle" class="t-sm t-b">④ GitHub</text><text x="675" y="96" text-anchor="middle" class="t-xs">remote "origin"</text><text x="675" y="116" text-anchor="middle" class="t-xs">branch: main</text><text x="675" y="136" text-anchor="middle" class="t-xs t-mute">shared</text></g>
+    <path d="M184,80 L212,80" class="edge-accent" marker-end="url(#k1)"/>
+    <path d="M374,80 L402,80" class="edge-accent" marker-end="url(#k1)"/>
+    <path d="M554,80 L598,80" class="edge-accent" marker-end="url(#k1)"/>
+    <text x="198" y="196" text-anchor="middle" class="t-sm t-b" style="fill:var(--accent)">git add</text>
+    <text x="388" y="196" text-anchor="middle" class="t-sm t-b" style="fill:var(--accent)">git commit -m</text>
+    <text x="578" y="196" text-anchor="middle" class="t-sm t-b" style="fill:var(--accent)">git push</text>
+    <path d="M198,186 L198,86" stroke="var(--rule)" stroke-dasharray="2 3"/><path d="M388,186 L388,86" stroke="var(--rule)" stroke-dasharray="2 3"/><path d="M578,186 L578,86" stroke="var(--rule)" stroke-dasharray="2 3"/>
+    <path d="M675,150 Q675,222 400,222 Q104,222 104,152" fill="none" stroke="var(--s2)" stroke-width="2" marker-end="url(#k2)"/>
+    <text x="400" y="216" text-anchor="middle" class="t-sm t-b" style="fill:var(--s2)">git pull  (fetch + merge into your files)</text>
+  </svg>
+  </div>
+  <figcaption>Hover each box. <code>git status</code> tells you which files are in ① (and not yet staged) and which are in ②.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>Step 1: git status <span class="ts">02:14:20</span></h2>
+<p>VS Code already marks <code>test.py</code> as new. The terminal equivalent is <code>git status</code>, which lists what has changed since the last commit.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>~/github-learning-test (main)</span></div>
+<pre><code><span class="p">$</span> git status
+<span class="o">On branch main
+Your branch is up to date with 'origin/main'.
+
+Untracked files:
+  (use "git add &lt;file&gt;..." to include in what will be committed)</span>
+<span class="r">        test.py</span></code></pre></div>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>VS Code badge</th><th>Meaning</th><th>git status calls it</th></tr></thead>
+  <tbody>
+    <tr><td class="cmd" style="color:var(--good)">U</td><td>New file Git has never tracked</td><td>Untracked files</td></tr>
+    <tr><td class="cmd" style="color:var(--s4)">M</td><td>Tracked file changed since the last commit</td><td>Changes not staged / modified</td></tr>
+    <tr><td class="cmd" style="color:var(--good)">A</td><td>New file that has been staged</td><td>Changes to be committed: new file</td></tr>
+    <tr><td class="cmd" style="color:var(--bad)">D</td><td>File deleted</td><td>deleted</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>Step 2: git add (staging) <span class="ts">02:15:25</span></h2>
+<p>Before pushing, you add files to the <strong>staging area</strong> (the auto-captions say "stressing area"). You can stage <strong>one file by name</strong> or <strong>everything with <code>.</code></strong>. The instructor creates a second file, <code>test2.py</code>, to show the difference:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>~/github-learning-test (main)</span></div>
+<pre><code><span class="p">$</span> git status
+<span class="o">Untracked files:</span>
+<span class="r">        test.py
+        test2.py</span>
+<span class="p">$</span> git add test.py              <span class="c"># stage only this one</span>
+<span class="p">$</span> git status
+<span class="o">Changes to be committed:</span>
+<span class="g">        new file:   test.py</span>
+<span class="o">Untracked files:</span>
+<span class="r">        test2.py</span>                 <span class="c"># not staged, so it won't be in the commit</span></code></pre></div>
+<div class="grid">
+  <div class="card"><h4><span class="cmd">git add &lt;file&gt;</span></h4><p>Stage specific files. Useful when you only want <em>some</em> of your changes in this commit.</p></div>
+  <div class="card"><h4><span class="cmd">git add .</span></h4><p>Stage <strong>everything</strong> that changed in the current folder, except files matched by <code>.gitignore</code>.</p></div>
+</div>
+<div class="callout beyond"><span class="label">Why a staging area?</span><p>It lets you build a commit deliberately. For example, you might commit a bug fix now and keep an unfinished experiment out of it. Undo staging with <code>git restore --staged &lt;file&gt;</code>. Check what's staged with <code>git diff --staged</code>.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>Step 3: git commit <span class="ts">02:16:29</span></h2>
+<p>A <strong>commit</strong> finalises the staged changes as a saved version. <code>-m</code> attaches a message describing the change.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>~/github-learning-test (main)</span></div>
+<pre><code><span class="p">$</span> git commit -m "test.py file added"
+<span class="o">[main 3f9c2a1] test.py file added
+ 1 file changed, 1 insertion(+)
+ create mode 100644 test.py</span>
+<span class="p">$</span> git status
+<span class="o">Untracked files:</span>
+<span class="r">        test2.py</span>                 <span class="c"># test.py no longer listed: it's committed</span></code></pre></div>
+<p>After the commit, <code>test.py</code> disappears from <code>git status</code>. From now on <strong>Git tracks it</strong>: any later edit makes it show up as <em>modified</em>.</p>
+<div class="callout beyond"><span class="label">Writing good commit messages</span><p>Use the imperative mood and say <em>what</em> changed and <em>why</em>: <code>Add data ingestion component</code>, <code>Fix NaN handling in feature scaler</code>. Avoid <code>update</code> or <code>changes</code>. In MLOps, CI tools and MLflow runs show these messages, so clear ones make a model's history readable.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>Step 4: git push origin main <span class="ts">02:17:32</span></h2>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>~/github-learning-test (main)</span></div>
+<pre><code><span class="p">$</span> git push origin main
+<span class="o">Enumerating objects: 4, done.
+Writing objects: 100% (3/3), 290 bytes | 290.00 KiB/s, done.
+To https://github.com/&lt;you&gt;/github-learning-test.git
+   a1b2c3d..3f9c2a1  main -&gt; main</span></code></pre></div>
+<div class="grid">
+  <div class="card"><h4><span class="cmd">origin</span></h4><p>The name <code>git clone</code> gave to the GitHub copy of the repo (the remote).</p></div>
+  <div class="card"><h4><span class="cmd">main</span></h4><p>The branch you're pushing. GitHub creates <code>main</code> by default, and the terminal prompt shows which branch you're on.</p></div>
+</div>
+<p>Refresh the repo page on GitHub and <code>test.py</code> is there with its code. Other developers can now see it and pull it.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>git pull, and a second developer's change <span class="ts">02:18:35</span></h2>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>~/github-learning-test (main)</span></div>
+<pre><code><span class="p">$</span> git pull
+<span class="o">Already up to date.</span>          <span class="c"># the instructor already has everything</span></code></pre></div>
+<p>A teammate who runs <code>git pull</code> receives <code>test.py</code>. The instructor then acts as that teammate: he adds <strong>feature 2</strong> to <code>test.py</code> and runs the same cycle again.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>~/github-learning-test (main) · "developer 2"</span></div>
+<pre><code><span class="p">$</span> git status
+<span class="o">Changes not staged for commit:</span>
+<span class="r">        modified:   test.py</span>
+<span class="p">$</span> git add test.py
+<span class="p">$</span> git commit -m "test.py file updated"
+<span class="p">$</span> git push origin main          <span class="c"># GitHub now shows feature 2</span></code></pre></div>
+
+<figure>
+  <p class="fig-title">Two developers, one repository</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 210" role="img" aria-label="Sequence: developer 1 pushes feature 1; developer 2 pulls, adds feature 2, pushes; developer 1 pulls and now has feature 2">
+    <defs><marker id="k3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g class="t-sm t-b"><text x="110" y="22" text-anchor="middle">💻 Developer 1</text><text x="380" y="22" text-anchor="middle">☁ GitHub (main)</text><text x="650" y="22" text-anchor="middle">💻 Developer 2</text></g>
+    <line x1="110" y1="32" x2="110" y2="200" stroke="var(--rule)" stroke-width="2"/><line x1="380" y1="32" x2="380" y2="200" stroke="var(--accent)" stroke-width="2"/><line x1="650" y1="32" x2="650" y2="200" stroke="var(--rule)" stroke-width="2"/>
+    <path d="M112,56 L376,56" class="edge" marker-end="url(#k3)"/><text x="244" y="50" text-anchor="middle" class="t-xs">push: feature 1 ("test.py file added")</text>
+    <path d="M384,86 L646,86" class="edge" marker-end="url(#k3)"/><text x="515" y="80" text-anchor="middle" class="t-xs">pull: gets test.py</text>
+    <rect x="590" y="100" width="120" height="26" rx="6" class="box-2"/><text x="650" y="118" text-anchor="middle" class="t-xs">edit → add → commit</text>
+    <path d="M646,146 L384,146" class="edge" marker-end="url(#k3)"/><text x="515" y="140" text-anchor="middle" class="t-xs">push: feature 2 ("test.py file updated")</text>
+    <path d="M376,180 L114,180" class="edge" marker-end="url(#k3)"/><text x="244" y="174" text-anchor="middle" class="t-xs">pull: now has feature 2</text>
+  </svg>
+  </div>
+</figure>
+<div class="callout beyond"><span class="label">Rule of thumb</span><p><strong>Pull before you start work, and pull before you push.</strong> If someone pushed in the meantime, your push is rejected ("fetch first") until you pull and combine their commits with yours. When two people changed the same lines, Git asks you to resolve a <strong>merge conflict</strong> (covered in <a href="10_git_branch_management.html#s7">Chapter 10</a>).</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>Interactive: practise the workflow</h2>
+<p>A small simulator of the chapter's workflow. Create and edit files, then move them through <code>add → commit → push</code> and watch the four areas change. Try to reproduce the video: create <code>test2.py</code>, stage only <code>test.py</code>, commit, push.</p>
+<div class="sim" id="sim">
+  <div class="btns">
+    <span>Files</span>
+    <button type="button" data-a="new" data-f="test2.py">create test2.py</button>
+    <button type="button" data-a="new" data-f="test3.py">create test3.py</button>
+    <button type="button" data-a="edit" data-f="test.py">edit test.py</button>
+    <button type="button" data-a="edit" data-f="test2.py">edit test2.py</button>
+  </div>
+  <div class="btns" style="margin-top:8px">
+    <span>Git</span>
+    <button type="button" class="git" data-a="status">git status</button>
+    <button type="button" class="git" data-a="add" data-f="test.py">git add test.py</button>
+    <button type="button" class="git" data-a="addall">git add .</button>
+    <button type="button" class="git" data-a="commit">git commit -m "…"</button>
+    <button type="button" class="git" data-a="push">git push origin main</button>
+    <button type="button" data-a="reset">↺ reset</button>
+  </div>
+  <div class="zones">
+    <div class="zone"><h5>① Working dir</h5><small>files on disk</small><div id="z-wd"></div></div>
+    <div class="zone"><h5>② Staging</h5><small>next commit</small><div id="z-st"></div></div>
+    <div class="zone"><h5>③ Local repo</h5><small>commits</small><div id="z-lr"></div></div>
+    <div class="zone remote"><h5>④ GitHub</h5><small>origin/main</small><div id="z-rm"></div></div>
+  </div>
+  <div class="legend"><span><i style="background:var(--s8)"></i>untracked</span><span><i style="background:var(--s4)"></i>modified</span><span><i style="background:var(--good)"></i>staged</span></div>
+  <div class="term"><div class="bar"><i></i><i></i><i></i><span>simulated terminal</span></div><pre id="sim-out"><code></code></pre></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>Going back to a previous version <span class="ts">02:19:37</span></h2>
+<p>Suppose the updated version (feature 2) has a <strong>bug</strong> and the previous version worked. Because every commit is saved, you can find the old code:</p>
+<ol>
+  <li>On the GitHub repo page, open the <strong>commit history</strong> (the clock icon with the commit count).</li>
+  <li>Click the older commit, <em>"test.py file added"</em>, to see exactly what changed in it (<strong>view commit details</strong>).</li>
+  <li>Click <strong>"Browse the repository at this point"</strong> (the <code>&lt;&gt;</code> icon) to see all files as they were then, including the old <code>test.py</code>.</li>
+</ol>
+<p>Each commit has a unique <strong>commit ID</strong>, a <strong>hash</strong> such as <code>3f9c2a1…</code> (40 hex characters, usually shown shortened to 7).</p>
+
+<figure>
+  <p class="fig-title">The demo repo's history</p>
+  <p class="fig-sub">Commit hashes are illustrative. Hover a commit.</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 185" role="img" aria-label="Commit history: initial commit, test.py file added, test.py file updated (buggy), files added; rolling back means restoring the version from test.py file added">
+    <line x1="60" y1="70" x2="700" y2="70" stroke="var(--s1)" stroke-width="3"/>
+    <g data-tip="<b>a1b2c3d</b> · Initial commit<br>README, LICENSE, .gitignore (created on GitHub)"><circle cx="80" cy="70" r="10" fill="var(--s1)" stroke="var(--surface)" stroke-width="3"/><text x="80" y="46" text-anchor="middle" class="t-xs t-b">a1b2c3d</text><text x="80" y="100" text-anchor="middle" class="t-xs">Initial commit</text></g>
+    <g data-tip="<b>3f9c2a1</b> · test.py file added<br>feature 1 · the last good version"><circle cx="270" cy="70" r="10" fill="var(--good)" stroke="var(--surface)" stroke-width="3"/><text x="270" y="46" text-anchor="middle" class="t-xs t-b">3f9c2a1 ✓</text><text x="270" y="100" text-anchor="middle" class="t-xs">test.py file added</text><text x="270" y="116" text-anchor="middle" class="t-xs t-mute">feature 1</text></g>
+    <g data-tip="<b>8d41e07</b> · test.py file updated<br>feature 2 · contains the bug"><circle cx="460" cy="70" r="10" fill="var(--s8)" stroke="var(--surface)" stroke-width="3"/><text x="460" y="46" text-anchor="middle" class="t-xs t-b">8d41e07 🐞</text><text x="460" y="100" text-anchor="middle" class="t-xs">test.py file updated</text><text x="460" y="116" text-anchor="middle" class="t-xs t-mute">feature 2</text></g>
+    <g data-tip="<b>c07fa55</b> · files added<br>test2.py + test3.py (HEAD, main)"><circle cx="650" cy="70" r="10" fill="var(--s1)" stroke="var(--surface)" stroke-width="3"/><text x="650" y="46" text-anchor="middle" class="t-xs t-b">c07fa55</text><text x="650" y="100" text-anchor="middle" class="t-xs">files added</text><text x="650" y="116" text-anchor="middle" class="t-xs t-mute">HEAD → main</text></g>
+    <path d="M450,140 Q365,165 280,140" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="365" y="176" text-anchor="middle" class="t-xs">restore test.py from 3f9c2a1</text>
+  </svg>
+  </div>
+</figure>
+
+<div class="callout wrong"><span class="label">Correction</span><p>The video suggests that after browsing the old commit on GitHub you can "simply do <code>git pull</code>" to get the previous code back. <strong><code>git pull</code> only brings down the latest commits.</strong> It never restores an old version. Use one of the commands below.</p></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>~/github-learning-test (main)</span></div>
+<pre><code><span class="p">$</span> git log --oneline              <span class="c"># find the commit IDs</span>
+<span class="o">c07fa55 (HEAD -&gt; main, origin/main) files added
+8d41e07 test.py file updated
+3f9c2a1 test.py file added
+a1b2c3d Initial commit</span>
+<span class="p">$</span> git show 3f9c2a1:test.py       <span class="c"># just LOOK at the old file</span>
+<span class="p">$</span> git restore --source 3f9c2a1 test.py   <span class="c"># bring the old file back into your working dir</span>
+<span class="p">$</span> git revert 8d41e07             <span class="c"># or: add a NEW commit that undoes the buggy one</span>
+<span class="p">$</span> git push origin main           <span class="c"># share the fix</span></code></pre></div>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Goal</th><th>Command</th><th>Safe on a shared branch?</th></tr></thead>
+  <tbody>
+    <tr><td>View an old version</td><td><code>git show &lt;id&gt;:file</code> · <code>git switch --detach &lt;id&gt;</code></td><td>✓ read-only</td></tr>
+    <tr><td>Restore one file</td><td><code>git restore --source &lt;id&gt; file</code>, then commit</td><td>✓</td></tr>
+    <tr><td>Undo a commit that's already pushed</td><td><code>git revert &lt;id&gt;</code></td><td>✓ keeps history, adds an "undo" commit</td></tr>
+    <tr><td>Throw away local commits</td><td><code>git reset --hard &lt;id&gt;</code></td><td>✗ rewrites history; only for work nobody else has</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>Committing everything with git add . <span class="ts">02:20:41</span></h2>
+<p>To finish, the instructor creates <code>test3.py</code> and commits all pending files together:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>~/github-learning-test (main)</span></div>
+<pre><code><span class="p">$</span> git add .                       <span class="c"># test2.py + test3.py</span>
+<span class="p">$</span> git commit -m "files added"
+<span class="p">$</span> git push origin main            <span class="c"># refresh GitHub: both files appear</span></code></pre></div>
+<div class="callout key"><span class="label">The loop you'll repeat constantly</span><p><code>git status</code> → <code>git add .</code> → <code>git commit -m "message"</code> → <code>git push origin main</code>, and <code>git pull</code> to get teammates' work. This is version control and code management with Git and GitHub.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s11"><span class="num">11</span>Cheat sheet</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Command</th><th>What it does</th><th>Source</th></tr></thead>
+  <tbody>
+    <tr><td class="cmd">git status</td><td>Show untracked, modified and staged files</td><td>video</td></tr>
+    <tr><td class="cmd">git add &lt;file&gt;</td><td>Stage one file</td><td>video</td></tr>
+    <tr><td class="cmd">git add .</td><td>Stage all changes</td><td>video</td></tr>
+    <tr><td class="cmd">git commit -m "msg"</td><td>Save the staged changes as a commit</td><td>video</td></tr>
+    <tr><td class="cmd">git push origin main</td><td>Upload commits to GitHub's main branch</td><td>video</td></tr>
+    <tr><td class="cmd">git pull</td><td>Download and merge teammates' commits</td><td>video</td></tr>
+    <tr><td class="cmd">git log --oneline</td><td>List commits with short IDs</td><td>beyond</td></tr>
+    <tr><td class="cmd">git diff / git diff --staged</td><td>Show unstaged / staged line changes</td><td>beyond</td></tr>
+    <tr><td class="cmd">git restore &lt;file&gt;</td><td>Discard uncommitted edits to a file</td><td>beyond</td></tr>
+    <tr><td class="cmd">git restore --staged &lt;file&gt;</td><td>Unstage a file (keeps the edits)</td><td>beyond</td></tr>
+    <tr><td class="cmd">git commit --amend</td><td>Fix the last commit (only before pushing)</td><td>beyond</td></tr>
+    <tr><td class="cmd">git revert &lt;id&gt;</td><td>Undo a pushed commit safely</td><td>beyond</td></tr>
+    <tr><td class="cmd">git fetch</td><td>Download remote commits without merging</td><td>beyond</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="hands-on"><span class="num">▶</span>Hands-on files: what we built</h2>
+<div class="handson">
+<span class="label">Hands-on notebook · Part 9 of the Git notebook</span>
+<div class="files"><a href="../projects/ch08_10_git/git_workflow_practice.ipynb">projects/ch08_10_git/git_workflow_practice.ipynb</a></div>
+<p>The chapter's workflow run with two clones, <code>dev1</code> and <code>dev2</code>, acting as two developers:</p>
+<ul>
+  <li><strong>9.1–9.2</strong> A new <code>test.py</code> is <em>untracked</em>. After <code>git add test.py</code> the short status shows <code>A  test.py</code> and <code>?? test2.py</code>.</li>
+  <li><strong>9.3</strong> <code>git commit -m "test.py file added"</code> → <code>git push origin main</code> (output: <code>main -&gt; main</code>).</li>
+  <li><strong>9.4</strong> dev2 clones, adds <em>feature 2</em> and pushes. dev1's <code>git pull</code> fast-forwards and now has both lines.</li>
+  <li><strong>9.5</strong> dev1's push is <strong>rejected</strong> because dev2 pushed first. dev1 pulls (Git merges automatically) and the push then succeeds:</li>
+</ul>
+<div class="result"> ! [rejected]        main -&gt; main (fetch first)
+error: failed to push some refs to '…/github-learning-test.git'</div>
+<ul>
+  <li><strong>9.6</strong> Going back: <code>git show &lt;id&gt;:test.py</code> prints the feature-1 version, <code>git restore --source</code> brings it back and is then undone, and a pushed "buggy change" is undone with <code>git revert</code>.</li>
+  <li><strong>9.7</strong> <code>git add .</code> → commit "files added" → push.</li>
+</ul>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s12"><span class="num">12</span>Interview questions</h2>
+<details class="qa"><summary>Explain the working directory, the staging area and the repository.</summary>
+<p>The working directory holds the files you edit. The staging area (index) holds the snapshot you've selected for the next commit, filled with <code>git add</code>. The local repository (<code>.git</code>) stores the commits you've made with <code>git commit</code>. The remote (GitHub) receives them with <code>git push</code>.</p></details>
+<details class="qa"><summary>git fetch vs git pull?</summary>
+<p><code>fetch</code> downloads new commits and updates <code>origin/main</code> but leaves your files alone, so you can inspect them first. <code>pull</code> is <code>fetch</code> plus <code>merge</code> (or rebase, with <code>--rebase</code>) into your current branch.</p></details>
+<details class="qa"><summary>git revert vs git reset?</summary>
+<p><code>revert</code> creates a new commit that undoes an earlier one. History is preserved, so it's safe on shared branches. <code>reset</code> moves the branch pointer backwards and can discard commits (<code>--hard</code> also discards file changes). It rewrites history, so use it only on unpushed work.</p></details>
+<details class="qa"><summary>A deployed model API broke after the latest commit. How do you roll back quickly?</summary>
+<p>Find the last good commit (<code>git log</code>), <code>git revert</code> the bad commit(s), and push. CI/CD then rebuilds and redeploys the known-good code. If images are tagged by commit SHA, you can also redeploy the previous image immediately while the revert goes through CI.</p></details>
+<details class="qa"><summary>Your push is rejected with "Updates were rejected… fetch first". Why, and what do you do?</summary>
+<p>Someone else pushed commits you don't have. Run <code>git pull</code> (or <code>git pull --rebase</code>), resolve any conflicts, run the tests, then push again. Never force-push over a shared branch to "fix" this.</p></details>
+<details class="qa"><summary>What is a commit hash?</summary>
+<p>A SHA-1 (or SHA-256 in newer setups) checksum computed from the commit's content, its parent(s), author and message. It uniquely identifies the snapshot, and any change produces a different hash, which is what makes Git history tamper-evident. MLOps tools record it so a model can be traced to its exact code.</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s13"><span class="num">13</span>Recap</h2>
+<ul>
+  <li>Sharing zips doesn't scale. Commit and push to GitHub, and teammates pull.</li>
+  <li><code>git status</code> shows untracked, modified and staged files (VS Code shows the same as badges).</li>
+  <li><code>git add file</code> or <code>git add .</code> stages changes. <code>git commit -m "msg"</code> saves a version, after which Git tracks the file.</li>
+  <li><code>git push origin main</code> uploads to GitHub (origin = remote, main = default branch). <code>git pull</code> downloads others' work.</li>
+  <li>Each commit has a hash ID. On GitHub, open the commit history and <em>Browse the repository at this point</em> to see old code. Locally, use <code>git restore --source</code> or <code>git revert</code>, not <code>git pull</code>.</li>
+</ul>
+
+<div class="pager">
+  <a href="08_local_and_remote_repo_setup.html"><small>← Previous</small>08 · Local &amp; remote repository setup</a>
+  <a class="next" href="10_git_branch_management.html"><small>Next →</small>10 · Git branch management</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+<script>
+// Mini Git simulator: each file has versions in wd / staged / local / remote
+(function () {
+  const $ = id => document.getElementById(id);
+  let S, hashN;
+  const hx = () => (0x3f9c2a1 + (hashN++) * 0x51d7e3).toString(16).slice(-7);
+  function init() {
+    hashN = 0;
+    S = {
+      wd: { 'test.py': 1 },   // file -> version number on disk
+      st: {},                 // staged versions
+      head: {},               // last committed versions
+      commits: [{ id: 'a1b2c3d', msg: 'Initial commit' }],
+      pushed: 1,
+      remote: {},
+    };
+    out(['# test.py was just created in VS Code. Try: git status'], true);
+    draw();
+  }
+  function stateOf(f) {
+    if (S.st[f] !== undefined && S.st[f] === S.wd[f]) return 's';
+    if (S.head[f] === undefined && S.st[f] === undefined) return 'u';
+    if (S.wd[f] !== (S.st[f] ?? S.head[f])) return 'm';
+    return '';
+  }
+  function chip(f, v, cls) { return `<div class="chipf ${cls}"><span>${f}</span><em>v${v}</em></div>`; }
+  function draw() {
+    $('z-wd').innerHTML = Object.keys(S.wd).map(f => chip(f, S.wd[f], stateOf(f))).join('');
+    $('z-st').innerHTML = Object.keys(S.st).map(f => chip(f, S.st[f], 's')).join('') || '<small>empty</small>';
+    $('z-lr').innerHTML = S.commits.slice().reverse().map((c, i) => {
+      const idx = S.commits.length - 1 - i;
+      return `<div class="chipf"><span>${c.id}</span><em>${idx < S.pushed ? '' : '↑'}</em></div>`;
+    }).join('') + `<div class="log">${S.commits.length - S.pushed} commit(s) not pushed</div>`;
+    const r = Object.keys(S.remote);
+    $('z-rm').innerHTML = S.commits.slice(0, S.pushed).reverse().map(c => `<div class="chipf"><span>${c.id}</span><em>${c.msg.slice(0, 12)}</em></div>`).join('') +
+      (r.length ? `<div class="log">files: ${r.map(f => f + ' v' + S.remote[f]).join(', ')}</div>` : '<div class="log">files: README, LICENSE, .gitignore</div>');
+  }
+  const lines = [];
+  function out(arr, clear) {
+    if (clear) lines.length = 0;
+    lines.push(...arr);
+    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    $('sim-out').innerHTML = '<code>' + lines.slice(-40).map(l =>
+      l.startsWith('$') ? `<span class="p">$</span>${esc(l.slice(1))}` :
+      l.startsWith('!r') ? `<span class="r">${esc(l.slice(2))}</span>` :
+      l.startsWith('!g') ? `<span class="g">${esc(l.slice(2))}</span>` :
+      l.startsWith('#') ? `<span class="c">${esc(l)}</span>` : `<span class="o">${esc(l)}</span>`).join('\n') + '</code>';
+    $('sim-out').scrollTop = 1e6;
+  }
+  function status() {
+    const staged = Object.keys(S.st), res = ['$ git status', 'On branch main'];
+    const unstaged = Object.keys(S.wd).filter(f => S.head[f] !== undefined || S.st[f] !== undefined).filter(f => S.wd[f] !== (S.st[f] ?? S.head[f]));
+    const untracked = Object.keys(S.wd).filter(f => S.head[f] === undefined && S.st[f] === undefined);
+    const ahead = S.commits.length - S.pushed;
+    res.push(ahead ? `Your branch is ahead of 'origin/main' by ${ahead} commit(s).` : "Your branch is up to date with 'origin/main'.");
+    if (staged.length) { res.push('Changes to be committed:'); staged.forEach(f => res.push(`!g        ${S.head[f] === undefined ? 'new file' : 'modified'}:   ${f}`)); }
+    if (unstaged.length) { res.push('Changes not staged for commit:'); unstaged.forEach(f => res.push(`!r        modified:   ${f}`)); }
+    if (untracked.length) { res.push('Untracked files:'); untracked.forEach(f => res.push(`!r        ${f}`)); }
+    if (!staged.length && !unstaged.length && !untracked.length) res.push('nothing to commit, working tree clean');
+    out(res);
+  }
+  const act = {
+    new(f) { if (S.wd[f]) return out([`# ${f} already exists`]); S.wd[f] = 1; out([`# created ${f} in VS Code`]); },
+    edit(f) { if (!S.wd[f]) return out([`# ${f} doesn't exist yet`]); S.wd[f]++; out([`# edited ${f} (now v${S.wd[f]})`]); },
+    status,
+    add(f) { out([`$ git add ${f}`]); if (S.wd[f] !== undefined && S.wd[f] !== (S.st[f] ?? S.head[f])) S.st[f] = S.wd[f]; },
+    addall() { out(['$ git add .']); Object.keys(S.wd).forEach(f => { if (S.wd[f] !== (S.st[f] ?? S.head[f])) S.st[f] = S.wd[f]; }); },
+    commit() {
+      const files = Object.keys(S.st);
+      const msg = files.length === 1 ? (S.head[files[0]] === undefined ? `${files[0]} file added` : `${files[0]} file updated`) : 'files added';
+      out([`$ git commit -m "${msg}"`]);
+      if (!files.length) return out(['nothing added to commit (use "git add")']);
+      const id = hx();
+      files.forEach(f => { S.head[f] = S.st[f]; });
+      S.st = {};
+      S.commits.push({ id, msg, files: files.map(f => [f, S.head[f]]) });
+      out([`[main ${id}] ${msg}`, ` ${files.length} file(s) changed`]);
+    },
+    push() {
+      out(['$ git push origin main']);
+      const n = S.commits.length - S.pushed;
+      if (!n) return out(['Everything up-to-date']);
+      const from = S.commits[S.pushed - 1].id, to = S.commits[S.commits.length - 1].id;
+      S.commits.slice(S.pushed).forEach(c => (c.files || []).forEach(([f, v]) => { S.remote[f] = v; }));
+      S.pushed = S.commits.length;
+      out(['To https://github.com/<you>/github-learning-test.git', `   ${from}..${to}  main -> main`]);
+    },
+    reset() { init(); },
+  };
+  document.querySelectorAll('#sim button').forEach(b => b.addEventListener('click', () => {
+    act[b.dataset.a](b.dataset.f);
+    if (b.dataset.a !== 'reset') draw();
+  }));
+  init();
+})();
+</script>
+</body>
+</html>

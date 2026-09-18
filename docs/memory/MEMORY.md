@@ -1,0 +1,3 @@
+- [MLOps notes format](mlops-notes-format.md) — per-chapter HTML notes + executed notebooks in projects/ for coding chapters
+- [After-course to-do list](mlops-after-course-todo.md) — notes/todo_after_course.html; append deferred hands-on steps each chapter
+- [Chapter scope](mlops-chapter-scope.md) — Jenkins/CircleCI skipped (placeholder ch19/20); renumbered chapters 18–23

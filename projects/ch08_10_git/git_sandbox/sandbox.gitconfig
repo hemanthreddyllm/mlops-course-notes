@@ -1,0 +1,11 @@
+[user]
+    name = Learner
+    email = learner@example.com
+[init]
+    defaultBranch = main
+[pull]
+    rebase = false
+[advice]
+    detachedHead = false
+[color]
+    ui = never

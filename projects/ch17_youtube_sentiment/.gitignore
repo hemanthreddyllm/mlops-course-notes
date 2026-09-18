@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+logs/
+mlflow.db
+mlartifacts/
+logs_mlflow_server.txt
+.git_sandbox_config
+notebooks/reddit_preprocessing.csv
+notebooks/cm/
+.pytest_cache/
+/lgbm_model.pkl
+/tfidf_vectorizer.pkl
+/experiment_info.json

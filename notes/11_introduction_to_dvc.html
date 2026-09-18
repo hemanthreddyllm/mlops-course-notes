@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>11 · Introduction to DVC — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .cmd { font: 600 13px var(--mono); white-space: nowrap; }
+  .vs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+  @media (max-width: 560px) { .vs { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 11</span></div>
+<div class="eyebrow">Chapter 11 · Introduction to DVC</div>
+<h1>ML pipelines, and why they need tracking</h1>
+<p class="lede">The course now moves from code to <strong>ML pipelines</strong>. The instructor explains what a pipeline is (ordered steps from data ingestion to deployment), why production pipelines get re-run for <strong>retraining</strong>, and why re-running steps whose inputs haven't changed wastes compute. <strong>DVC (Data Version Control)</strong> is the tool the course uses to build pipelines and track them, so each stage runs only when something it depends on has changed.</p>
+<div class="meta">
+  <span class="chip">Video 02:25:53 – 02:37:31</span>
+  <span class="chip">Concept chapter</span>
+  <span class="chip">Tool: DVC (dvc.org)</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">What DVC is, and what this series covers</a></li>
+    <li><a href="#s2">Why DVC and not Kubeflow or Airflow?</a></li>
+    <li><a href="#s3">What an ML pipeline is</a></li>
+    <li><a href="#s4">The stages, one by one</a></li>
+    <li><a href="#s5">Retraining: why pipelines get re-run</a></li>
+    <li><a href="#s6">Why tracking matters: skip what hasn't changed</a></li>
+    <li><a href="#s7">How DVC decides what to run</a></li>
+    <li><a href="#s8">Installing DVC and reading the docs</a></li>
+    <li><a href="#s9">Interview questions</a></li>
+    <li><a href="#s10">Recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>What DVC is, and what this series covers <span class="ts">02:25:54</span></h2>
+<p><strong>DVC = Data Version Control.</strong> It does two things:</p>
+<div class="grid">
+  <div class="card"><span class="tag">CAPABILITY 1</span><h4>Data versioning</h4><p>Version large datasets and model files, the way Git versions code. <strong>Not the focus here.</strong> The instructor treats data management as a big-data topic that a separate team usually owns.</p></div>
+  <div class="card" style="border-color:var(--accent)"><span class="tag">CAPABILITY 2 · THIS SERIES</span><h4>ML pipelines and pipeline tracking</h4><p>Define the pipeline's stages, run them in order, and <strong>track</strong> them so unchanged stages are skipped.</p></div>
+</div>
+<div class="callout key"><span class="label">What an MLOps engineer needs to know about data</span><p>You don't need to own data management, but you should be able to <strong>ingest data</strong> from a database, an API or a website into your pipeline.</p></div>
+<p>The series has two parts: this introduction (what DVC is and why it's needed), then <a href="12_ml_pipelines_with_dvc.html">a demo</a> that builds a pipeline and tracks it with DVC.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>Why DVC and not Kubeflow or Airflow? <span class="ts">02:26:57</span></h2>
+<p><strong>Kubeflow</strong> and <strong>Airflow</strong> can also build and track pipelines. The instructor chose DVC for these reasons:</p>
+<ul>
+  <li><strong>Easy to set up.</strong> It installs with pip and needs very little configuration. Kubeflow and Airflow take much more setup and often throw errors along the way.</li>
+  <li><strong>Popular and used in production.</strong> He first used it when it was closer to a proof-of-concept tool. Today it's used in production and has grown from classic ML to deep learning and GenAI workflows.</li>
+  <li><strong>Transferable skills.</strong> MLOps has "thousands of tools", and nobody learns them all. Once you understand one pipeline tool well, the others are much quicker to pick up.</li>
+</ul>
+<div class="table-wrap">
+<table>
+  <thead><tr><th></th><th>DVC</th><th>Apache Airflow</th><th>Kubeflow Pipelines</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Setup</strong></td><td><code>pip install dvc</code> in a Git repo</td><td>A scheduler, web server, database and workers</td><td>Needs a Kubernetes cluster</td></tr>
+    <tr><td><strong>Pipeline defined in</strong></td><td><code>dvc.yaml</code></td><td>Python DAG files</td><td>Python SDK, compiled to YAML</td></tr>
+    <tr><td><strong>Skips unchanged steps</strong></td><td>Yes, built in (file hashes)</td><td>No by default; you manage it</td><td>Yes, with step caching</td></tr>
+    <tr><td><strong>Scheduling</strong></td><td>None of its own; use cron or CI</td><td>Yes, its main strength</td><td>Yes (recurring runs)</td></tr>
+    <tr><td><strong>Also versions data</strong></td><td>Yes</td><td>No</td><td>Artifacts only</td></tr>
+    <tr><td><strong>Best for</strong></td><td>Reproducible ML projects, small teams, learning</td><td>General data and ETL workflows at scale</td><td>ML on Kubernetes at scale</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="fig-sub">Beyond the video: the comparison columns are general background, not from the instructor. His own points were setup effort, popularity, and "learn one and the rest get easy".</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>What an ML pipeline is <span class="ts">02:30:08</span></h2>
+<p>Every end-to-end ML or deep learning project follows a fixed <strong>order of execution</strong>. The instructor points to the end-to-end projects on his YouTube channel, which all share this outline: project introduction → GitHub repo setup → template creation → workflow → notebook experiments → <strong>the pipeline</strong> → app → Dockerisation → deployment.</p>
+
+<figure>
+  <p class="fig-title">The end-to-end pipeline</p>
+  <p class="fig-sub">Each stage uses the previous stage's output. Hover a stage.</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 284" role="img" aria-label="Pipeline: data ingestion, data validation, data transformation, model training, model evaluation, prediction pipeline, user app, deployment">
+    <defs><marker id="p1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <text x="20" y="20" class="t-xs t-b">TRAINING PIPELINE</text>
+    <g data-tip="<b>① Data ingestion</b><br>Pull data from any source: a database, an S3 bucket, GitHub, an API."><rect x="10" y="30" width="170" height="64" rx="10" class="box"/><text x="95" y="56" text-anchor="middle" class="t-sm t-b">① Data ingestion</text><text x="95" y="76" text-anchor="middle" class="t-xs">DB · S3 · GitHub · API</text></g>
+    <g data-tip="<b>② Data validation</b><br>Is the data in the right format and schema? If not, stop the pipeline here."><rect x="200" y="30" width="170" height="64" rx="10" fill="var(--warn-soft)" stroke="var(--s4)" stroke-width="1.5"/><text x="285" y="56" text-anchor="middle" class="t-sm t-b">② Data validation</text><text x="285" y="76" text-anchor="middle" class="t-xs">schema / format gate</text></g>
+    <g data-tip="<b>③ Data transformation</b><br>Feature engineering: scaling, outlier removal, encoding, train/test split. The output is numeric."><rect x="390" y="30" width="170" height="64" rx="10" class="box"/><text x="475" y="56" text-anchor="middle" class="t-sm t-b">③ Transformation</text><text x="475" y="76" text-anchor="middle" class="t-xs">features → numbers</text></g>
+    <g data-tip="<b>④ Model training</b><br>Fit the model on the transformed data."><rect x="580" y="30" width="170" height="64" rx="10" class="box"/><text x="665" y="56" text-anchor="middle" class="t-sm t-b">④ Model training</text><text x="665" y="76" text-anchor="middle" class="t-xs">fit + save model</text></g>
+    <g data-tip="<b>⑤ Model evaluation</b><br>Score the trained model: accuracy, precision, recall…"><rect x="580" y="130" width="170" height="64" rx="10" class="box"/><text x="665" y="156" text-anchor="middle" class="t-sm t-b">⑤ Evaluation</text><text x="665" y="176" text-anchor="middle" class="t-xs">metrics</text></g>
+    <path d="M180,62 L198,62" class="edge" marker-end="url(#p1)"/><path d="M370,62 L388,62" class="edge" marker-end="url(#p1)"/><path d="M560,62 L578,62" class="edge" marker-end="url(#p1)"/><path d="M665,94 L665,128" class="edge" marker-end="url(#p1)"/>
+    <text x="20" y="124" class="t-xs t-b">SERVING</text>
+    <g data-tip="<b>⑥ Prediction pipeline</b><br>Loads the model and applies the same transformations to new input so users get predictions."><rect x="390" y="130" width="170" height="64" rx="10" class="box"/><text x="475" y="156" text-anchor="middle" class="t-sm t-b">⑥ Prediction pipeline</text><text x="475" y="176" text-anchor="middle" class="t-xs">model → predictions</text></g>
+    <g data-tip="<b>⑦ User app</b><br>The interface users interact with (a web app or API)."><rect x="200" y="130" width="170" height="64" rx="10" class="box"/><text x="285" y="156" text-anchor="middle" class="t-sm t-b">⑦ User app</text><text x="285" y="176" text-anchor="middle" class="t-xs">web UI / API</text></g>
+    <g data-tip="<b>⑧ Deployment</b><br>Dockerise and deploy to the cloud."><rect x="10" y="130" width="170" height="64" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="95" y="156" text-anchor="middle" class="t-sm t-b">⑧ Deployment</text><text x="95" y="176" text-anchor="middle" class="t-xs">Docker → cloud</text></g>
+    <path d="M580,162 L562,162" class="edge" marker-end="url(#p1)"/><path d="M390,162 L372,162" class="edge" marker-end="url(#p1)"/><path d="M200,162 L182,162" class="edge" marker-end="url(#p1)"/>
+    <path d="M95,194 Q95,250 380,250 Q665,250 665,196" fill="none" stroke="var(--s2)" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#p1)"/>
+    <text x="380" y="276" text-anchor="middle" class="t-xs" style="fill:var(--s2)">retraining loop: new data → run the training pipeline again (section 05)</text>
+  </svg>
+  </div>
+  <figcaption>Chapter 12's demo implements stages ①, ③ (split into preprocessing and feature engineering), ④ and ⑤. The serving stages come later in the course.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>The stages, one by one <span class="ts">02:31:12</span></h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Stage</th><th>What it does (instructor's description)</th><th>Output</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Data ingestion</strong></td><td>Fetches data from <strong>any</strong> source: a database, an S3 bucket, GitHub… Any data source can plug in here.</td><td>raw data files</td></tr>
+    <tr><td><strong>Data validation</strong></td><td>Checks that the downloaded data has the right format and schema, and no problems.</td><td>pass / fail (+ report)</td></tr>
+    <tr><td><strong>Data transformation</strong></td><td>Standardisation, outlier removal, train/test split, encoding: turning data into numbers a model can train on.</td><td>train/test arrays</td></tr>
+    <tr><td><strong>Model training</strong></td><td>Trains the model.</td><td>model file</td></tr>
+    <tr><td><strong>Model evaluation</strong></td><td>Evaluates the trained model.</td><td>metrics</td></tr>
+    <tr><td><strong>Prediction pipeline</strong></td><td>Users need predictions, so this serves them from the model.</td><td>predictions</td></tr>
+    <tr><td><strong>User app</strong></td><td>The application users interact with.</td><td>app</td></tr>
+    <tr><td><strong>Deployment</strong></td><td>Puts the project into production.</td><td>live service</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Data validation as a gate <span class="ts">02:32:16</span></h3>
+<p>The instructor's example: the dataset should have <strong>5 features</strong>, but after ingestion only <strong>4</strong> arrive. Validation catches the missing column, and the pipeline <strong>does not continue</strong> to training.</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 170" role="img" aria-label="Validation gate: expected five columns, received four; the check fails and training is blocked. If all five columns are present, the pipeline continues">
+    <defs><marker id="p2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <rect x="10" y="50" width="170" height="70" rx="10" class="box"/>
+    <text x="95" y="74" text-anchor="middle" class="t-sm t-b">Ingested data</text>
+    <g>
+      <rect x="28" y="88" width="24" height="20" rx="3" fill="var(--s1)"/><rect x="56" y="88" width="24" height="20" rx="3" fill="var(--s1)"/><rect x="84" y="88" width="24" height="20" rx="3" fill="var(--s1)"/><rect x="112" y="88" width="24" height="20" rx="3" fill="var(--s1)"/>
+      <rect x="140" y="88" width="24" height="20" rx="3" fill="none" stroke="var(--s8)" stroke-dasharray="3 2"/><text x="152" y="102" text-anchor="middle" class="t-xs" style="fill:var(--s8)">?</text>
+    </g>
+    <path d="M180,85 L258,85" class="edge" marker-end="url(#p2)"/>
+    <polygon points="340,30 420,85 340,140 260,85" fill="var(--warn-soft)" stroke="var(--s4)" stroke-width="2"/>
+    <text x="340" y="80" text-anchor="middle" class="t-xs t-b">5 columns</text><text x="340" y="96" text-anchor="middle" class="t-xs t-b">as expected?</text>
+    <path d="M420,85 Q470,40 518,40" class="edge" marker-end="url(#p2)"/><text x="455" y="36" class="t-xs" style="fill:var(--good)">yes (5/5)</text>
+    <rect x="520" y="18" width="230" height="44" rx="8" fill="var(--good-soft)" stroke="var(--good)"/><text x="635" y="45" text-anchor="middle" class="t-sm t-b">→ continue to transformation</text>
+    <path d="M420,85 Q470,130 518,130" class="edge" marker-end="url(#p2)"/><text x="455" y="146" class="t-xs" style="fill:var(--bad)">no (4/5)</text>
+    <rect x="520" y="108" width="230" height="44" rx="8" fill="var(--bad-soft)" stroke="var(--bad)"/><text x="635" y="128" text-anchor="middle" class="t-sm t-b">✗ stop: don't train</text><text x="635" y="144" text-anchor="middle" class="t-xs">raise an error, alert, log the report</text>
+  </svg>
+  </div>
+  <figcaption>Beyond the video: in practice validation also checks data types, allowed value ranges, missing-value rates and drift against a reference schema (e.g. a <code>schema.yaml</code>).</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>Retraining: why pipelines get re-run <span class="ts">02:34:21</span></h2>
+<p>In production, pipelines aren't run just once. The model may start performing poorly, or the data may change. The instructor's example:</p>
+<div class="vs">
+  <div class="card"><span class="tag">TODAY</span><h4>500 rows</h4><p>Train the model on this dataset.</p></div>
+  <div class="card"><span class="tag">3 MONTHS LATER</span><h4>1,000 rows</h4><p>Run the <strong>whole pipeline again</strong> (ingestion → validation → transformation → training → evaluation → prediction). That's <strong>retraining</strong>.</p></div>
+</div>
+<p>Production should be <strong>automated</strong>, just like the cooking business in Chapter 02 ended up automated. So you can <strong>schedule retraining</strong>, for example every 2 or 3 months, and let it start on its own.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>Why tracking matters: skip what hasn't changed <span class="ts">02:35:25</span></h2>
+<div class="callout wrong"><span class="label">The problem with blind scheduled retraining</span><p>If the <strong>data hasn't changed</strong> (and the code hasn't either), retraining produces <strong>the same model</strong>. That's unnecessary computation in the cloud, and you pay for it.</p></div>
+<p>So you need to <strong>track</strong> two things:</p>
+<ul>
+  <li>Has the <strong>data source</strong> changed?</li>
+  <li>Has the <strong>code</strong> changed, for example a new feature added?</li>
+</ul>
+<p>Rerun only when one of them has changed, and do the check <strong>automatically</strong> rather than by hand. That's what DVC does.</p>
+
+<figure>
+  <p class="fig-title">Pipeline stage runs over 12 weekly scheduled runs</p>
+  <p class="fig-sub">Illustrative: a 5-stage pipeline. The data changes in weeks 4 and 9. Model code changes in week 6 (only training and evaluation need to re-run). Hover for details.</p>
+  <div class="legend"><span><i style="background:var(--s2)"></i>Without tracking (every stage, every run)</span><span><i style="background:var(--s1)"></i>With DVC tracking</span></div>
+  <svg data-linechart='{
+    "x":["W1","W2","W3","W4","W5","W6","W7","W8","W9","W10","W11","W12"],
+    "series":[
+      {"name":"Without tracking","color":"var(--s2)","values":[5,10,15,20,25,30,35,40,45,50,55,60]},
+      {"name":"With DVC","color":"var(--s1)","values":[5,5,5,10,10,12,12,12,17,17,17,17]}
+    ],
+    "ymax":60, "unit":" stage runs", "xlabel":"scheduled weekly run", "ylabel":"cumulative stage executions",
+    "marks":[{"i":11,"s":0,"label":"60","dy":-10},{"i":11,"s":1,"label":"17","dy":-10},{"i":3,"s":1,"label":"data changed","dy":-12},{"i":5,"s":1,"label":"model code changed","dy":16},{"i":8,"s":1,"label":"data changed","dy":-12}],
+    "notes":["First run: all 5 stages","Nothing changed: DVC skips all","Nothing changed: skip","New data: all 5 stages re-run","Skip","Model code edited: training + evaluation (2)","Skip","Skip","New data: all 5 re-run","Skip","Skip","Skip"]
+  }' role="img" aria-label="Cumulative stage executions: 60 without tracking versus 17 with DVC over twelve weekly runs"></svg>
+  <figcaption>Same model quality, about <b>72% fewer stage executions</b> in this example. With GPU-heavy deep learning training, that saving is where DVC pays for itself.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>How DVC decides what to run <span class="ts">02:36:29</span></h2>
+<p>DVC automates the "did anything change?" check for every stage. It <strong>requires Git</strong>, so the project must be a Git repo.</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 210" role="img" aria-label="For each stage, DVC compares the current hashes of its dependencies and outputs with those recorded in dvc.lock; if they are the same, it skips the stage; if not, it runs the command and updates dvc.lock">
+    <defs><marker id="p3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <rect x="10" y="70" width="150" height="64" rx="10" class="box"/><text x="85" y="96" text-anchor="middle" class="t-sm t-b">dvc repro</text><text x="85" y="116" text-anchor="middle" class="t-xs">for each stage, in order</text>
+    <path d="M160,102 L208,102" class="edge" marker-end="url(#p3)"/>
+    <rect x="210" y="60" width="210" height="84" rx="10" class="box-2"/>
+    <text x="315" y="84" text-anchor="middle" class="t-sm t-b">Hash deps + outs now</text>
+    <text x="315" y="104" text-anchor="middle" class="t-xs">script file, input data, params</text>
+    <text x="315" y="122" text-anchor="middle" class="t-xs">compare with <tspan class="t-b">dvc.lock</tspan></text>
+    <path d="M420,90 Q460,40 508,40" class="edge" marker-end="url(#p3)"/><text x="440" y="38" class="t-xs">same</text>
+    <rect x="510" y="16" width="240" height="50" rx="8" fill="var(--good-soft)" stroke="var(--good)"/><text x="630" y="38" text-anchor="middle" class="t-sm t-b">skip ✓</text><text x="630" y="55" text-anchor="middle" class="t-xs">"Stage didn't change, skipping"</text>
+    <path d="M420,114 Q460,164 508,164" class="edge" marker-end="url(#p3)"/><text x="436" y="178" class="t-xs">changed</text>
+    <rect x="510" y="136" width="240" height="58" rx="8" fill="var(--warn-soft)" stroke="var(--s4)"/><text x="630" y="158" text-anchor="middle" class="t-sm t-b">run the stage's cmd</text><text x="630" y="176" text-anchor="middle" class="t-xs">then update dvc.lock; downstream stages</text><text x="630" y="189" text-anchor="middle" class="t-xs">see changed inputs and run too</text>
+  </svg>
+  </div>
+  <figcaption>Beyond the video: DVC stores an <b>MD5 hash</b> of every dependency and output in <code>dvc.lock</code>. Chapter 12 shows this file.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>Installing DVC and reading the docs <span class="ts">02:28:00</span></h2>
+<ul>
+  <li>The official site is <strong>dvc.org</strong>, with full documentation, install guides for each OS, and tutorials.</li>
+  <li>Install with pip: <code>pip install dvc</code>, or list <code>dvc</code> in <code>requirements.txt</code>.</li>
+  <li>The instructor's advice: watch his demo first, then <strong>read the documentation</strong>. The docs are always up to date when new versions and features come out.</li>
+</ul>
+<div class="callout beyond"><span class="label">Beyond the video · remote-storage extras</span><p>To push versioned data and models to cloud storage, install the matching extra: <code>pip install "dvc[s3]"</code> (AWS), <code>"dvc[gs]"</code> (GCP) or <code>"dvc[azure]"</code>. Check the install with <code>dvc version</code>.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>Interview questions</h2>
+<details class="qa"><summary>What is DVC and why use it alongside Git?</summary>
+<p>DVC is an open-source tool that adds versioning for data and models, plus reproducible pipelines, to a Git repo. Git can't handle large binary files well, so DVC stores them in a cache or remote storage (S3, GCS…) and commits small pointer files, the pipeline definition (<code>dvc.yaml</code>) and the lock file (<code>dvc.lock</code>) to Git. A Git commit then pins code, data and model versions together.</p></details>
+<details class="qa"><summary>What are the typical stages of an ML training pipeline?</summary>
+<p>Data ingestion → data validation → data transformation / feature engineering → model training → model evaluation (often followed by a model registration or "pusher" step). Serving adds a prediction pipeline, an app or API, and deployment.</p></details>
+<details class="qa"><summary>Why track a pipeline instead of just re-running a script?</summary>
+<p>For reproducibility (you know exactly which inputs produced which outputs) and efficiency (only stages with changed code, data or parameters re-run). That matters a lot when training is expensive and retraining is scheduled.</p></details>
+<details class="qa"><summary>When should a model be retrained?</summary>
+<p>When new data arrives, when monitoring shows data drift or a performance drop, or when code or features change. Scheduled retraining is common, but pair it with change detection or drift checks so you don't retrain on identical inputs.</p></details>
+<details class="qa"><summary>What does data validation check, and what happens when it fails?</summary>
+<p>It checks the schema (columns, types), missing values, value ranges and distribution drift against a reference. On failure the pipeline stops before training, raises an error or alert, and saves a validation report, so a broken dataset never produces a production model.</p></details>
+<details class="qa"><summary>DVC vs Airflow vs Kubeflow?</summary>
+<p>DVC: lightweight, built on Git, reproducible pipelines with automatic skipping of unchanged stages, plus data versioning, but no scheduler of its own. Airflow: a general workflow orchestrator with scheduling, retries and a UI, suited to ETL. Kubeflow Pipelines: ML pipelines on Kubernetes with step caching, suited to large platforms. They're often combined, for example Airflow or CI triggering <code>dvc repro</code>.</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>Recap</h2>
+<ul>
+  <li><strong>DVC = Data Version Control.</strong> It versions data and builds and <strong>tracks ML pipelines</strong>; this series uses the pipeline part.</li>
+  <li>Chosen over Kubeflow and Airflow because it's easy to set up, popular and used in production. Learn one pipeline tool and the others come easily.</li>
+  <li>Pipeline: <strong>ingestion → validation → transformation → training → evaluation → prediction → app → deployment</strong>, each stage depending on the previous one.</li>
+  <li>Validation is a gate: expected 5 features, got 4 → stop.</li>
+  <li><strong>Retraining</strong> re-runs the pipeline when data grows (500 → 1,000 rows), often on a schedule.</li>
+  <li>Retraining unchanged inputs wastes compute, so <strong>track changes to data and code</strong>. DVC does this automatically, and it needs Git.</li>
+</ul>
+
+<div class="pager">
+  <a href="10_git_branch_management.html"><small>← Previous</small>10 · Git branch management</a>
+  <a class="next" href="12_ml_pipelines_with_dvc.html"><small>Next →</small>12 · Build &amp; track ML pipelines with DVC</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+</body>
+</html>

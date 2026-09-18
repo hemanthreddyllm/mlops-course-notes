@@ -1,0 +1,11 @@
+# A PodDisruptionBudget protects the app during *voluntary* disruptions (node upgrades, drains):
+# the cluster may never take the app below 2 available pods.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: yt-sentiment
+  namespace: mlops
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels: { app: yt-sentiment }

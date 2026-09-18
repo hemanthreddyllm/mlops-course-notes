@@ -1,0 +1,67 @@
+# The Chapter 17 sentiment API, as a Deployment.
+# The video runs `kubectl create deployment …` instead; a file like this is what you keep in git.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yt-sentiment
+  namespace: mlops
+  labels: { app: yt-sentiment }
+spec:
+  replicas: 3                        # the ReplicaSet keeps exactly this many pods alive
+  revisionHistoryLimit: 5            # how many old ReplicaSets to keep for `kubectl rollout undo`
+  selector:
+    matchLabels: { app: yt-sentiment }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1                    # at most 1 extra pod during an update
+      maxUnavailable: 0              # never drop below `replicas` ready pods → no downtime
+  template:
+    metadata:
+      labels: { app: yt-sentiment }
+    spec:
+      containers:
+        - name: api
+          # push the Chapter 17 image here first:
+          #   docker build -t <region>-docker.pkg.dev/<project>/ml/yt-sentiment:v1 projects/ch17_youtube_sentiment
+          #   docker push  <region>-docker.pkg.dev/<project>/ml/yt-sentiment:v1
+          image: REGION-docker.pkg.dev/PROJECT_ID/ml/yt-sentiment:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+          resources:
+            requests:                # what the scheduler reserves — and what the HPA measures against
+              cpu: 250m
+              memory: 512Mi
+            limits:                  # the ceiling; above the memory limit the container is killed (OOMKilled)
+              cpu: "1"
+              memory: 1Gi
+          startupProbe:              # gives a slow start (model loading) time before the other probes apply
+            httpGet: { path: /, port: http }
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:            # not ready → the Service stops sending it traffic
+            httpGet: { path: /, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 2
+          livenessProbe:             # failing → the kubelet restarts the container ("self-healing")
+            httpGet: { path: /, port: http }
+            periodSeconds: 20
+            failureThreshold: 3
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp        # matplotlib and gunicorn need a writable /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      terminationGracePeriodSeconds: 30

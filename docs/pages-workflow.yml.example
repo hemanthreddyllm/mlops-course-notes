@@ -1,0 +1,46 @@
+# Publishes the notes/ folder to GitHub Pages.
+# Only notes/ is published — the transcript and the projects stay in the (private) repo.
+name: notes-site
+
+on:
+  push:
+    branches: [main]
+    paths: ["notes/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Upload the notes folder
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: notes
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NOT ACTIVE YET.
+# The CLI token used to create this repo had no `workflow` scope, so this file
+# could not be pushed into .github/workflows/. The site is currently published
+# from the `gh-pages` branch instead (see docs/HANDOFF.md § Publishing).
+#
+# To switch to automatic deploys on every push:
+#   gh auth refresh -s workflow
+#   mkdir -p .github/workflows && git mv docs/pages-workflow.yml.example .github/workflows/pages.yml
+#   git commit -m "ci: publish notes to Pages" && git push
+#   gh api -X POST repos/hemanthreddyllm/mlops-course-notes/pages -f build_type=workflow

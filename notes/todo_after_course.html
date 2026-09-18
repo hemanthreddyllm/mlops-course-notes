@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>After-course To-Do — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .progress { display: flex; align-items: center; gap: 14px; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 14px 18px; margin: 10px 0 24px; flex-wrap: wrap; }
+  .progress .track { flex: 1 1 240px; height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+  .progress .fill { height: 100%; width: 0; background: var(--good); border-radius: 999px; transition: width .3s; }
+  .progress b { font: 600 20px var(--mono); }
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+  .filters button { font: 500 12px var(--sans); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); cursor: pointer; }
+  .filters button[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .task { display: grid; grid-template-columns: 28px 1fr; gap: 10px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 12px 14px; margin: 8px 0; }
+  .task input { width: 20px; height: 20px; margin-top: 3px; accent-color: var(--good); cursor: pointer; }
+  .task.done { opacity: .6; }
+  .task.done .t-title { text-decoration: line-through; }
+  .t-title { font-weight: 650; }
+  .t-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 6px; }
+  .tag2 { font: 600 11px var(--sans); padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); }
+  .tag2.acct { background: var(--warn-soft); }
+  .tag2.inst { background: var(--accent-soft); color: var(--accent); }
+  .tag2.cost { background: var(--bad-soft); color: var(--bad); }
+  .tag2.free { background: var(--good-soft); color: var(--good); }
+  .task details summary { cursor: pointer; font-size: 13px; color: var(--accent); }
+  .task details ol, .task details ul { font-size: 14px; margin: 6px 0 4px; }
+  .task p { margin: 0; font-size: 14px; color: var(--ink-2); }
+  h2 .count { font: 500 13px var(--mono); color: var(--ink-3); margin-left: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>After-course to-do</span></div>
+<div class="eyebrow">Saved for later · do these after finishing the 12-hour course</div>
+<h1>My after-course to-do list</h1>
+<p class="lede">These are the hands-on steps that couldn't be done for you while building the notes, because they need <strong>your own accounts</strong> (AWS, GCP, DagsHub, Docker Hub, GitHub) or an <strong>install on your machine</strong> (Docker). Work through them once the course is finished. New items are added as each chapter is built.</p>
+
+<div class="progress" aria-live="polite">
+  <b id="pct">0%</b>
+  <div class="track"><div class="fill" id="fill"></div></div>
+  <span id="ptext" style="font-size:14px;color:var(--ink-2)"></span>
+  <button type="button" id="clear" style="font:500 12px var(--sans);padding:6px 10px;border-radius:8px;border:1px solid var(--rule);background:var(--surface);color:var(--ink);cursor:pointer">reset ticks</button>
+</div>
+
+<div class="filters" id="filters">
+  <button data-f="all" aria-pressed="true">All</button>
+  <button data-f="open" aria-pressed="false">Not done</button>
+  <button data-f="free" aria-pressed="false">No account needed</button>
+  <button data-f="acct" aria-pressed="false">Needs an account</button>
+</div>
+<p class="fig-sub">Ticks are saved in this browser only (localStorage). The list itself lives in <code>notes/todo_after_course.html</code>.</p>
+
+<div class="callout key"><span class="label">Suggested order</span><p>1 · Install Docker → 2 · Create the accounts (GitHub, Docker Hub, AWS with a budget alert, DagsHub) → 3 · Work through the chapters in order → 4 · <strong>Capstone</strong>: deploy the containerised model API to EC2 → 5 · Clean up every cloud resource.</p></div>
+
+<div id="list"></div>
+
+<div class="pager">
+  <a href="index.html"><small>← Back</small>All notes</a>
+  <a class="next" href="16_docker.html"><small>Latest chapter →</small>16 · Docker</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+<script>
+// id: stable key (never rename, so saved ticks survive updates)
+const TASKS = [
+  {group: "Setup: do these first", items: [
+    {id: "setup-docker", title: "Install Docker Desktop on this Mac", tags: ["inst", "free"], time: "20 min",
+     why: "Needed for Chapter 16 and everything after it (CI/CD, Kubernetes).",
+     steps: ["Download Docker Desktop for Mac (Apple silicon or Intel build) from docs.docker.com/desktop.", "Start it and wait for 'Engine running'.", "Terminal: <code>docker --version</code> and <code>docker ps</code>."],
+     link: ["16_docker.html#s8", "Ch 16 · Installation"]},
+    {id: "setup-accounts", title: "Create the accounts: GitHub, Docker Hub, AWS, DagsHub (and optionally GCP)", tags: ["acct"], time: "45 min",
+     why: "Every deferred step below needs one of these.",
+     steps: ["GitHub: github.com (you may already have one).", "Docker Hub: hub.docker.com.", "AWS: aws.amazon.com. Then immediately: Billing → Budgets → a $5 budget alert, and enable MFA on the root user.", "DagsHub: dagshub.com (choose <em>Experiment tracking</em>).", "GCP (optional): cloud.google.com, the other cloud the instructor recommends."],
+     link: ["13_cloud_fundamentals_for_mlops.html#s5", "Ch 13 · Account & regions"]},
+    {id: "setup-venv", title: "Re-create the Python environment if needed", tags: ["free"], time: "10 min",
+     why: "The notebooks use <code>projects/.venv</code>. If you ever reinstall xgboost, redo the libomp fix.",
+     steps: ["Follow <code>projects/README.md</code> → Setup.", "macOS fixes: libomp for XGBoost, and certifi for HTTPS downloads."],
+     link: ["../projects/README.md", "projects/README.md"]},
+  ]},
+  {group: "Chapters 05–06 · Linux on EC2", items: [
+    {id: "ec2-launch", title: "Launch an Ubuntu EC2 instance and connect with SSH", tags: ["acct", "cost"], time: "30 min",
+     why: "The course's production environment. The notes used a local sandbox instead.",
+     steps: ["EC2 → Launch instance → Ubuntu 24.04 LTS → free-tier type → new key pair → allow HTTP/HTTPS.", "<code>chmod 400 key.pem</code> then <code>ssh -i key.pem ubuntu@&lt;public-ip&gt;</code>.", "Also try EC2 Instance Connect in the browser."],
+     link: ["05_linux_on_aws_ec2.html#s3", "Ch 05 · Launch steps"]},
+    {id: "ec2-commands", title: "Practise the Chapter 06 commands on the real server", tags: ["acct"], time: "30 min",
+     why: "The notebook ran them on macOS. On Ubuntu, apt, useradd and top behave exactly as in the video.",
+     steps: ["<code>sudo apt update</code>, <code>ls -al</code>, <code>mkdir</code>/<code>cd</code>, <code>vim</code> (i → Esc → :wq), <code>chmod 700</code>, <code>tar -cvf</code>/<code>-xvf</code>, <code>sudo useradd</code>/<code>userdel</code>, <code>top</code>."],
+     link: ["06_linux_commands.html#s12", "Ch 06 · Cheat sheet"]},
+    {id: "ec2-mini-api", title: "Serve the tiny FastAPI app from EC2 (Chapter 06 practice box)", tags: ["acct"], time: "30 min",
+     why: "Your first public endpoint.",
+     steps: ["Add an inbound rule for TCP 8000 to the security group.", "venv → <code>pip install fastapi uvicorn</code> → <code>nohup uvicorn app:app --host 0.0.0.0 --port 8000 &amp;</code>.", "Open <code>http://&lt;public-ip&gt;:8000/docs</code>."],
+     link: ["06_linux_commands.html#s14", "Ch 06 · Practice"]},
+    {id: "ec2-terminate", title: "Terminate the practice instance (and check every region)", tags: ["acct"], time: "5 min",
+     why: "A running instance keeps billing you.",
+     steps: ["EC2 → Instances → Instance state → Terminate.", "Check the region selector for anything forgotten elsewhere."],
+     link: ["05_linux_on_aws_ec2.html#s8", "Ch 05 · Terminating"]},
+  ]},
+  {group: "Chapters 07–10 · Git & GitHub", items: [
+    {id: "gh-repo", title: "Create github-learning-test on github.com and clone it", tags: ["acct", "free"], time: "15 min",
+     why: "The notebook used a local bare repo in place of GitHub.",
+     steps: ["New repo → Public → README + Python .gitignore + MIT license.", "<code>git clone https://github.com/&lt;you&gt;/github-learning-test.git</code>.", "Set <code>git config --global user.name / user.email</code>."],
+     link: ["08_local_and_remote_repo_setup.html#s3", "Ch 08 · New repository form"]},
+    {id: "gh-auth", title: "Set up push authentication (browser login, token or SSH key)", tags: ["acct", "free"], time: "10 min",
+     why: "GitHub doesn't accept account passwords for git push.",
+     steps: ["Easiest: Git Credential Manager's browser login.", "Or: <code>ssh-keygen -t ed25519</code> → add the .pub key under GitHub → Settings → SSH keys."],
+     link: ["08_local_and_remote_repo_setup.html#s10", "Ch 08 · HTTPS vs SSH"]},
+    {id: "gh-workflow", title: "Repeat the push / pull / branch / pull-request flow on real GitHub", tags: ["acct", "free"], time: "30 min",
+     why: "See commits, branches, 'Browse the repository at this point' and a PR merge in the web UI.",
+     steps: ["test.py → add → commit → push. Edit on GitHub → pull.", "<code>git checkout -b bappy</code> → push the branch → open a PR → merge → delete the branch.", "Create and resolve a merge conflict."],
+     link: ["10_git_branch_management.html#s7", "Ch 10 · Merging & PRs"]},
+    {id: "gh-portfolio", title: "Turn your GitHub into an MLOps portfolio", tags: ["acct", "free"], time: "1 h",
+     why: "Interviewers look at it.",
+     steps: ["Push the projects from this course (without data or secrets).", "Pin your best 4–6 repos, each with a README: problem, architecture diagram, run steps, live demo link, stack."],
+     link: ["07_git_and_github_intro.html#s6", "Ch 07 · GitHub as a portfolio"]},
+  ]},
+  {group: "Chapters 11–12 · DVC", items: [
+    {id: "dvc-homework", title: "Instructor's homework: build a tracked DVC pipeline on another dataset", tags: ["free"], time: "2 h",
+     why: "\"Unless you practise, it's difficult.\"",
+     steps: ["Pick any tabular or text dataset.", "Split it into ingestion / preprocessing / features / training / evaluation scripts.", "Write <code>dvc.yaml</code> → <code>dvc repro</code> → <code>dvc dag</code> → <code>dvc metrics show</code>.", "Add <code>params.yaml</code> and try <code>dvc exp run -S …</code>."],
+     link: ["12_ml_pipelines_with_dvc.html#s13", "Ch 12 · Next steps"]},
+    {id: "dvc-s3", title: "Push DVC-tracked data and models to an S3 remote", tags: ["acct", "cost"], time: "30 min",
+     why: "So another machine or CI can <code>dvc pull</code> the exact data and model.",
+     steps: ["<code>pip install \"dvc[s3]\"</code>, then <code>aws configure</code> with an S3-only IAM user.", "<code>dvc remote add -d storage s3://&lt;bucket&gt;/dvcstore</code> → <code>dvc push</code>.", "Clone into a new folder → <code>dvc pull</code>."],
+     link: ["12_ml_pipelines_with_dvc.html#s13", "Ch 12 · Data remotes"]},
+  ]},
+  {group: "Chapter 13 · Cloud fundamentals", items: [
+    {id: "aws-iam", title: "Create an IAM user with least privilege and configure the AWS CLI", tags: ["acct"], time: "20 min",
+     why: "Never use root keys in code.",
+     steps: ["IAM → Users → create a user → attach an S3-only (or narrower) policy → create an access key.", "<code>pip install awscli</code> → <code>aws configure</code> (region e.g. ap-south-1).", "<code>aws sts get-caller-identity</code>, <code>aws s3 ls</code>."],
+     link: ["13_cloud_fundamentals_for_mlops.html#s10", "Ch 13 · IAM"]},
+    {id: "aws-real-notebook", title: "Repeat the offline S3 / ECR steps against real AWS", tags: ["acct", "cost"], time: "30 min",
+     why: "The notebook used moto, a fake AWS. Try the same boto3 calls for real.",
+     steps: ["Create a bucket, upload <code>model.pkl</code>, download it and compare.", "Create an ECR repository (used again in Chapter 16 and the CI/CD chapters).", "Delete the bucket and repository afterwards."],
+     link: ["13_cloud_fundamentals_for_mlops.html#hands-on", "Ch 13 · Hands-on"]},
+    {id: "gcp-tour", title: "Optional: tour GCP (Vertex AI, Cloud Storage, VM instances)", tags: ["acct"], time: "30 min",
+     why: "The instructor recommends knowing both AWS and GCP.",
+     steps: ["Create a project → look at Vertex AI, a Cloud Storage bucket, and Compute Engine."],
+     link: ["13_cloud_fundamentals_for_mlops.html#s8", "Ch 13 · GCP"]},
+  ]},
+  {group: "Chapters 14–15 · MLflow & DagsHub", items: [
+    {id: "dagshub-runs", title: "Run demo.py against DagsHub (the video's exact setup)", tags: ["acct", "free"], time: "30 min",
+     why: "The notes used a local MLflow server in place of DagsHub.",
+     steps: ["Create a GitHub repo <code>mlflow-test</code> → connect it on DagsHub.", "<code>dagshub login</code>, then <code>export DAGSHUB_REPO_OWNER=&lt;you&gt; DAGSHUB_REPO_NAME=mlflow-test</code>.", "<code>python demo.py</code>, <code>python demo.py 0.3 0.6</code>, <code>python demo.py 0.7 0.6</code> (in <code>projects/ch15_mlflow_dagshub</code>).", "DagsHub → Go to MLflow UI → Compare → parallel coordinates → select rmse, mae and r2."],
+     link: ["15_mlflow_tracking_with_dagshub.html#s6", "Ch 15 · DagsHub steps"]},
+    {id: "mlflow-ui-explore", title: "Explore your local MLflow UIs by hand", tags: ["free"], time: "15 min",
+     why: "Click through compare views, charts and the model registry yourself.",
+     steps: ["<code>cd projects/ch14_mlflow_experiment_tracking &amp;&amp; mlflow ui --backend-store-uri sqlite:///mlflow.db</code>", "Same in <code>projects/ch15_mlflow_dagshub</code> (registry: ElasticnetWineModel@champion)."],
+     link: ["14_intro_to_mlflow_experiment_tracking.html#hands-on", "Ch 14 · Hands-on"]},
+  ]},
+  {group: "Chapter 16 · Docker", items: [
+    {id: "docker-rerun-nb", title: "Re-run docker_walkthrough.ipynb with Docker installed", tags: ["inst", "free"], time: "15 min",
+     why: "Its Docker cells were skipped because Docker isn't installed yet.",
+     steps: ["Start Docker Desktop.", "Open <code>projects/ch16_docker/docker_walkthrough.ipynb</code> → Run All.", "Check: hello-world runs, the calculator container answers on :8080, the wine API container answers on :8000."],
+     link: ["16_docker.html#hands-on", "Ch 16 · Hands-on"]},
+    {id: "docker-hub-push", title: "Push the calculator image to Docker Hub, then pull and run it", tags: ["inst", "acct", "free"], time: "15 min",
+     why: "The video's final step.",
+     steps: ["<code>docker login</code>.", "<code>docker build -t &lt;user&gt;/mycalapp:latest projects/ch16_docker/calculator_app</code> → <code>docker push …</code>", "<code>docker rm -f $(docker ps -aq)</code>, <code>docker rmi …</code>, then <code>docker pull …</code> and <code>docker run -p 8080:8080 …</code>."],
+     link: ["16_docker.html#s13", "Ch 16 · Build, run, push"]},
+    {id: "docker-own-project", title: "Instructor's homework: containerise a project of your own", tags: ["inst", "free"], time: "1 h",
+     why: "\"Pick any project, create your image, push it to the Hub, and run it.\"",
+     steps: ["For example, wrap the Chapter 12 emotion model (vectorizer + model) in a FastAPI app with a Dockerfile."],
+     link: ["16_docker.html#s12", "Ch 16 · Dockerfile"]},
+  ]},
+  {group: "Chapter 17 · End-to-end YouTube sentiment project", items: [
+    {id: "yt-api-key", title: "Get a YouTube Data API v3 key and load the extension in Chrome", tags: ["acct", "free"], time: "30 min",
+     why: "The extension reads real comments through Google's YouTube Data API. The notes used fake comments (dev_preview.html) instead.",
+     steps: ["console.cloud.google.com → new project → APIs &amp; Services → Library → enable <b>YouTube Data API v3</b>.", "Credentials → Create credentials → API key. <b>Restrict it</b> to the YouTube Data API.", "Paste it into <code>projects/ch17_youtube_sentiment/yt_chrome_plugin_frontend/popup.js</code> (<code>YOUTUBE_API_KEY</code>). Don't commit the key.", "Start the API: <code>python flask_api/app.py</code> (port 5001).", "Chrome → <code>chrome://extensions</code> → Developer mode → <b>Load unpacked</b> → select <code>yt_chrome_plugin_frontend</code>.", "Open any YouTube video → click the extension. After editing the files, press ⟳ reload on the extension card."],
+     link: ["17_end_to_end_youtube_sentiment.html#s12", "Ch 17 · Chrome extension"]},
+    {id: "mlflow-ec2-s3", title: "Host MLflow on EC2 with an S3 artifact bucket (the video's setup)", tags: ["acct", "cost"], time: "1 h",
+     why: "The notes used a local server on port 5050 instead of the EC2 server.",
+     steps: ["S3: create a bucket with a globally unique name (e.g. <code>mlflow-bucket-&lt;you&gt;</code>).", "IAM: create a <b>role</b> with S3 access to that bucket only and attach it to the instance, instead of the video's admin access keys.", "EC2: Ubuntu 24.04, t2.medium, 30 GB. Inbound rule TCP 5000 <b>from your IP only</b>.", "On the instance: <code>python3 -m venv venv &amp;&amp; . venv/bin/activate &amp;&amp; pip install mlflow boto3</code> → <code>mlflow server -h 0.0.0.0 -p 5000 --default-artifact-root s3://&lt;bucket&gt;</code>.", "Locally: <code>export MLFLOW_TRACKING_URI=http://&lt;public-ip&gt;:5000</code> and re-run <code>notebooks/2_experiments.ipynb</code> (skip its local-server cell) and <code>dvc repro</code>.", "Check the artifacts appear in S3. <b>Stop or terminate the instance</b> when you're done."],
+     link: ["17_end_to_end_youtube_sentiment.html#s5", "Ch 17 · MLflow on EC2"]},
+    {id: "yt-github", title: "Push the project to GitHub, with data and models on a DVC S3 remote", tags: ["acct", "cost"], time: "30 min",
+     why: "The video creates a <i>YouTube-Sentiment-Insights</i> repo; CI (Chapter 18) needs the code on GitHub and the model files reachable.",
+     steps: ["Copy <code>projects/ch17_youtube_sentiment</code> to its own folder (it's already a git + DVC repo after the walkthrough).", "Create the GitHub repo → <code>git remote add origin …</code> → <code>git push -u origin main</code>.", "<code>dvc remote add -d storage s3://&lt;bucket&gt;/dvc</code> → <code>dvc push</code>. In CI, run <code>dvc pull</code> before the tests."],
+     link: ["17_end_to_end_youtube_sentiment.html#s10", "Ch 17 · DVC pipeline"]},
+    {id: "yt-docker-run", title: "Build and run the sentiment API image", tags: ["inst", "free"], time: "15 min",
+     why: "The Docker step in pipeline_walkthrough.ipynb was skipped (Docker isn't installed).",
+     steps: ["<code>cd projects/ch17_youtube_sentiment &amp;&amp; docker build -t yt-sentiment-api .</code>", "<code>docker run -d -p 8080:8080 yt-sentiment-api</code> → open <code>http://localhost:8080/</code>.", "Point <code>API_URL</code> in <code>popup.js</code> at <code>http://localhost:8080</code>, add that URL to <code>host_permissions</code> in <code>manifest.json</code>, and reload the extension."],
+     link: ["17_end_to_end_youtube_sentiment.html#s13", "Ch 17 · Dockerfile"]},
+    {id: "yt-own-data", title: "Instructor's suggestion: retrain on real YouTube comments from your niche", tags: ["acct", "free"], time: "2–3 h",
+     why: "The Reddit training data is mostly political; the instructor recommends collecting comments from the category you actually want to analyse.",
+     steps: ["Use the API key to download comments from ~20 videos in one category (commentThreads endpoint).", "Label a few hundred by hand, or label them with an LLM and spot-check the labels.", "Swap the data source in <code>src/data/data_ingestion.py</code>, run <code>dvc repro</code>, and compare the new run with the old one in MLflow."],
+     link: ["17_end_to_end_youtube_sentiment.html#s3", "Ch 17 · The data"]},
+  ]},
+  {group: "Chapter 18 · CI/CD with GitHub Actions", items: [
+    {id: "gha-deploy-yt", title: "Deploy the YouTube sentiment API with the Chapter 17 workflow (the video's flow, end to end)", tags: ["inst", "acct", "cost"], time: "2 h",
+     why: "The notes only simulated the workflow locally (toy runner, no AWS or GitHub).",
+     steps: ["Do <b>yt-github</b> first: the project is in a <b>private</b> GitHub repo, so no self-hosted runner is exposed to fork PRs.",
+             "IAM user (or better, an OIDC role) with ECR push/pull only → access key.",
+             "ECR: create repo <code>yt-sentiment</code> in your chosen region.",
+             "EC2 Ubuntu (t3.medium is enough for this API), 30 GB → run <code>projects/ch18_github_actions/ec2_setup.sh</code> blocks: Docker, then the runner (Settings → Actions → Runners → New self-hosted runner), installed with <code>svc.sh</code>.",
+             "Repo settings: <b>secrets</b> <code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code>; <b>variables</b> <code>AWS_REGION</code>, <code>ECR_REPOSITORY_NAME</code>.",
+             "Push to main → watch the Actions tab: test → build-and-push → deploy (smoke test green).",
+             "Security group: allow TCP 8080 from your IP → open <code>http://&lt;ip&gt;:8080/</code>. Point the extension's <code>API_URL</code> at it and add it to <code>host_permissions</code>.",
+             "Change something small, push again: the new SHA tag is served with no manual step. Then run <code>projects/_tools/bin/actionlint</code> before pushes as a habit."],
+     link: ["18_cicd_github_actions.html#s7", "Ch 18 · AWS set-up"]},
+    {id: "gha-oidc", title: "Replace the static AWS keys with OIDC (keyless GitHub → AWS login)", tags: ["acct", "free"], time: "45 min",
+     why: "Long-lived keys in GitHub secrets are the main risk in the course setup.",
+     steps: ["IAM → Identity providers → add <code>token.actions.githubusercontent.com</code> (audience <code>sts.amazonaws.com</code>).",
+             "Create a role trusted only for <code>repo:&lt;you&gt;/&lt;repo&gt;:ref:refs/heads/main</code> with ECR push permissions.",
+             "In the workflow: <code>permissions: id-token: write</code> and <code>role-to-assume: arn:aws:iam::&lt;acct&gt;:role/&lt;name&gt;</code>; delete the key secrets and the IAM user's keys.",
+             "On EC2, attach an instance role with ECR read access instead of configuring keys."],
+     link: ["18_cicd_github_actions.html#s13", "Ch 18 · Precision notes"]},
+    {id: "gha-course-wine", title: "Optional: repeat the video's exact demo with the course's wine-quality repo", tags: ["inst", "acct", "cost"], time: "1 h",
+     why: "Same steps as the video, if you want to follow along one-to-one.",
+     steps: ["Fork or copy <code>course_repo/CICD/github actions</code> into a private repo.",
+             "Bump the action versions actionlint flagged (checkout@v4, configure-aws-credentials@v4, amazon-ecr-login@v2) and uncomment the stop/remove step.",
+             "Set the five secrets, push, open port 8080, try <code>/train</code> and a prediction.",
+             "Terminate EC2 and delete the ECR repo, IAM user and runner afterwards."],
+     link: ["18_cicd_github_actions.html#s10", "Ch 18 · Push and run"]},
+    {id: "gha-teardown", title: "Tear down the CI/CD resources", tags: ["acct"], time: "15 min",
+     why: "t2.large or t3.medium instances and stored images cost money; an offline runner blocks future deploy jobs.",
+     steps: ["EC2 → Terminate. ECR → delete repo. IAM → delete the user or role.", "GitHub → Settings → Actions → Runners → Remove; delete secrets and variables you no longer need."],
+     link: ["18_cicd_github_actions.html#s12", "Ch 18 · Clean-up"]},
+  ]},
+  {group: "Chapter 21 · Kubernetes", items: [
+    {id: "k8s-minikube", title: "Run the manifests for real on minikube (free, on this Mac)", tags: ["inst", "free"], time: "1 h",
+     why: "The notes validated the manifests and simulated the cluster; this is the same YAML on a real control plane, at no cost.",
+     steps: ["Install Docker Desktop (already on the list) and minikube: <code>brew install minikube kubectl</code> or the binaries from minikube.sigs.k8s.io.",
+             "<code>minikube start --cpus=4 --memory=6g</code>",
+             "Build the image straight into minikube's Docker: <code>eval $(minikube docker-env)</code> then <code>docker build -t yt-sentiment:v1 projects/ch17_youtube_sentiment</code>.",
+             "Point <code>image:</code> in <code>10-deployment.yaml</code> at <code>yt-sentiment:v1</code> and set <code>imagePullPolicy: Never</code> (no registry needed).",
+             "<code>kubectl apply -f projects/ch21_kubernetes/manifests/</code> → <code>kubectl -n mlops get pods -w</code>",
+             "<code>minikube tunnel</code> in a second terminal gives the LoadBalancer Service an IP; or <code>kubectl -n mlops port-forward svc/yt-sentiment 8080:80</code>.",
+             "Repeat the simulator's experiments for real: <code>kubectl -n mlops delete pod &lt;name&gt;</code>, <code>kubectl -n mlops scale deployment/yt-sentiment --replicas=5</code>, <code>kubectl -n mlops set image deployment/yt-sentiment api=yt-sentiment:v2</code>, <code>kubectl -n mlops rollout undo deployment/yt-sentiment</code>.",
+             "<code>minikube delete</code> when finished."],
+     link: ["21_kubernetes.html#hands-on", "Ch 21 · Hands-on"]},
+    {id: "k8s-gke", title: "Optional: the video's GKE deployment on Google Cloud", tags: ["acct", "cost"], time: "1–2 h",
+     why: "A managed cluster with a real cloud load balancer, as in the video ($300 trial credit).",
+     steps: ["Enable Artifact Registry (not the deprecated gcr.io) and Kubernetes Engine.",
+             "<code>gcloud container clusters create-auto ml-cluster --region=&lt;region&gt;</code> → <code>get-credentials</code>.",
+             "Push the image to <code>&lt;region&gt;-docker.pkg.dev/&lt;project&gt;/ml/yt-sentiment:v1</code> and apply the manifests.",
+             "<code>kubectl -n mlops get svc</code> → open the external IP; try the HPA with a small load generator (<code>hey</code> or <code>ab</code>).",
+             "<b>Delete the cluster, the Service and the images</b>, then check billing the next day."],
+     link: ["21_kubernetes.html#s5", "Ch 21 · The GKE demo"]},
+    {id: "k8s-validate-ci", title: "Add manifest validation to CI", tags: ["free"], time: "20 min",
+     why: "Catches YAML mistakes before they reach a cluster, like actionlint does for workflows.",
+     steps: ["Add a job step running <code>kubeconform -strict -summary manifests/</code> (the binary is in <code>projects/_tools/bin/</code>).",
+             "Optional next step: <code>kubectl apply --dry-run=server</code> against a throwaway cluster, or policy checks with kyverno/conftest."],
+     link: ["21_kubernetes.html#hands-on", "Ch 21 · kubeconform"]},
+  ]},
+  {group: "Chapter 22 · AWS SageMaker", items: [
+    {id: "sm-studio-run", title: "Run the video's flow for real: Studio → training job → endpoint → delete", tags: ["acct", "cost"], time: "1–2 h",
+     why: "The notes ran every API call against a local mock; this is the same sequence on a real account.",
+     steps: ["SageMaker AI → Domains → Create domain (single-user setup). Note the execution role it creates.",
+             "Create a JupyterLab space on the <b>smallest</b> instance; set an idle-shutdown lifecycle config.",
+             "Copy the notebook's data prep, but use a bucket whose name contains <code>sagemaker</code> so the default role can write to it.",
+             "Train with <code>image_uris.retrieve('linear-learner', region)</code> and the smallest instance; add a <code>validation</code> channel so num_models has something to select on.",
+             "<code>deploy()</code> → test with <code>predictor.predict()</code> → <b>delete the endpoint the same day</b>.",
+             "Then: stop and delete the space, empty and delete the bucket, and set an AWS Budget alert before you start."],
+     link: ["22_sagemaker.html#s4", "Ch 22 · The notebook"]},
+    {id: "sm-serverless", title: "Deploy the same model as a serverless endpoint and compare the bill", tags: ["acct", "cost"], time: "45 min",
+     why: "Serverless removes the per-hour charge that makes forgotten endpoints expensive.",
+     steps: ["Create an EndpointConfig with a <code>ServerlessConfig</code> (memory + max concurrency) instead of instance type/count.",
+             "Call it a few times, note the cold-start latency on the first request.",
+             "Compare a day of both in Cost Explorer, then delete both."],
+     link: ["22_sagemaker.html#s7", "Ch 22 · Serving options"]},
+    {id: "sm-ch17-model", title: "Put the Chapter 17 sentiment model behind a SageMaker endpoint (script mode)", tags: ["acct", "cost"], time: "2 h",
+     why: "Connects the course's own project to the managed platform, and teaches script mode — the option you'd actually use at work.",
+     steps: ["Use the <code>SKLearn</code> estimator with a small <code>train.py</code> that reads <code>/opt/ml/input/data/train</code> and writes <code>/opt/ml/model</code>.",
+             "Add <code>inference.py</code> with <code>model_fn</code> / <code>predict_fn</code> so the endpoint applies the same preprocessing as the Flask API.",
+             "Compare the endpoint's answers with the Flask API from Chapter 17 on the same comments.",
+             "Delete the endpoint afterwards."],
+     link: ["22_sagemaker.html#s6", "Ch 22 · Script mode"]},
+  ]},
+  {group: "Chapter 23 · Monitoring", items: [
+    {id: "mon-ec2-stack", title: "Run the video's stack on EC2: Grafana + Prometheus in Docker", tags: ["acct", "cost", "inst"], time: "1 h",
+     why: "The notes ran both locally; this is the cloud version, and it makes the security-group/networking part concrete.",
+     steps: ["EC2 Ubuntu (t3.small is plenty), install Docker as in Chapter 18.",
+             "<code>docker run -d -p 3000:3000 --name grafana -v grafana-storage:/var/lib/grafana grafana/grafana-oss</code>",
+             "<code>docker run -d -p 9090:9090 --name prometheus -v $PWD/prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus</code> (mount the config so it scrapes something real).",
+             "Open 3000 and 9090 <b>to your IP only</b>, log in admin/admin, change the password.",
+             "Add the Prometheus data source, then import <code>projects/ch23_grafana/grafana/dashboards/mlops.json</code>.",
+             "Terminate the instance afterwards."],
+     link: ["23_grafana.html#s3", "Ch 23 · The video's setup"]},
+    {id: "mon-node-exporter", title: "Add node_exporter so you actually see machine metrics", tags: ["free", "inst"], time: "20 min",
+     why: "The video's dashboards only show Prometheus watching itself — no CPU or memory anywhere.",
+     steps: ["<code>docker run -d -p 9100:9100 --name node-exporter prom/node-exporter</code>",
+             "Add a scrape job for it in prometheus.yml and reload.",
+             "Import Grafana dashboard ID <b>1860</b> (Node Exporter Full) and watch CPU, memory, disk and network."],
+     link: ["23_grafana.html#s7", "Ch 23 · Monitoring layers"]},
+    {id: "mon-alerts-slack", title: "Wire one alert to Slack (or email) and make it fire", tags: ["free"], time: "45 min",
+     why: "An alert nobody receives is just a dashboard; sending one end to end is the part people skip.",
+     steps: ["Run Alertmanager (<code>prom/alertmanager</code>) and point Prometheus at it (<code>alerting:</code> section).",
+             "Add a Slack incoming webhook (or SMTP) receiver in alertmanager.yml.",
+             "Use <code>projects/ch23_grafana/alerts.yml</code>, then run <code>traffic.py</code>'s error phase to make HighErrorRate fire.",
+             "Practise a silence, and write a one-line runbook for the alert."],
+     link: ["23_grafana.html#s8", "Ch 23 · Alerts"]},
+    {id: "mon-drift-job", title: "Compute real drift metrics and export them to Prometheus", tags: ["free"], time: "2 h",
+     why: "The prediction mix is the fast signal; proper drift detection compares live inputs with the training data.",
+     steps: ["Schedule a job that scores recent inputs against the Chapter 17 training set (Evidently, or PSI/KS by hand).",
+             "Expose the score as a gauge (push to a Pushgateway, or have the job write a metrics file an exporter serves).",
+             "Add a panel and an alert threshold; annotate the dashboard when you deploy a new model version."],
+     link: ["23_grafana.html#s7", "Ch 23 · Data & model layers"]},
+  ]},
+  {group: "Capstone · serve a model in production", items: [
+    {id: "capstone-ec2-docker", title: "Deploy the wine-quality API container to EC2", tags: ["inst", "acct", "cost"], time: "1–2 h",
+     why: "Puts together everything so far: MLflow model → Docker → registry → cloud server.",
+     steps: ["<code>docker build --platform linux/amd64 -t wine-api:1.0 projects/ch16_docker/wine_api</code> (Apple silicon → x86 server). The Chapter 18 CI/CD pipeline will do the same for the sentiment API.", "Push it to Docker Hub or ECR.", "On EC2: install Docker (<code>curl -fsSL https://get.docker.com | sudo sh</code>), <code>docker run -d -p 8000:8000 …</code>, open port 8000.", "<code>curl -X POST http://&lt;ip&gt;:8000/predict …</code> and open <code>/docs</code>.", "Terminate everything afterwards."],
+     link: ["16_docker.html#hands-on", "Ch 16 · wine_api"]},
+    {id: "capstone-cleanup", title: "Final clean-up: no forgotten cloud resources", tags: ["acct"], time: "15 min",
+     why: "Avoid surprise bills.",
+     steps: ["AWS: EC2 instances, EBS volumes, S3 buckets, ECR repos, IAM access keys you no longer need, in every region.", "Check Billing → Bills.", "GCP / DagsHub / Docker Hub: delete test projects and repos you don't want to keep."],
+     link: ["13_cloud_fundamentals_for_mlops.html#s11", "Ch 13 · Cost control"]},
+  ]},
+];
+
+const KEY = "mlops-after-course-todo";
+let done = {};
+try { done = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (_) { done = {}; }
+let filter = "all";
+const tagLabel = {acct: "needs account", inst: "needs install", cost: "may cost money", free: "free"};
+
+function save() { try { localStorage.setItem(KEY, JSON.stringify(done)); } catch (_) {} }
+
+function render() {
+  const list = document.getElementById("list");
+  let html = "";
+  TASKS.forEach(g => {
+    const visible = g.items.filter(t =>
+      filter === "all" ? true :
+      filter === "open" ? !done[t.id] :
+      filter === "free" ? !t.tags.includes("acct") :
+      t.tags.includes("acct"));
+    if (!visible.length) return;
+    const n = g.items.filter(t => done[t.id]).length;
+    html += `<h2>${g.group}<span class="count">${n}/${g.items.length}</span></h2>`;
+    visible.forEach(t => {
+      html += `<div class="task ${done[t.id] ? "done" : ""}">
+        <input type="checkbox" data-id="${t.id}" ${done[t.id] ? "checked" : ""} aria-label="${t.title.replace(/<[^>]+>/g, "")}">
+        <div>
+          <div class="t-title">${t.title}</div>
+          <div class="t-meta">${t.tags.map(x => `<span class="tag2 ${x}">${tagLabel[x]}</span>`).join("")}<span class="tag2">⏱ ${t.time}</span></div>
+          <p>${t.why}</p>
+          <details><summary>steps · <a href="${t.link[0]}">${t.link[1]}</a></summary><ol>${t.steps.map(s => `<li>${s}</li>`).join("")}</ol></details>
+        </div></div>`;
+    });
+  });
+  list.innerHTML = html || "<p>Nothing here 🎉</p>";
+  list.querySelectorAll("input[type=checkbox]").forEach(cb => cb.addEventListener("change", () => {
+    if (cb.checked) done[cb.dataset.id] = new Date().toISOString().slice(0, 10); else delete done[cb.dataset.id];
+    save(); render();
+  }));
+  const all = TASKS.flatMap(g => g.items), n = all.filter(t => done[t.id]).length;
+  const pct = Math.round(100 * n / all.length);
+  document.getElementById("pct").textContent = pct + "%";
+  document.getElementById("fill").style.width = pct + "%";
+  document.getElementById("ptext").textContent = `${n} of ${all.length} tasks done`;
+}
+document.querySelectorAll("#filters button").forEach(b => b.addEventListener("click", () => {
+  filter = b.dataset.f;
+  document.querySelectorAll("#filters button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  render();
+}));
+document.getElementById("clear").addEventListener("click", () => { done = {}; save(); render(); });
+render();
+</script>
+</body>
+</html>

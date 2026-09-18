@@ -1,0 +1,12 @@
+# Provisioning: the same thing the video does by hand in Connections → Data sources → Prometheus → URL → Save & test.
+# Keeping it as a file means a new Grafana comes up already configured.
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prom-mlops
+    access: proxy
+    url: http://127.0.0.1:9090
+    isDefault: true
+    jsonData:
+      timeInterval: 5s

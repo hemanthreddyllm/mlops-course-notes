@@ -1,0 +1,14 @@
+# A Service gives the pods one stable address and load-balances across the ready ones.
+# type: LoadBalancer asks the cloud for an external IP — this is the `kubectl expose … --type=LoadBalancer` of the video.
+apiVersion: v1
+kind: Service
+metadata:
+  name: yt-sentiment
+  namespace: mlops
+spec:
+  type: LoadBalancer
+  selector: { app: yt-sentiment }    # every pod with this label is a backend
+  ports:
+    - name: http
+      port: 80                       # the port users call
+      targetPort: 8080               # the container's port

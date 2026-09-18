@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>22 · ML project with AWS SageMaker — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .steps { counter-reset: st; list-style: none; padding: 0; margin: 16px 0; }
+  .steps > li { counter-increment: st; position: relative; padding: 12px 16px 12px 56px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; margin: 8px 0; }
+  .steps > li::before { content: counter(st); position: absolute; left: 16px; top: 12px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font: 600 13px/26px var(--sans); text-align: center; }
+  .steps p:last-child, .steps pre:last-child { margin-bottom: 0; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+  .cols > * { min-width: 0; }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+  .shot { border: 1px solid var(--rule); border-radius: 10px; display: block; margin: 0 auto; background: #fff; max-width: 100%; }
+  /* code explorer */
+  .cx { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 12px; margin: 16px 0; }
+  @media (max-width: 760px) { .cx { grid-template-columns: 1fr; } }
+  .cx .lines { background: var(--code-bg); border-radius: 10px; padding: 8px 0; font: 12.5px/1.5 var(--mono); max-height: 580px; overflow: auto; }
+  .cx button { display: block; width: 100%; text-align: left; background: none; border: 0; color: #e9e8e2; font: inherit; padding: 3px 14px; cursor: pointer; border-left: 3px solid transparent; white-space: pre; }
+  .cx button .k { color: #86b6ef; } .cx button .c { color: #8f8e86; } .cx button .s { color: #e6b36a; }
+  .cx button[aria-pressed="true"] { background: rgba(57,135,229,.22); border-left-color: #3987e5; }
+  .cx button:hover { background: rgba(255,255,255,.06); }
+  .cx .explain { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; position: sticky; top: 12px; }
+  .cx .explain h4 { margin-top: 0; }
+  /* cost calculator */
+  .calc { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; margin: 18px 0; }
+  .calc .inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+  .calc label { display: block; font-size: 12px; color: var(--ink-2); margin-bottom: 4px; }
+  .calc input[type="range"] { width: 100%; }
+  .calc .val { font: 600 13px var(--mono); }
+  .calc .bars { margin-top: 16px; }
+  .calc .row { display: grid; grid-template-columns: minmax(130px, 200px) 1fr 92px; gap: 10px; align-items: center; margin: 6px 0; font-size: 13px; }
+  .calc .track { background: var(--surface-2); border-radius: 0 5px 5px 0; height: 20px; }
+  .calc .fill { display: block; height: 100%; border-radius: 0 5px 5px 0; transition: width .25s; }
+  .calc .amt { text-align: right; font: 600 13px var(--mono); }
+  .calc .hint { font-size: 12px; color: var(--ink-3); margin-top: 10px; }
+  .tick { color: var(--good); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 22</span></div>
+<div class="eyebrow">Chapter 22 · ML project using AWS SageMaker</div>
+<h1>SageMaker: rent the machine, train the model, get an endpoint</h1>
+<p class="lede">The last platform in the course. SageMaker is AWS's fully managed home for building, training and deploying models: you write a notebook in <strong>Studio</strong>, put data in <strong>S3</strong>, hand a training job to a machine that exists only while it runs, and turn the result into an HTTPS <strong>endpoint</strong> with one line. The instructor trains a built-in <em>linear-learner</em> regression on a small dataset, deploys it, calls it, and then spends the end of the chapter on the thing that bites people: deleting it all again.</p>
+<div class="meta">
+  <span class="chip">Video 10:46:14 – 11:08:48 (≈ 22 min)</span>
+  <span class="chip">Hands-on: the same API calls, mocked locally</span>
+  <span class="chip">Costs real money on a real account</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">What SageMaker is, and why</a></li>
+    <li><a href="#s2">Studio: domain → user profile → space</a></li>
+    <li><a href="#s3">The shape of the workflow</a></li>
+    <li><a href="#s4">The notebook, line by line (interactive)</a></li>
+    <li><a href="#s5">What <code>fit()</code> and <code>deploy()</code> really call</a></li>
+    <li><a href="#s6">Built-in algorithm, your script, or your container?</a></li>
+    <li><a href="#s7">Four ways to serve a model</a></li>
+    <li><a href="#s8">Cost, and the delete list</a></li>
+    <li><a href="#s9">Where SageMaker sits next to the rest of the course</a></li>
+    <li><a href="#s10">Precision notes</a></li>
+    <li><a href="#hands-on">Hands-on files: what we built</a></li>
+    <li><a href="#s11">Interview questions</a></li>
+    <li><a href="#s12">Recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>What SageMaker is, and why <span class="ts">10:46:15</span></h2>
+<p>The instructor's definition: <strong>a complete, fully managed platform where you build, train and deploy machine-learning models</strong>. AWS provides the configuration, the setup and the instances; you provide the data and the code.</p>
+<p>His reason for using it is concrete: on your own laptop, a big dataset may not fit in memory and a big model may not train at all. On SageMaker you pick an instance that <em>is</em> big enough, use it for the minutes you need it, and give it back.</p>
+<div class="grid">
+  <div class="card"><h4>What you stop doing</h4><ul>
+    <li>provisioning servers and GPUs</li>
+    <li>installing CUDA, drivers and frameworks</li>
+    <li>writing a serving stack (Chapter 17's Flask API)</li>
+    <li>wiring up CI/CD for deployment (Chapter 18)</li>
+    <li>running a cluster (Chapter 21)</li>
+  </ul></div>
+  <div class="card"><h4>What you take on</h4><ul>
+    <li><strong>cost per instance-hour</strong>, including idle endpoints</li>
+    <li>AWS-specific APIs and formats (portability)</li>
+    <li>IAM roles and S3 permissions for everything</li>
+    <li>less control over the runtime environment</li>
+  </ul></div>
+</div>
+<div class="callout key"><span class="label">The trade the whole chapter makes</span><p>Everything in chapters 16–21 was you assembling the machinery: Docker, a registry, CI/CD, a cluster. SageMaker is the same machinery rented as a service. The instructor's warning, repeated three times, is the price: <em>"SageMaker is a little bit costly — take care about the cost."</em></p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>Studio: domain → user profile → space <span class="ts">10:48:21</span></h2>
+<p>Search for <strong>Amazon SageMaker AI</strong> in the console ("build, train and deploy machine learning models" — not the other SageMaker entry), pick a region, then set up the working environment once:</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 800 250" role="img" aria-label="SageMaker Studio hierarchy: a domain contains user profiles; each profile launches Studio; inside Studio you create a space which runs an app such as JupyterLab on a rented instance, with EFS storage attached.">
+    <defs><marker id="sm1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g data-tip="<b>Domain</b><br>Created once per account/region. Holds the shared settings: VPC, execution role, storage (EFS). The video picks the <i>single user</i> quick setup."><rect x="10" y="90" width="140" height="70" rx="10" class="box-2"/><text x="80" y="118" text-anchor="middle" class="t-b">Domain</text><text x="80" y="138" text-anchor="middle" class="t-xs">one per account/region</text></g>
+    <g data-tip="<b>User profile</b><br>One per person. Carries that person's execution role and settings. A default profile is created for you."><rect x="190" y="90" width="140" height="70" rx="10" class="box"/><text x="260" y="118" text-anchor="middle" class="t-b">User profile</text><text x="260" y="138" text-anchor="middle" class="t-xs">→ Launch → Studio</text></g>
+    <g data-tip="<b>Space</b><br>A workspace with its own storage. You choose private or shared, the instance type, the image (distribution) and the disk size, then press <i>Run space</i>."><rect x="370" y="90" width="150" height="70" rx="10" class="box"/><text x="445" y="118" text-anchor="middle" class="t-b">Space</text><text x="445" y="138" text-anchor="middle" class="t-xs">instance · image · storage</text></g>
+    <g data-tip="<b>App</b><br>What actually runs in the space: JupyterLab in the video. The instance behind it is billed per hour <b>while the space is running</b> — stop it when you finish."><rect x="560" y="60" width="230" height="130" rx="10" class="box-2"/>
+      <text x="675" y="86" text-anchor="middle" class="t-b">App on a rented instance</text>
+      <text x="675" y="110" text-anchor="middle" class="t-xs">JupyterLab · Code Editor</text>
+      <text x="675" y="128" text-anchor="middle" class="t-xs">RStudio · Canvas · MLflow</text>
+      <text x="675" y="152" text-anchor="middle" class="t-xs" style="fill:var(--bad)">billed per hour while running</text>
+      <text x="675" y="172" text-anchor="middle" class="t-xs">storage persists after you stop</text></g>
+    <path d="M150,125 L186,125" class="edge" marker-end="url(#sm1)"/>
+    <path d="M330,125 L366,125" class="edge" marker-end="url(#sm1)"/>
+    <path d="M520,125 L556,125" class="edge" marker-end="url(#sm1)"/>
+    <text x="400" y="222" text-anchor="middle" class="t-xs">Everything you create later (training jobs, endpoints) is separate from this — the notebook is just where you type.</text>
+  </svg>
+  </div>
+  <figcaption><b>The one-off setup.</b> Domain → user profile → Studio → create a JupyterLab space → Run space → open JupyterLab. The video keeps every default: default instance, default image, default storage.</figcaption>
+</figure>
+<p>Studio also offers <strong>Code Editor</strong> (VS Code in the browser), <strong>RStudio</strong>, <strong>Canvas</strong> (no-code ML) and a <strong>managed MLflow</strong> — the same MLflow from chapters 14–15, hosted by AWS.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>The shape of the workflow</h2>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 820 300" role="img" aria-label="SageMaker flow: the Studio notebook writes data to S3, creates a training job which runs an algorithm container on a temporary instance and writes model.tar.gz back to S3, then creates a model, endpoint config and endpoint that serves predictions over HTTPS.">
+    <defs>
+      <marker id="sm2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker>
+      <marker id="sm3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker>
+    </defs>
+    <g data-tip="<b>Studio notebook</b><br>Where you write the code. It is <i>not</i> where training happens — it only makes API calls."><rect x="10" y="20" width="150" height="66" rx="10" class="box"/><text x="85" y="46" text-anchor="middle" class="t-b">Studio notebook</text><text x="85" y="66" text-anchor="middle" class="t-xs">boto3 / SageMaker SDK</text></g>
+    <g data-tip="<b>S3</b><br>The hub: training data in, model.tar.gz out, plus any captured requests. Everything else is temporary."><rect x="330" y="118" width="160" height="76" rx="10" class="box-2"/><text x="410" y="146" text-anchor="middle" class="t-b">S3 bucket</text><text x="410" y="166" text-anchor="middle" class="t-xs">train/ · test/ · output/</text><text x="410" y="184" text-anchor="middle" class="t-xs">model.tar.gz</text></g>
+    <g data-tip="<b>Training job</b><br>AWS starts the instance, pulls the algorithm container, mounts the data from S3 at /opt/ml/input, runs it, copies /opt/ml/model to S3, and <b>deletes the instance</b>. Billed per second of runtime."><rect x="600" y="16" width="205" height="96" rx="10" class="box-2"/>
+      <text x="702" y="42" text-anchor="middle" class="t-b">Training job</text>
+      <text x="702" y="62" text-anchor="middle" class="t-xs">algorithm container</text>
+      <text x="702" y="80" text-anchor="middle" class="t-xs">ml.c4.xlarge, ~minutes</text>
+      <text x="702" y="100" text-anchor="middle" class="t-xs">instance dies afterwards</text></g>
+    <g data-tip="<b>Endpoint</b><br>Model + EndpointConfig + Endpoint. An HTTPS API kept warm on an instance you rent by the hour, signed with IAM credentials."><rect x="600" y="180" width="205" height="104" rx="10" fill="var(--accent-soft)"/>
+      <text x="702" y="206" text-anchor="middle" class="t-b">Endpoint (always on)</text>
+      <text x="702" y="226" text-anchor="middle" class="t-xs">Model → EndpointConfig</text>
+      <text x="702" y="244" text-anchor="middle" class="t-xs">→ Endpoint · ml.m4.xlarge</text>
+      <text x="702" y="266" text-anchor="middle" class="t-xs" style="fill:var(--bad)">billed every hour it exists</text></g>
+    <g data-tip="<b>Your application</b><br>Calls InvokeEndpoint with SigV4-signed credentials. For a public API you would put API Gateway + Lambda in front."><rect x="10" y="200" width="150" height="66" rx="10" class="box"/><text x="85" y="226" text-anchor="middle" class="t-b">Your app</text><text x="85" y="246" text-anchor="middle" class="t-xs">InvokeEndpoint</text></g>
+    <path d="M160,53 C240,53 260,120 326,140" class="edge" fill="none" marker-end="url(#sm2)"/><text x="196" y="118" text-anchor="middle" class="t-xs">upload data</text>
+    <path d="M160,40 L596,40" class="edge-accent" fill="none" marker-end="url(#sm3)"/><text x="380" y="32" text-anchor="middle" class="t-xs">CreateTrainingJob</text>
+    <path d="M598,80 L496,130" class="edge" fill="none" marker-end="url(#sm2)"/>
+    <path d="M490,150 L596,214" class="edge" fill="none" marker-end="url(#sm2)"/><text x="556" y="172" text-anchor="middle" class="t-xs">model artifact</text>
+    <path d="M598,232 L164,232" class="edge-accent" fill="none" marker-end="url(#sm3)"/><text x="380" y="224" text-anchor="middle" class="t-xs">predictions (JSON)</text>
+  </svg>
+  </div>
+  <figcaption><b>What is rented, and for how long.</b> The notebook and S3 are cheap; the training instance lives for minutes; the endpoint lives until you delete it. That last box is where surprise bills come from.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>The notebook, line by line <span class="ts">10:52:41</span></h2>
+<p>The instructor's data is a 25-row "hours studied → exam score" table from Kaggle, a plain regression. He skips EDA on purpose: the point is the platform. <strong>Click any block</strong> to see what it does and why.</p>
+<div class="cx">
+  <div class="lines" id="cx"></div>
+  <div class="explain" id="cx-explain"></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>What <code>fit()</code> and <code>deploy()</code> really call</h2>
+<p>The SDK is a thin wrapper over five API calls. Knowing them is what lets you automate SageMaker from CI, Step Functions or Terraform — and it's a common interview question.</p>
+<div class="table-wrap"><table>
+  <tr><th>SDK line</th><th>API call</th><th>What AWS does</th></tr>
+  <tr><td><code>estimator.fit({"train": …})</code></td><td><code>CreateTrainingJob</code></td><td>starts an instance, pulls the container, mounts S3 data at <code>/opt/ml/input/data/train</code>, runs it, copies <code>/opt/ml/model</code> to S3 as <code>model.tar.gz</code>, terminates the instance</td></tr>
+  <tr><td rowspan="3"><code>estimator.deploy(...)</code></td><td><code>CreateModel</code></td><td>records "this image + these weights + this role"</td></tr>
+  <tr><td><code>CreateEndpointConfig</code></td><td>records instance type, count and the traffic split across <em>production variants</em></td></tr>
+  <tr><td><code>CreateEndpoint</code></td><td>starts the instances and puts an HTTPS endpoint in front of them</td></tr>
+  <tr><td><code>predictor.predict(x)</code></td><td><code>InvokeEndpoint</code><br><span style="font-size:12px;color:var(--ink-2)">(sagemaker-runtime)</span></td><td>serialises your payload, signs the request with your IAM credentials, returns the model's response</td></tr>
+  <tr><td><code>predictor.delete_endpoint()</code></td><td><code>DeleteEndpoint</code></td><td>stops the instances — the only step that stops the hourly charge</td></tr>
+</table></div>
+<p>Three objects for deployment looks like overhead until you need them: a second <strong>production variant</strong> in the same config gives you an A/B test or a canary by weight, and <code>UpdateEndpoint</code> swaps to a new config with no downtime.</p>
+<div class="callout beyond"><span class="label">We ran all of these locally</span><p>The hands-on notebook makes exactly these calls against <strong>moto</strong>, so you can read the real request shapes — including the training job's <code>InputDataConfig</code> channels and the endpoint config's variants — without an AWS bill. Results are in the <a href="#hands-on">hands-on section</a>.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>Built-in algorithm, your script, or your container?</h2>
+<div class="table-wrap"><table>
+  <tr><th>Option</th><th>What you write</th><th>When</th></tr>
+  <tr><td><strong>Built-in algorithm</strong><br><span style="font-size:12px;color:var(--ink-2)">the video: linear-learner</span></td><td>hyper-parameters only, plus data in CSV or RecordIO-protobuf</td><td>a standard task (linear models, XGBoost, k-means, BlazingText…) and you want zero code</td></tr>
+  <tr><td><strong>Script mode</strong></td><td>your own <code>train.py</code> in an AWS framework container (<code>SKLearn</code>, <code>PyTorch</code>, <code>XGBoost</code>, <code>HuggingFace</code>), plus <code>requirements.txt</code></td><td>the usual choice: your code, AWS's environment. Reads <code>/opt/ml/input</code>, writes <code>/opt/ml/model</code></td></tr>
+  <tr><td><strong>Your own container</strong></td><td>a Docker image in ECR that implements <code>train</code> and <code>serve</code></td><td>unusual dependencies, or you already containerised everything (chapters 16–18)</td></tr>
+  <tr><td><strong>JumpStart</strong></td><td>a few clicks</td><td>pre-trained and foundation models you want to fine-tune or deploy as-is</td></tr>
+</table></div>
+<p><strong>About linear-learner specifically:</strong> it trains <em>many</em> models in parallel with different hyper-parameters (<code>num_models</code>) and keeps the best on a validation set, using SGD rather than the closed-form least squares that scikit-learn uses. That's why it has <code>epochs</code>, <code>mini_batch_size</code> and a choice of <code>loss</code> — the video picks <code>absolute_loss</code>, which is less sensitive to outliers than the usual squared loss.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>Four ways to serve a model</h2>
+<p>The video shows the first one. The other three exist mostly to avoid paying for an idle instance:</p>
+<div class="table-wrap"><table>
+  <tr><th>Option</th><th>How it's billed</th><th>Latency</th><th>Good for</th></tr>
+  <tr><td><strong>Real-time endpoint</strong></td><td>per instance-hour, always on</td><td>milliseconds, steady</td><td>steady traffic, tight latency; add auto scaling and ≥ 2 instances</td></tr>
+  <tr><td><strong>Serverless inference</strong></td><td>per request + duration</td><td>cold starts on the first call</td><td>spiky or low traffic, demos, internal tools</td></tr>
+  <tr><td><strong>Asynchronous inference</strong></td><td>per instance-hour, scales to zero</td><td>seconds to minutes; results land in S3</td><td>large payloads, long inference (documents, video)</td></tr>
+  <tr><td><strong>Batch transform</strong></td><td>per instance-hour, only while the job runs</td><td>offline</td><td>scoring a whole table on a schedule — no endpoint at all</td></tr>
+</table></div>
+<figure>
+  <img class="shot" src="assets/img/ch22_cost.png" alt="Log-log chart: the real-time endpoint's monthly cost is flat regardless of request volume, serverless rises with requests, batch transform stays lowest" style="width:100%;max-width:720px">
+  <figcaption><b>From the hands-on notebook (illustrative numbers).</b> The always-on endpoint costs the same at 100 requests a day as at a million, because you rent the instance. Serverless follows usage; a nightly batch job is cheapest of all when you don't need instant answers.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>Cost, and the delete list <span class="ts">11:06:35</span></h2>
+<p>Move the sliders: the endpoint is the only thing whose cost doesn't depend on how much you use it.</p>
+<div class="calc" id="calc">
+  <div class="inputs">
+    <div><label>Instance price <span class="val" id="v-price">$0.25</span> / hour</label><input type="range" id="i-price" min="0.05" max="4" step="0.05" value="0.25"></div>
+    <div><label>Notebook space used <span class="val" id="v-note">2</span> h / day</label><input type="range" id="i-note" min="0" max="12" step="1" value="2"></div>
+    <div><label>Training runs <span class="val" id="v-train">1</span> / day × <span class="val" id="v-mins">6</span> min</label><input type="range" id="i-train" min="0" max="20" step="1" value="1"><input type="range" id="i-mins" min="1" max="120" step="1" value="6"></div>
+    <div><label>Endpoint left running <span class="val" id="v-ep">24</span> h / day</label><input type="range" id="i-ep" min="0" max="24" step="1" value="24"></div>
+  </div>
+  <div class="bars">
+    <div class="row"><span>Studio space</span><span class="track"><span class="fill" id="b-note" style="background:#2a78d6"></span></span><span class="amt" id="a-note"></span></div>
+    <div class="row"><span>Training jobs</span><span class="track"><span class="fill" id="b-train" style="background:#1baf7a"></span></span><span class="amt" id="a-train"></span></div>
+    <div class="row"><span>Real-time endpoint</span><span class="track"><span class="fill" id="b-ep" style="background:#e34948"></span></span><span class="amt" id="a-ep"></span></div>
+    <div class="row"><span><b>Total per 30 days</b></span><span class="track"><span class="fill" id="b-tot" style="background:#0b0b0b"></span></span><span class="amt" id="a-tot"></span></div>
+  </div>
+  <p class="hint" id="calc-hint"></p>
+</div>
+<div class="cols">
+<div>
+<h3>The delete list <span class="ts">11:07:38</span></h3>
+<ol>
+  <li><strong>Endpoint</strong> — <code>predictor.delete_endpoint()</code>, or Inference → Endpoints → Delete. This is the expensive one.</li>
+  <li><strong>Endpoint config and model</strong> — free, but tidy.</li>
+  <li><strong>JupyterLab space</strong> — Stop first, then Delete (the video does exactly this).</li>
+  <li><strong>S3 bucket</strong> — empty it, then delete it.</li>
+  <li><strong>Domain</strong> — only if you're finished with SageMaker; its EFS storage keeps costing a little.</li>
+</ol>
+</div>
+<div class="callout wrong" style="margin-top:0"><span class="label">What the video doesn't mention</span>
+<ul>
+  <li><strong>Idle shutdown:</strong> Studio can stop idle spaces for you (lifecycle configuration). Without it, a forgotten notebook bills all month.</li>
+  <li><strong>A budget alarm</strong> in AWS Billing is the real safety net.</li>
+  <li><strong>Free tier:</strong> new accounts get a limited monthly allowance of Studio and endpoint hours for the first couple of months; after that everything above is billable.</li>
+</ul></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>Where SageMaker sits next to the rest of the course</h2>
+<div class="table-wrap"><table>
+  <tr><th>Job</th><th>Earlier in the course</th><th>SageMaker equivalent</th></tr>
+  <tr><td>Experiment tracking</td><td>MLflow on EC2 (ch14–15, 17)</td><td>SageMaker Experiments, or <strong>managed MLflow</strong> inside Studio</td></tr>
+  <tr><td>Pipelines</td><td>DVC stages (ch11–12, 17)</td><td>SageMaker Pipelines (steps as a DAG, triggered from CI)</td></tr>
+  <tr><td>Model registry</td><td>MLflow registry + aliases (ch17)</td><td>SageMaker Model Registry with approval status</td></tr>
+  <tr><td>Serving</td><td>Flask + Docker on EC2 (ch16–18)</td><td>endpoints (real-time, serverless, async, batch)</td></tr>
+  <tr><td>CI/CD</td><td>GitHub Actions → ECR → EC2 (ch18)</td><td>the same pipeline calling SageMaker APIs, or SageMaker Projects</td></tr>
+  <tr><td>Scaling and self-healing</td><td>Kubernetes (ch21)</td><td>endpoint auto scaling, managed by AWS</td></tr>
+  <tr><td>Monitoring</td><td>Grafana (ch23)</td><td>SageMaker Model Monitor + CloudWatch</td></tr>
+</table></div>
+<p>The skills transfer in both directions: a SageMaker job is still a container reading data and writing a model, which is exactly what you built by hand in the earlier chapters.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>Precision notes</h2>
+<ul>
+  <li><strong>"Two SageMakers" in the console.</strong> The video notices this and picks the right one: the classic service is now <strong>SageMaker AI</strong>, while "SageMaker" is AWS's newer unified data-and-AI platform (Studio with lakehouse, Athena, EMR and the like). Same service, renamed entry.</li>
+  <li><strong><code>get_image_uri</code> is deprecated.</strong> The video imports it, then uses the current call — <code>sagemaker.image_uris.retrieve("linear-learner", region)</code>. Never hard-code the registry account: it differs per region.</li>
+  <li><strong>The "not authorized" S3 error</strong> was fixed by making a new bucket, but the usual causes are the execution role's permissions (Studio's default role is scoped to buckets with <code>sagemaker</code> in the name), a bucket policy, or a region mismatch. Worth diagnosing rather than renaming.</li>
+  <li><strong>The test channel is uploaded but never used.</strong> The job trains on <code>train</code> only, and the model is never scored against the test set inside SageMaker. linear-learner uses a channel named <strong><code>validation</code></strong> for early stopping and model selection; without it, <code>num_models: 32</code> has nothing principled to choose between. Evaluating afterwards (or with SageMaker's evaluation step) is what you'd do in practice.</li>
+  <li><strong>25 rows, 5 of them for testing.</strong> Fine as a demo, meaningless as an evaluation — any metric from five points is noise.</li>
+  <li><strong>Old instance families.</strong> <code>ml.c4</code> and <code>ml.m4</code> are previous-generation; current <code>m5/m7i/c6i</code> instances are usually faster <em>and</em> cheaper. For a model this small, the smallest instance is plenty.</li>
+  <li><strong>The float32 conversion</strong> isn't superstition: built-in algorithms expect 32-bit floats in RecordIO-protobuf, and float64 input is a common source of confusing errors.</li>
+  <li><strong>Serialisers aren't optional.</strong> The predictor needs to know how to turn your array into bytes (<code>CSVSerializer</code>) and the response into Python (<code>JSONDeserializer</code>). The video adds them after hitting an error.</li>
+  <li><strong>An endpoint is not a public URL.</strong> Every call must be signed with IAM credentials, so a browser or the Chapter 17 Chrome extension cannot call it directly — you would put API Gateway (plus Lambda) in front, which also gives you API keys and throttling.</li>
+  <li><strong>One instance, one availability zone.</strong> <code>initial_instance_count=1</code> means a single point of failure and no capacity headroom. Production endpoints run ≥ 2 instances with auto scaling.</li>
+  <li><strong>"No requirements file needed"</strong> is true only inside Studio's pre-built image. A training job runs in a <em>different</em> container, so script mode takes its own <code>requirements.txt</code> — and pinning versions is what makes the job reproducible (the lesson from Chapter 21's failed Docker build).</li>
+  <li><strong>Deleting the endpoint isn't the end.</strong> The model, endpoint config, S3 data, space and domain storage all remain. The notebook's clean-up table lists them.</li>
+  <li><strong>Lock-in is the strategic cost.</strong> Training jobs, endpoints and pipelines are AWS APIs. The container itself stays portable, which is the argument for keeping your training code framework-standard and your model artifact plain.</li>
+</ul>
+
+<!-- ───────────────────────────── -->
+<h2 id="hands-on"><span class="num">▶</span>Hands-on files: what we built</h2>
+<div class="handson">
+<span class="label">Hands-on project · every SageMaker API call made for real against a local mock (moto) — no AWS account, no bill</span>
+<div class="files">
+  <a href="../projects/ch22_sagemaker/sagemaker_walkthrough.ipynb">sagemaker_walkthrough.ipynb</a>
+</div>
+<pre style="margin:0 0 12px"><code>projects/ch22_sagemaker/
+├── sagemaker_walkthrough.ipynb   <span class="c"># 8 parts: data → S3 → training job → endpoint → invoke → cost → delete</span>
+└── reports/ch22_data.png · ch22_cost.png</code></pre>
+<h4>1 · The model SageMaker is asked to learn (local scikit-learn reference)</h4>
+<div class="result">local scikit-learn fit: score ≈ 9.12 × hours + 4.93
+MAE 2.29 | RMSE 3.09      (25 synthetic rows, 20 train / 5 test)</div>
+<h4>2 · S3 and the training job — the request <code>estimator.fit()</code> builds</h4>
+<div class="result">s3://sagemaker-mlops-demo-25/
+   linear-learner/test/student_data_test.csv        44 bytes
+   linear-learner/train/student_data.csv           180 bytes
+
+CreateTrainingJob → status  : Completed
+                    instance: ml.c4.xlarge × 1
+                    model   : s3://…/linear-learner/output/linear-learner-student-scores/output/model.tar.gz
+hyper-parameters: feature_dim=1 · predictor_type=regressor · mini_batch_size=4 · epochs=10 · num_models=32 · loss=absolute_loss</div>
+<h4>3 · Deploy = three objects, then a signed call</h4>
+<div class="result">CreateModel → CreateEndpointConfig → CreateEndpoint
+endpoint: linear-learner-endpoint → InService   variant: AllTraffic
+
+InvokeEndpoint  body: 7.7 | 9.5 | 6.1 | 0.9 | 3.0   (text/csv, no label column)
+response: {"predictions": [{"score": 75.159}, {"score": 91.575}, {"score": 60.566}, {"score": 13.141}, {"score": 32.293}]}
+
+   hours  actual  endpoint  local model
+     7.7    74.0    75.159       75.159
+     9.5    96.0    91.575       91.575
+     6.1    61.0    60.566       60.566
+     0.9     8.0    13.141       13.141
+     3.0    32.0    32.293       32.293</div>
+<p style="font-size:13px;color:var(--ink-2)">moto stores the objects and returns the statuses, but it doesn't run the algorithm — the response we seeded is the local model's own prediction, so the two columns match by construction. The request and response <em>shapes</em> are the real ones.</p>
+<h4>4 · Cost and clean-up</h4>
+<div class="result">resource                            billed                                        hours/month   at $0.25/h
+Studio JupyterLab space             while the space is running                              3         $0.75
+Training job (ml.c4.xlarge)         per second, only while training                       0.1         $0.02
+Real-time endpoint (ml.m4.xlarge)   every hour it exists, even with 0 requests            730       $182.50
+
+DeleteEndpoint → describe_endpoint after delete → ValidationException (the endpoint is gone; billing stops)
+bucket emptied and deleted → buckets left: none</div>
+<figure style="margin:14px 0 0"><img class="shot" src="assets/img/ch22_data.png" alt="Scatter plot of hours studied against score, with the fitted regression line" style="max-width:520px"><figcaption>The regression the endpoint serves.</figcaption></figure>
+<p><strong>Not run here</strong> (it's on your <a href="todo_after_course.html">after-course to-do list</a>): a real Studio domain, a real training job and an endpoint on the smallest instance — deleted the same day.</p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s11"><span class="num">11</span>Interview questions</h2>
+<details class="qa"><summary>When would you use SageMaker instead of your own containers on EC2 or Kubernetes?</summary>
+<p>SageMaker when you want managed training and serving without operating infrastructure: on-demand GPUs billed per second, one-line deployment, built-in autoscaling, model monitoring and a registry — and your team is already on AWS. Self-managed when you need portability across clouds, have unusual runtime needs, run at a scale where per-hour managed pricing hurts, or already operate a cluster for other services. Many teams mix: train on SageMaker, serve on their own cluster, or the reverse.</p></details>
+<details class="qa"><summary>Walk through what happens when you call <code>estimator.fit()</code>.</summary>
+<p><code>CreateTrainingJob</code> is sent with the image, the role, hyper-parameters, input channels (S3 URIs), an output path and a resource config. AWS provisions the instance, pulls the container, downloads (or streams) the channels to <code>/opt/ml/input/data/&lt;channel&gt;</code>, runs the container's training entry point, writes logs and metrics to CloudWatch, copies <code>/opt/ml/model</code> to S3 as <code>model.tar.gz</code>, then terminates the instance. You pay for the seconds it ran.</p></details>
+<details class="qa"><summary>Real-time vs serverless vs asynchronous vs batch inference?</summary>
+<ul>
+  <li><strong>Real-time:</strong> always-on instances, millisecond latency, billed per hour.</li>
+  <li><strong>Serverless:</strong> per-request billing, scales to zero, cold starts.</li>
+  <li><strong>Asynchronous:</strong> queued requests, large payloads, results to S3, can scale to zero.</li>
+  <li><strong>Batch transform:</strong> score a dataset in one job, no endpoint.</li>
+</ul>
+<p>Pick by traffic shape and latency budget, not by habit.</p></details>
+<details class="qa"><summary>How do you deploy a new model version without downtime, and how do you A/B test?</summary>
+<p>Create a new EndpointConfig with the new model and call <code>UpdateEndpoint</code>: SageMaker brings up the new fleet and shifts traffic (blue/green, with canary or linear traffic shifting and automatic rollback on CloudWatch alarms). For A/B tests, put two <strong>production variants</strong> in one config with weights, and compare metrics before shifting all traffic. Shadow testing sends a copy of live traffic to a candidate without returning its answers.</p></details>
+<details class="qa"><summary>How would you build CI/CD around SageMaker?</summary>
+<p>Keep training code in git. On merge, CI (Chapter 18) starts a <strong>SageMaker Pipeline</strong>: process → train → evaluate → conditional register. The model goes to the <strong>Model Registry</strong> as <em>PendingManualApproval</em>; approval (manual or automated against metric thresholds) triggers a deployment pipeline that updates the endpoint. EventBridge can re-trigger on new data or on drift alarms from Model Monitor.</p></details>
+<details class="qa"><summary>How do you keep SageMaker costs under control?</summary>
+<ul>
+  <li>Delete endpoints you're not using; prefer serverless or batch for low traffic.</li>
+  <li>Auto scaling with a sensible minimum, right-sized current-generation instances.</li>
+  <li>Spot (managed) training for long jobs — up to ~90% cheaper with checkpointing.</li>
+  <li>Idle-shutdown lifecycle configs on Studio spaces.</li>
+  <li>Budgets, cost allocation tags, and a look at Cost Explorer per resource type.</li>
+</ul></details>
+<details class="qa"><summary>A training job fails. How do you debug it?</summary>
+<p>Read the failure reason in <code>DescribeTrainingJob</code>, then the <strong>CloudWatch logs</strong> for the job. Common causes: the role can't read the S3 prefix, the data format or <code>ContentType</code> doesn't match the algorithm, a missing dependency in the container, the wrong <code>feature_dim</code>, or out-of-memory on a too-small instance. Reproduce locally first — the same container runs in local mode, which is far faster than waiting on a managed instance.</p></details>
+<details class="qa"><summary>How do you secure a SageMaker endpoint?</summary>
+<p>It's IAM-authenticated by default, so give callers a narrow role limited to <code>sagemaker:InvokeEndpoint</code> on that endpoint ARN. Add: VPC-only endpoints with private subnets and VPC endpoints, KMS encryption of volumes and S3 artifacts, network isolation for containers, no internet access for training jobs that don't need it, and CloudTrail for auditing. For public use, front it with API Gateway and authenticate there.</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s12"><span class="num">12</span>Recap</h2>
+<ul>
+  <li><strong>What:</strong> SageMaker is AWS's managed build/train/deploy platform. You supply data and code; AWS supplies the instances.</li>
+  <li><strong>Setup:</strong> SageMaker AI → create a <strong>domain</strong> (single-user quick setup) → user profile → Studio → a <strong>JupyterLab space</strong> (instance, image, storage) → Run space.</li>
+  <li><strong>The flow:</strong> notebook → data to <strong>S3</strong> → <code>CreateTrainingJob</code> runs the algorithm container on a temporary instance → <code>model.tar.gz</code> back in S3 → <code>CreateModel</code> + <code>CreateEndpointConfig</code> + <code>CreateEndpoint</code> → <code>InvokeEndpoint</code> for predictions.</li>
+  <li><strong>The code:</strong> read CSV → split X and y → cast to float32 → train/test split → session, bucket, prefix, <code>get_execution_role()</code> → upload to S3 → <code>image_uris.retrieve("linear-learner", region)</code> → <code>Estimator(...)</code> → <code>set_hyperparameters(feature_dim, predictor_type, mini_batch_size, epochs, num_models, loss)</code> → <code>fit()</code> → <code>deploy()</code> → serialisers → <code>predict()</code>.</li>
+  <li><strong>Serving options:</strong> real-time (always on), serverless (per request), asynchronous (queued, big payloads), batch transform (no endpoint).</li>
+  <li><strong>Cost:</strong> training is billed per second and ends by itself; the <strong>endpoint bills every hour until deleted</strong>. Delete the endpoint, stop and delete the space, empty and delete the bucket.</li>
+  <li><strong>In context:</strong> SageMaker replaces, as a service, most of what chapters 14–21 built by hand — at the price of AWS lock-in and per-hour billing.</li>
+</ul>
+
+<div class="pager">
+  <a href="21_kubernetes.html"><small>← Previous</small>21 · Kubernetes</a>
+  <a class="next" href="23_grafana.html"><small>Next →</small>23 · Grafana for monitoring</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+<script>
+// ---- code explorer
+(function () {
+  const L = [
+    ["import pandas as pd, numpy as np\nimport boto3, sagemaker\nfrom sagemaker import Session\nfrom sklearn.model_selection import train_test_split\nimport io, sagemaker.amazon.common as smac", "The imports", "<code>boto3</code> is the AWS SDK; <code>sagemaker</code> is the higher-level SDK that wraps it. <code>sagemaker.amazon.common</code> holds the RecordIO-protobuf writer. In Studio these are already installed — \"you don't need a requirements file here\" — but a <i>training job</i> runs in a different container, which does need its own dependencies."],
+    ["df = pd.read_csv('student_scores.csv')\ndf.head()\ndf.shape        # (25, 2)", "The data", "Hours studied → exam score: 25 rows, one feature, a regression. The instructor skips EDA deliberately; the chapter is about the platform, not the model. Any dataset works here."],
+    ["X = df['hours']\ny = df['scores']\nX = np.array(X).astype('float32')\ny = np.array(y).astype('float32')", "Features, labels, float32", "The built-in algorithms want <b>32-bit floats</b>. The video calls this out as a frequent source of errors: pandas gives you float64, and the protobuf writer refuses it."],
+    ["X_train, X_test, y_train, y_test = train_test_split(\n    X, y, test_size=0.2, random_state=42)", "Train/test split", "The ordinary scikit-learn split. With 25 rows this leaves 5 test points — enough to demo a prediction call, not enough to judge a model."],
+    ["sess = sagemaker.Session()\nbucket = 'my-sagemaker-bucket'\nprefix = 'linear-learner'\nrole = sagemaker.get_execution_role()", "Session, bucket, prefix, role", "<b>Session</b> wraps the boto3 clients. <b>bucket + prefix</b> decide where data and artifacts live (a folder per algorithm is just a naming convention). <b>get_execution_role()</b> returns the IAM role attached to the Studio space — SageMaker assumes it to read S3 and write models, which is why permission errors show up here first."],
+    ["buf = io.BytesIO()\nsmac.write_numpy_to_dense_tensor(buf, X_train, y_train)\nbuf.seek(0)", "RecordIO-protobuf buffer", "Packs features and labels into AWS's binary training format, in memory. It's compact and streams well in Pipe mode for datasets too big for the instance's disk. <b>CSV also works</b> (no header, label in the first column) and is easier to debug — that's what our hands-on notebook uses."],
+    ["boto3.resource('s3').Bucket(bucket)\\\n     .Object(f'{prefix}/train/student_data')\\\n     .upload_fileobj(buf)\ns3_train_data = f's3://{bucket}/{prefix}/train/student_data'", "Upload to S3", "The training instance never sees your notebook's filesystem — it reads from S3. This is the step that failed in the video with <i>\"not authorized\"</i>: the role, a bucket policy, or a region mismatch. Creating a differently-named bucket made it work, because Studio's default role is scoped to buckets with <code>sagemaker</code> in the name."],
+    ["output_location = f's3://{bucket}/{prefix}/output'", "Where the model goes", "The job writes <code>model.tar.gz</code> under this prefix, in a folder named after the training job. That artifact is the only thing that outlives the instance."],
+    ["container = sagemaker.image_uris.retrieve(\n    'linear-learner', boto3.Session().region_name)", "The algorithm container", "A built-in algorithm <i>is</i> a container image owned by AWS, with a different registry account per region. Always look it up with <code>image_uris.retrieve</code> rather than hard-coding it. (The video's <code>get_image_uri</code> import is the deprecated spelling.)"],
+    ["linear = sagemaker.estimator.Estimator(\n    container, role,\n    instance_count=1,\n    instance_type='ml.c4.xlarge',\n    output_path=output_location,\n    sagemaker_session=sess)", "The estimator", "A description of the machine to rent: image, role, how many instances of what type, and where output goes. Nothing has started yet — this object only builds the API request. Pick the instance from the task: CPU for this, GPU (<code>ml.g5</code>, <code>ml.p4</code>) for deep learning."],
+    ["linear.set_hyperparameters(\n    feature_dim=1,\n    predictor_type='regressor',\n    mini_batch_size=4,\n    epochs=10,\n    num_models=32,\n    loss='absolute_loss')", "Hyper-parameters", "<b>feature_dim</b> must equal the number of input columns. <b>predictor_type</b> switches linear-learner between regression and classification. <b>num_models=32</b> trains 32 variants in parallel and keeps the best — powerful, but it needs a <code>validation</code> channel to choose against, which this demo never provides. <b>absolute_loss</b> is more robust to outliers than squared loss."],
+    ["linear.fit({'train': s3_train_data})", "Train", "One call → <code>CreateTrainingJob</code>. AWS starts the instance, pulls the container, mounts the data, trains, writes <code>model.tar.gz</code> to S3, and shuts the instance down. Logs go to CloudWatch; the SDK streams them into the notebook. Billed per second of runtime."],
+    ["predictor = linear.deploy(\n    initial_instance_count=1,\n    instance_type='ml.m4.xlarge')", "Deploy", "Three API calls in one line: <b>CreateModel</b> → <b>CreateEndpointConfig</b> → <b>CreateEndpoint</b>. After a few minutes there's an HTTPS endpoint (Console → Inference → Endpoints). <b>From this moment you are billed every hour until you delete it</b>, whether or not anyone calls it."],
+    ["from sagemaker.serializers import CSVSerializer\nfrom sagemaker.deserializers import JSONDeserializer\npredictor.serializer = CSVSerializer()\npredictor.deserializer = JSONDeserializer()", "Serialiser / deserialiser", "How your array becomes request bytes, and how the response becomes Python. Getting these wrong is the error the video runs into. The built-in regressors answer with <code>{\"predictions\": [{\"score\": …}]}</code>."],
+    ["result = predictor.predict(X_test)\nscores = [r['score'] for r in result['predictions']]", "Predict", "<code>InvokeEndpoint</code> under the hood, signed with IAM credentials. The endpoint is reachable from anywhere <i>with those credentials</i> — it is not a public URL."],
+    ["predictor.delete_endpoint()", "Delete the endpoint", "The most important line in the chapter. \"Make sure you delete the endpoint, otherwise it will charge you.\" Deleting it does not remove the model, the endpoint config, the S3 data or the Studio space — do those separately."],
+  ];
+  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  const paint = s => esc(s)
+    .replace(/(#.*)$/gm, '<span class="c">$1</span>')
+    .replace(/\b(import|from|as|return)\b/g, '<span class="k">$1</span>')
+    .replace(/('[^']*')/g, '<span class="s">$1</span>');
+  const host = document.getElementById("cx"), box = document.getElementById("cx-explain");
+  const btns = [];
+  L.forEach(([code, title, text], i) => {
+    const b = document.createElement("button");
+    b.innerHTML = paint(code);
+    b.dataset.i = i;
+    b.addEventListener("click", () => show(i));
+    host.appendChild(b); btns.push(b);
+  });
+  function show(i) {
+    btns.forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.i === i)));
+    box.innerHTML = `<h4>${L[i][1]}</h4><p style="margin:0">${L[i][2]}</p>`;
+  }
+  show(12);
+})();
+
+// ---- cost calculator
+(function () {
+  const $ = id => document.getElementById(id);
+  const ids = ["price", "note", "train", "mins", "ep"];
+  function draw() {
+    const price = +$("i-price").value, note = +$("i-note").value,
+          runs = +$("i-train").value, mins = +$("i-mins").value, ep = +$("i-ep").value;
+    $("v-price").textContent = "$" + price.toFixed(2);
+    $("v-note").textContent = note; $("v-train").textContent = runs;
+    $("v-mins").textContent = mins; $("v-ep").textContent = ep;
+    const cNote = note * 30 * price;
+    const cTrain = runs * (mins / 60) * 30 * price;
+    const cEp = ep * 30 * price;
+    const total = cNote + cTrain + cEp;
+    const max = Math.max(total, 1);
+    const set = (b, a, v) => { $(b).style.width = (100 * v / max).toFixed(1) + "%"; $(a).textContent = "$" + v.toFixed(0); };
+    set("b-note", "a-note", cNote); set("b-train", "a-train", cTrain);
+    set("b-ep", "a-ep", cEp); set("b-tot", "a-tot", total);
+    const share = total ? Math.round(100 * cEp / total) : 0;
+    $("calc-hint").innerHTML = ep === 0
+      ? "With no endpoint running you only pay while you are actually working or training. This is what \"delete the endpoint\" buys you."
+      : `The endpoint is <b>${share}%</b> of the bill — and that share doesn't change with how many predictions you make. Drag it to 0 h/day to see the difference, or switch to serverless inference for spiky traffic.`;
+  }
+  ids.forEach(k => $("i-" + k).addEventListener("input", draw));
+  draw();
+})();
+</script>
+</body>
+</html>

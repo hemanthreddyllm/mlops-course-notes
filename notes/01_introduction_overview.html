@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>01 · Introduction & Overview — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 01</span></div>
+<div class="eyebrow">Chapter 01 · Introduction & Overview</div>
+<h1>What MLOps actually is (and what it isn't)</h1>
+<p class="lede">The course opens by fixing a common misconception: MLOps is not just "putting a model into production". It covers the whole life of an ML system: data, code, experiments, deployment, monitoring and retraining. It is learned mostly by using tools.</p>
+<div class="meta">
+  <span class="chip">Video 00:00:00 – 00:04:14 and 00:37:00 – 00:41:07</span>
+  <span class="chip">Instructor: Bappy (GitHub: entbappy)</span>
+  <span class="chip">Prereq: basic ML</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">Why this course exists</a></li>
+    <li><a href="#s2">The wrong definition vs the right one</a></li>
+    <li><a href="#s3">Unpacking the right definition</a></li>
+    <li><a href="#s4">ML project vs ML system</a></li>
+    <li><a href="#s5">"MLOps is all about tools"</a></li>
+    <li><a href="#s6">The MLOps Venn diagram (skills you need)</a></li>
+    <li><a href="#s7">Course roadmap: what we'll build</a></li>
+    <li><a href="#s8">Note on the video's timestamps</a></li>
+    <li><a href="#s9">Interview questions</a></li>
+    <li><a href="#s10">One-minute recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>Why this course exists</h2>
+<p>The instructor's opening point: <strong>machine learning is not only about building a model.</strong> Once a model exists, you still have to answer questions a notebook never asks:</p>
+<div class="grid">
+  <div class="card"><h4>Productionize</h4><p>How do real users get predictions from it, reliably, 24×7?</p></div>
+  <div class="card"><h4>Scale</h4><p>What happens when 10 users become 10,000?</p></div>
+  <div class="card"><h4>Automate</h4><p>How do data → training → deployment run without someone doing each step by hand?</p></div>
+</div>
+<p>The set of <strong>tools and practices</strong> that answers these questions is <strong>MLOps</strong> (Machine Learning Operations). The course promises two things:</p>
+<ol>
+  <li>Learn the MLOps tools needed to <strong>productionize</strong> an ML system.</li>
+  <li>Learn to <strong>automate the entire ML pipeline</strong> with those tools.</li>
+</ol>
+<div class="callout key">
+  <span class="label">Core idea</span>
+  <p>MLOps = the tools and practices that take an ML model from "works on my laptop" to "runs in production, at scale, and keeps improving automatically".</p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>The wrong definition vs the right one <span class="ts">01:04</span></h2>
+<p>The instructor puts two definitions on the board. The first is the one most people pick up from blogs and YouTube, and he says plainly that it is <em>incomplete</em>.</p>
+
+<div class="callout wrong">
+  <span class="label">✗ Common (incomplete) definition</span>
+  <p><strong>"MLOps is the practice of deploying machine learning models into production."</strong></p>
+  <p>Why it's wrong: deployment is only <em>one step</em>. It leaves out data, versioning, experiments, automation, monitoring and retraining.</p>
+</div>
+
+<div class="callout right">
+  <span class="label">✓ Correct definition (as given in the course)</span>
+  <p><strong>MLOps refers to the practice and discipline within machine learning that aims to unify and streamline ML system <u>development</u> and ML system <u>operation</u>. It involves collaboration between data scientists, ML engineers and IT professionals to automate and optimize the <u>end-to-end lifecycle</u> of machine learning applications.</strong></p>
+</div>
+
+<p>The key phrase is <strong>"end-to-end lifecycle"</strong>. That phrase is what makes MLOps "more than deployment", and the analogy chapter spends its whole length explaining what "end-to-end" includes.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>Unpacking the right definition</h2>
+<p>Here is the definition split into its parts, with what each part means in practice:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Phrase in the definition</th><th>What it means in practice</th></tr></thead>
+  <tbody>
+    <tr><td><strong>"practice and discipline"</strong></td><td>It is a way of working, not one library. You follow conventions: modular code, versioning, pipelines, CI/CD.</td></tr>
+    <tr><td><strong>"unify … development and operation"</strong></td><td><em>Dev</em> = building the model (data, EDA, features, training). <em>Ops</em> = running it (serving, scaling, monitoring). MLOps joins the two into one flow, the same way DevOps does for software.</td></tr>
+    <tr><td><strong>"streamline"</strong></td><td>Remove manual, repeated steps. Anything you do more than once should become a pipeline.</td></tr>
+    <tr><td><strong>"collaboration between DS, ML engineers, IT"</strong></td><td>In industry you never build the system alone. Several people work on the same code, data and models, which is why versioning and modular code matter.</td></tr>
+    <tr><td><strong>"automate and optimize"</strong></td><td>Pipelines run on their own (automation), and the system keeps improving through experiments and retraining (optimization).</td></tr>
+    <tr><td><strong>"end-to-end lifecycle"</strong></td><td>Everything from getting data → training → deployment → monitoring → retraining, then around again. It is a <strong>loop</strong>, not a straight line.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<figure>
+  <p class="fig-title">The end-to-end lifecycle is a loop</p>
+  <p class="fig-sub">The components the instructor lists (detailed in Chapter 02). Hover a stage for a one-line meaning.</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 380" role="img" aria-label="Circular MLOps lifecycle: data management, version control, pipeline automation, experiment tracking, CI/CD, monitoring, retraining, back to data">
+    <defs>
+      <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker>
+    </defs>
+    <circle cx="380" cy="190" r="140" fill="none" stroke="var(--rule)" stroke-width="2" stroke-dasharray="4 5"/>
+    <text x="380" y="184" text-anchor="middle" class="t-b" style="font-size:18px">MLOps</text>
+    <text x="380" y="204" text-anchor="middle" class="t-xs">end-to-end lifecycle</text>
+    <!-- 7 nodes on circle: angles -90, -38.6, 12.9, 64.3, 115.7, 167.1, 218.6 -->
+    <g data-tip="<b>1 · Data management</b><br>Collect data from many sources into one reliable store.">
+      <rect x="310" y="28" width="140" height="44" rx="8" class="box"/><rect x="310" y="28" width="6" height="44" rx="3" fill="var(--s1)"/>
+      <text x="386" y="55" text-anchor="middle" class="t-sm t-b">1 · Data mgmt</text></g>
+    <g data-tip="<b>2 · Version control</b><br>Track every change to code (and data) so nothing is lost.">
+      <rect x="470" y="78" width="150" height="44" rx="8" class="box"/><rect x="470" y="78" width="6" height="44" rx="3" fill="var(--s1)"/>
+      <text x="548" y="105" text-anchor="middle" class="t-sm t-b">2 · Versioning</text></g>
+    <g data-tip="<b>3 · Automation / pipeline</b><br>Ordered steps (ingest → validate → transform → train → evaluate) that run by themselves.">
+      <rect x="520" y="192" width="170" height="44" rx="8" class="box"/><rect x="520" y="192" width="6" height="44" rx="3" fill="var(--s1)"/>
+      <text x="608" y="219" text-anchor="middle" class="t-sm t-b">3 · Pipeline</text></g>
+    <g data-tip="<b>4 · Experiment tracking</b><br>Try many models/params, log all runs, pick the best.">
+      <rect x="430" y="300" width="170" height="44" rx="8" class="box"/><rect x="430" y="300" width="6" height="44" rx="3" fill="var(--s1)"/>
+      <text x="518" y="327" text-anchor="middle" class="t-sm t-b">4 · Experiments</text></g>
+    <g data-tip="<b>5 · CI/CD</b><br>A chosen change is integrated and shipped to production automatically.">
+      <rect x="170" y="300" width="160" height="44" rx="8" class="box"/><rect x="170" y="300" width="6" height="44" rx="3" fill="var(--s1)"/>
+      <text x="253" y="327" text-anchor="middle" class="t-sm t-b">5 · CI/CD</text></g>
+    <g data-tip="<b>6 · Monitoring</b><br>Watch the live system: is it healthy, are predictions still good?">
+      <rect x="70" y="192" width="170" height="44" rx="8" class="box"/><rect x="70" y="192" width="6" height="44" rx="3" fill="var(--s1)"/>
+      <text x="158" y="219" text-anchor="middle" class="t-sm t-b">6 · Monitoring</text></g>
+    <g data-tip="<b>7 · Retraining</b><br>When quality drops, re-run the pipeline on fresh data.">
+      <rect x="140" y="78" width="150" height="44" rx="8" class="box"/><rect x="140" y="78" width="6" height="44" rx="3" fill="var(--s1)"/>
+      <text x="218" y="105" text-anchor="middle" class="t-sm t-b">7 · Retraining</text></g>
+    <!-- arrows -->
+    <path d="M450,56 Q500,58 530,76" class="edge" marker-end="url(#ah)"/>
+    <path d="M580,122 Q600,160 605,190" class="edge" marker-end="url(#ah)"/>
+    <path d="M605,236 Q590,280 560,298" class="edge" marker-end="url(#ah)"/>
+    <path d="M430,322 L334,322" class="edge" marker-end="url(#ah)"/>
+    <path d="M200,300 Q165,275 158,238" class="edge" marker-end="url(#ah)"/>
+    <path d="M150,192 Q160,150 190,124" class="edge" marker-end="url(#ah)"/>
+    <path d="M240,80 Q270,52 308,50" class="edge-accent" marker-end="url(#ah)"/>
+  </svg>
+  </div>
+  <figcaption><b>Read it as:</b> retraining feeds back into data, so the system keeps improving. That feedback arrow is the difference between an "ML project" and an "ML system".</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>ML project vs ML system</h2>
+<p>The instructor keeps returning to one idea: <em>without</em> MLOps you can still build an ML project, but it breaks when real traffic and changing data arrive. This table summarizes that contrast (it comes up throughout Chapters 02 and 03):</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Aspect</th><th>ML project (traditional)</th><th>ML system (with MLOps)</th></tr></thead>
+  <tbody>
+    <tr><td>Code</td><td>One Jupyter notebook</td><td>Modular components (ingestion, validation, transformation, trainer, evaluation, prediction)</td></tr>
+    <tr><td>Data</td><td>One CSV file</td><td>ETL pipelines into a common data warehouse, plus streaming and API sources</td></tr>
+    <tr><td>Versions</td><td>Overwrite and hope</td><td>Git/GitHub for code, DVC for data and pipelines</td></tr>
+    <tr><td>Model choice</td><td>One model, one accuracy</td><td>Many tracked experiments (MLflow); the best one is promoted</td></tr>
+    <tr><td>Deploy</td><td>Manual: stop server → copy code → restart (downtime)</td><td>CI/CD + Docker: push to Git and the system updates itself</td></tr>
+    <tr><td>After deploy</td><td>Nobody watches it</td><td>Monitoring (Grafana, Evidently) detects drift and triggers retraining</td></tr>
+    <tr><td>Scale</td><td>Fine for 10–15 users</td><td>Built for a large audience</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>"MLOps is all about tools" <span class="ts">00:37:50</span></h2>
+<p>The instructor puts it strongly: <strong>MLOps is not a theory subject. It is learned by using tools.</strong> Each part of the lifecycle has one or more tools that automate it. As a data scientist or ML engineer, you add these tools to your skills so you can scale your application, the same way the cook in the analogy scales the business.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Lifecycle component</th><th>Tools named in the course</th><th>Covered in video at</th></tr></thead>
+  <tbody>
+    <tr><td>Data management / pipeline tracking</td><td><strong>DVC</strong> (Data Version Control)</td><td><span class="ts">02:25:53</span></td></tr>
+    <tr><td>Version control</td><td><strong>Git</strong>, <strong>GitHub</strong>, Bitbucket</td><td><span class="ts">01:54:09</span></td></tr>
+    <tr><td>Automation pipeline</td><td>DVC pipelines, <strong>AWS SageMaker</strong> (Airflow also mentioned)</td><td><span class="ts">02:37:31</span> <span class="ts">10:46:14</span></td></tr>
+    <tr><td>Experiment tracking</td><td><strong>MLflow</strong> (+ DagsHub as a hosted server)</td><td><span class="ts">03:26:39</span></td></tr>
+    <tr><td>CI/CD</td><td><strong>GitHub Actions</strong>, <strong>Jenkins</strong>, <strong>CircleCI</strong></td><td><span class="ts">07:20:16</span></td></tr>
+    <tr><td>Packaging / serving</td><td><strong>Docker</strong>, Flask / FastAPI, AWS ECR/EC2</td><td><span class="ts">04:05:17</span></td></tr>
+    <tr><td>Orchestration</td><td><strong>Kubernetes</strong></td><td><span class="ts">10:18:09</span></td></tr>
+    <tr><td>Monitoring</td><td><strong>Grafana</strong> (Evidently for drift)</td><td><span class="ts">11:08:48</span></td></tr>
+    <tr><td>Retraining</td><td>Any orchestrator; the instructor names <strong>Airflow</strong></td><td>—</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>The MLOps Venn diagram: skills you need <span class="ts">00:39:14</span></h2>
+<p>The instructor shows the Venn diagram you'll often find online: <strong>MLOps sits where three fields overlap</strong>.</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 360" role="img" aria-label="Venn diagram: Machine Learning, Data Engineering and DevOps overlap; MLOps is the center">
+    <g data-tip="<b>Machine Learning</b><br>You need an ML project first. MLOps has nothing to operate without a model.">
+      <circle cx="300" cy="140" r="115" fill="var(--s1)" fill-opacity=".16" stroke="var(--s1)" stroke-width="2"/>
+      <text x="245" y="95" text-anchor="middle" class="t-b">Machine</text><text x="245" y="113" text-anchor="middle" class="t-b">Learning</text></g>
+    <g data-tip="<b>Data Engineering</b><br>ML is all about data: ingesting it from many sources and managing it. Big-data depth is not required right now.">
+      <circle cx="460" cy="140" r="115" fill="var(--s2)" fill-opacity=".16" stroke="var(--s2)" stroke-width="2"/>
+      <text x="515" y="95" text-anchor="middle" class="t-b">Data</text><text x="515" y="113" text-anchor="middle" class="t-b">Engineering</text></g>
+    <g data-tip="<b>DevOps</b><br>Where scalability, CI/CD and monitoring were first worked out. Most MLOps ideas are borrowed from here.">
+      <circle cx="380" cy="235" r="115" fill="var(--s3)" fill-opacity=".16" stroke="var(--s3)" stroke-width="2"/>
+      <text x="380" y="305" text-anchor="middle" class="t-b">DevOps</text></g>
+    <text x="380" y="180" text-anchor="middle" class="t-b" style="font-size:17px">MLOps</text>
+    <!-- side notes -->
+    <text x="20" y="40" class="t-xs">Models, EDA, features,</text><text x="20" y="56" class="t-xs">training, evaluation</text>
+    <text x="600" y="40" class="t-xs">Ingestion, ETL, warehouses,</text><text x="600" y="56" class="t-xs">streaming (Kafka), Hadoop</text>
+    <text x="545" y="320" class="t-xs">CI/CD, containers, infra,</text><text x="545" y="336" class="t-xs">monitoring, scaling</text>
+  </svg>
+  </div>
+  <figcaption><b>Why MLOps feels hard:</b> you need working knowledge of all three circles before the MLOps part makes sense. The instructor says this is also why there's a <em>skill gap</em> in the market (repeated in Chapter 03).</figcaption>
+</figure>
+
+<div class="grid">
+  <div class="card"><span class="tag">CIRCLE 1</span><h4>Machine Learning</h4><p>Mandatory. Without an ML project, there is nothing to integrate MLOps into. The course assumes you already know the ML lifecycle and does not teach ML from scratch.</p></div>
+  <div class="card"><span class="tag">CIRCLE 2</span><h4>Data Engineering</h4><p>ML is all about data, so you must know how to <strong>ingest</strong> data from APIs and databases. <strong>Big Data</strong> is a broad field usually owned by another team, so you don't need it deeply yet.</p></div>
+  <div class="card"><span class="tag">CIRCLE 3</span><h4>DevOps</h4><p>Software concepts (making software scalable, CI/CD, monitoring) come from here. Most MLOps concepts are "taken from DevOps". If you already work in software, you have a head start.</p></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>Course roadmap: what we'll build</h2>
+<p>From the course description and table of contents, this is the order of topics. Each tool builds on the ones before it:</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 250" role="img" aria-label="Course roadmap from foundations to production">
+    <defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g>
+      <text x="20" y="22" class="t-xs t-b">FOUNDATIONS</text>
+      <rect x="20" y="32" width="130" height="50" rx="8" class="box"/><text x="85" y="54" text-anchor="middle" class="t-sm t-b">MLOps concepts</text><text x="85" y="71" text-anchor="middle" class="t-xs">0:00 – 1:14</text>
+      <rect x="170" y="32" width="130" height="50" rx="8" class="box"/><text x="235" y="54" text-anchor="middle" class="t-sm t-b">Linux + EC2</text><text x="235" y="71" text-anchor="middle" class="t-xs">1:14 – 1:54</text>
+      <rect x="320" y="32" width="130" height="50" rx="8" class="box"/><text x="385" y="54" text-anchor="middle" class="t-sm t-b">Git &amp; GitHub</text><text x="385" y="71" text-anchor="middle" class="t-xs">1:54 – 2:25</text>
+      <path d="M150,57 L168,57" class="edge" marker-end="url(#ah2)"/><path d="M300,57 L318,57" class="edge" marker-end="url(#ah2)"/>
+    </g>
+    <g>
+      <text x="20" y="112" class="t-xs t-b">DATA, PIPELINES, EXPERIMENTS, PACKAGING</text>
+      <rect x="20" y="122" width="130" height="50" rx="8" class="box"/><text x="85" y="144" text-anchor="middle" class="t-sm t-b">DVC pipelines</text><text x="85" y="161" text-anchor="middle" class="t-xs">2:25 – 3:09</text>
+      <rect x="170" y="122" width="130" height="50" rx="8" class="box"/><text x="235" y="144" text-anchor="middle" class="t-sm t-b">Cloud + MLflow</text><text x="235" y="161" text-anchor="middle" class="t-xs">3:09 – 4:05</text>
+      <rect x="320" y="122" width="130" height="50" rx="8" class="box"/><text x="385" y="144" text-anchor="middle" class="t-sm t-b">Docker</text><text x="385" y="161" text-anchor="middle" class="t-xs">4:05 – 4:52</text>
+      <rect x="470" y="122" width="150" height="50" rx="8" class="box-2" stroke="var(--accent)"/><text x="545" y="144" text-anchor="middle" class="t-sm t-b">End-to-end project</text><text x="545" y="161" text-anchor="middle" class="t-xs">4:52 – 7:20</text>
+      <path d="M150,147 L168,147" class="edge" marker-end="url(#ah2)"/><path d="M300,147 L318,147" class="edge" marker-end="url(#ah2)"/><path d="M450,147 L468,147" class="edge" marker-end="url(#ah2)"/>
+      <path d="M450,57 Q470,57 470,90 L85,90 Q60,90 70,118" class="edge" marker-end="url(#ah2)"/>
+    </g>
+    <g>
+      <text x="20" y="202" class="t-xs t-b">PRODUCTION</text>
+      <rect x="20" y="210" width="130" height="36" rx="8" class="box"/><text x="85" y="233" text-anchor="middle" class="t-sm t-b">CI/CD ×3</text>
+      <rect x="170" y="210" width="130" height="36" rx="8" class="box"/><text x="235" y="233" text-anchor="middle" class="t-sm t-b">Kubernetes</text>
+      <rect x="320" y="210" width="130" height="36" rx="8" class="box"/><text x="385" y="233" text-anchor="middle" class="t-sm t-b">SageMaker</text>
+      <rect x="470" y="210" width="130" height="36" rx="8" class="box"/><text x="535" y="233" text-anchor="middle" class="t-sm t-b">Grafana</text>
+      <path d="M150,228 L168,228" class="edge" marker-end="url(#ah2)"/><path d="M300,228 L318,228" class="edge" marker-end="url(#ah2)"/><path d="M450,228 L468,228" class="edge" marker-end="url(#ah2)"/>
+      <path d="M620,147 Q700,147 700,190 Q700,200 85,200 L85,208" class="edge" marker-end="url(#ah2)"/>
+      <text x="640" y="233" class="t-xs">7:20 → 11:26</text>
+    </g>
+  </svg>
+  </div>
+  <figcaption>The long <b>end-to-end project</b> block (about 2.5 hours) is where the tools come together. For your goal of serving models in production, pay most attention to that block and the CI/CD sections.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>Note on the video's timestamps</h2>
+<div class="callout beyond">
+  <span class="label">Heads-up (from reading the transcript)</span>
+  <p>The description lists "Understand MLOps with Real World Analogy" at <span class="ts">00:52:08</span> and "Introduction to MLOps & Importance" at <span class="ts">00:41:07</span>, which is out of order. In the transcript, the content actually runs:</p>
+  <ul>
+    <li><span class="ts">00:00 – 00:41</span> course intro, definitions, <strong>cooking-business analogy</strong>, components, tools, Venn diagram → <a href="02_real_world_analogy.html">Chapter 02</a> (plus this page)</li>
+    <li><span class="ts">00:41 – 01:14</span> <strong>technical intro</strong>: ESPNcricinfo example, 8 problems of the traditional approach, benefits and challenges → <a href="03_intro_to_mlops_importance.html">Chapter 03</a></li>
+  </ul>
+  <p>These notes follow the real content order.</p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>Interview questions</h2>
+<details class="qa"><summary>What is MLOps? Isn't it just deploying models?</summary>
+<p>No. Deployment is one step. MLOps is the practice of unifying ML <em>development</em> (data, training, evaluation) with ML <em>operations</em> (serving, monitoring, retraining), and automating the whole lifecycle. It depends on collaboration between data scientists, ML engineers and IT/DevOps. A strong answer names the components: data management, versioning, pipelines, experiment tracking, CI/CD, monitoring and retraining.</p></details>
+<details class="qa"><summary>How is MLOps different from DevOps?</summary>
+<p>MLOps borrows DevOps ideas (CI/CD, containers, monitoring, infrastructure as code), but ML adds two moving parts that normal software lacks: <strong>data</strong> and <strong>models</strong>. Code alone doesn't decide behaviour, so you must also version data (DVC), track experiments (MLflow), and watch for data drift and retrain. In DevOps, a correct release stays correct. In ML, a model can get worse over time even when nobody changes the code.</p></details>
+<details class="qa"><summary>What skills does an MLOps engineer need?</summary>
+<p>The Venn diagram gives three: <strong>machine learning</strong>, <strong>data engineering</strong> (ingestion, ETL, warehouses) and <strong>DevOps</strong> (CI/CD, Docker, Kubernetes, cloud, monitoring). You also need Linux, Git and Python OOP for modular code.</p></details>
+<details class="qa"><summary>Name one tool for each MLOps component.</summary>
+<p>Data/pipelines: DVC · Versioning: Git/GitHub · Experiments: MLflow · CI/CD: GitHub Actions / Jenkins / CircleCI · Packaging: Docker · Orchestration: Kubernetes · Managed ML: SageMaker · Monitoring: Grafana / Evidently · Scheduling/retraining: Airflow.</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>One-minute recap</h2>
+<ul>
+  <li>ML is more than model building. You also have to <strong>productionize, scale and automate</strong>.</li>
+  <li>"MLOps = deploying models" is <strong>incomplete</strong>. MLOps covers the <strong>end-to-end lifecycle</strong>, as a loop.</li>
+  <li>It <strong>unifies development and operations</strong> and relies on collaboration between DS, MLE and IT.</li>
+  <li>MLOps is <strong>tool-driven</strong>: DVC, Git, MLflow, Docker, CI/CD tools, Kubernetes, SageMaker, Grafana.</li>
+  <li>Prerequisite skills: <strong>ML + Data Engineering + DevOps</strong>.</li>
+</ul>
+
+<div class="pager">
+  <a href="index.html"><small>← Back</small>All notes</a>
+  <a class="next" href="02_real_world_analogy.html"><small>Next →</small>02 · MLOps through a real-world analogy</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+</body>
+</html>

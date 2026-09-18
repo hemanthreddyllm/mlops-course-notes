@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>05 · Setting Up Linux with AWS EC2 — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .term { background: var(--code-bg); border-radius: 10px; overflow: hidden; margin: 14px 0; }
+  .term .bar { display: flex; gap: 6px; padding: 9px 12px; background: #2b2b29; }
+  .term .bar i { width: 10px; height: 10px; border-radius: 50%; background: #5b5a55; }
+  .term .bar span { margin-left: 8px; font: 12px var(--mono); color: #a8a79f; }
+  .term pre { margin: 0; border-radius: 0; }
+  .term .p { color: #7fc79a; }
+  .steps { counter-reset: st; list-style: none; padding: 0; margin: 16px 0; }
+  .steps > li { counter-increment: st; position: relative; padding: 14px 16px 14px 60px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; margin: 10px 0; }
+  .steps > li::before { content: counter(st); position: absolute; left: 16px; top: 14px; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; font: 600 14px/28px var(--sans); text-align: center; }
+  .steps h4 { margin: 2px 0 6px; }
+  .steps p:last-child, .steps ul:last-child { margin-bottom: 0; }
+  .field { font: 600 12px var(--mono); background: var(--surface-2); border: 1px solid var(--rule); border-radius: 4px; padding: 1px 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 05</span></div>
+<div class="eyebrow">Chapter 05 · Setting Up Linux with AWS EC2</div>
+<h1>Your first production-style Linux server</h1>
+<p class="lede">The instructor launches an Ubuntu virtual machine on AWS EC2, opens its terminal in the browser, and terminates it at the end so it doesn't keep costing money. Every later deployment in the course starts from a machine like this one. For practice without an AWS account, WSL on Windows is the fallback.</p>
+<div class="meta">
+  <span class="chip">Video 01:25:45 – 01:31:55 (+ termination at 01:53:08)</span>
+  <span class="chip">Hands-on · AWS console</span>
+  <span class="chip">Ubuntu 24.04 LTS · t2.micro</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">Two ways to get a Linux terminal</a></li>
+    <li><a href="#s2">What EC2 is</a></li>
+    <li><a href="#s3">Launching the instance, step by step</a></li>
+    <li><a href="#s4">Choosing an instance type</a></li>
+    <li><a href="#s5">Key pairs and the security group</a></li>
+    <li><a href="#s6">Connecting to the machine</a></li>
+    <li><a href="#s7">Reading the terminal prompt</a></li>
+    <li><a href="#s8">Terminating: don't leave it running</a></li>
+    <li><a href="#s9">Try it yourself</a></li>
+    <li><a href="#s10">Interview questions</a></li>
+    <li><a href="#s11">Recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>Two ways to get a Linux terminal <span class="ts">01:25:46</span></h2>
+<p>Before using AWS, the instructor shows an alternative. The course itself uses a <strong>cloud server</strong>, because every later project is deployed to one.</p>
+<div class="grid">
+  <div class="card"><span class="tag">ALTERNATIVE · FREE, LOCAL</span><h4>WSL: Windows Subsystem for Linux</h4>
+    <ul>
+      <li>Search "WSL" or "Ubuntu" in the <strong>Microsoft Store</strong> and install <strong>Ubuntu</strong>.</li>
+      <li>You get a real Linux (bash) terminal running on your Windows machine.</li>
+      <li><strong>Limitation:</strong> the instructor notes that <em>some</em> commands behave differently or don't work there.</li>
+      <li>Nothing to terminate, and no cloud bill.</li>
+    </ul></div>
+  <div class="card" style="border-color:var(--accent)"><span class="tag">USED IN THE COURSE</span><h4>AWS EC2 (cloud VM)</h4>
+    <ul>
+      <li>This is what a <strong>production environment</strong> actually looks like.</li>
+      <li>Every Linux command works.</li>
+      <li>You need an AWS account, and it <strong>costs money while it's running</strong> (the free tier covers small instances).</li>
+    </ul></div>
+</div>
+<div class="callout beyond"><span class="label">Beyond the video · other options</span>
+<p><strong>macOS:</strong> the Terminal app is Unix-like (zsh) and shares most commands, but <code>apt</code> doesn't exist there (Homebrew fills that role). <strong>Docker:</strong> <code>docker run -it ubuntu:24.04 bash</code> gives you a disposable Ubuntu shell on any OS. Both are fine for practising commands, but EC2 is the real target.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>What EC2 is <span class="ts">01:27:52</span></h2>
+<p><strong>EC2 (Elastic Compute Cloud)</strong> is AWS's <strong>virtual machine</strong> service. You rent a computer in the cloud. Each rented machine is called an <strong>instance</strong>. As covered in Chapter 04, it's a real computer as far as your code is concerned, with its own CPU, RAM, disk and OS.</p>
+<p>When you launch one, AWS offers many operating system images (<strong>AMIs</strong>, Amazon Machine Images):</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Image offered</th><th>What it is</th><th>Used here?</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Ubuntu</strong></td><td>Linux distro, the standard for AI and software development</td><td><strong>✓ Yes</strong></td></tr>
+    <tr><td>Amazon Linux</td><td>AWS's own Linux variant</td><td>—</td></tr>
+    <tr><td>Red Hat (RHEL)</td><td>Enterprise Linux</td><td>—</td></tr>
+    <tr><td>Debian</td><td>Linux (Ubuntu is built on it)</td><td>—</td></tr>
+    <tr><td>macOS</td><td>Apple OS on dedicated Mac hosts</td><td>—</td></tr>
+    <tr><td>Windows</td><td>Windows Server</td><td>— (see Chapter 04)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>Launching the instance, step by step <span class="ts">01:28:00</span></h2>
+<figure>
+  <p class="fig-title">The launch flow at a glance</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 130" role="img" aria-label="EC2 launch flow: search EC2, launch instance, name, choose Ubuntu AMI, instance type, key pair, network settings, storage, launch, connect">
+    <defs><marker id="d1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g class="t-xs">
+      <rect x="4" y="20" width="84" height="40" rx="7" class="box"/><text x="46" y="44" text-anchor="middle" class="t-b">Name</text>
+      <rect x="100" y="20" width="84" height="40" rx="7" class="box"/><text x="142" y="37" text-anchor="middle" class="t-b">AMI</text><text x="142" y="52" text-anchor="middle">Ubuntu</text>
+      <rect x="196" y="20" width="84" height="40" rx="7" class="box"/><text x="238" y="37" text-anchor="middle" class="t-b">Type</text><text x="238" y="52" text-anchor="middle">t2.micro</text>
+      <rect x="292" y="20" width="84" height="40" rx="7" class="box"/><text x="334" y="37" text-anchor="middle" class="t-b">Key pair</text><text x="334" y="52" text-anchor="middle">.pem</text>
+      <rect x="388" y="20" width="84" height="40" rx="7" class="box"/><text x="430" y="37" text-anchor="middle" class="t-b">Network</text><text x="430" y="52" text-anchor="middle">HTTP/HTTPS</text>
+      <rect x="484" y="20" width="84" height="40" rx="7" class="box"/><text x="526" y="37" text-anchor="middle" class="t-b">Storage</text><text x="526" y="52" text-anchor="middle">8 GB</text>
+      <rect x="580" y="20" width="84" height="40" rx="7" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/><text x="622" y="44" text-anchor="middle" class="t-b">Launch</text>
+      <rect x="676" y="20" width="80" height="40" rx="7" class="box"/><text x="716" y="44" text-anchor="middle" class="t-b">Connect</text>
+    </g>
+    <g><path d="M88,40 L98,40" class="edge" marker-end="url(#d1)"/><path d="M184,40 L194,40" class="edge" marker-end="url(#d1)"/><path d="M280,40 L290,40" class="edge" marker-end="url(#d1)"/><path d="M376,40 L386,40" class="edge" marker-end="url(#d1)"/><path d="M472,40 L482,40" class="edge" marker-end="url(#d1)"/><path d="M568,40 L578,40" class="edge" marker-end="url(#d1)"/><path d="M664,40 L674,40" class="edge" marker-end="url(#d1)"/></g>
+    <path d="M716,62 Q716,96 380,96 Q40,96 46,64" fill="none" stroke="var(--s8)" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#d1)"/>
+    <text x="380" y="122" text-anchor="middle" class="t-xs" style="fill:var(--s8)">when finished → Instance state → Terminate (otherwise you keep paying)</text>
+  </svg>
+  </div>
+</figure>
+
+<ol class="steps">
+  <li><h4>Open EC2</h4><p>In the AWS console, search for <strong>EC2</strong> and click <span class="field">Launch instance</span>.</p></li>
+  <li><h4>Name it</h4><p>Any name works. The instructor uses <span class="field">Linux desktop</span>.</p></li>
+  <li><h4>Pick the OS image (AMI)</h4><p>Select <strong>Ubuntu</strong>, then the latest <strong>LTS</strong> (Long-Term Support) version, <strong>Ubuntu 24.04 LTS</strong>. LTS releases get about 5 years of security updates, which is why servers use them.</p></li>
+  <li><h4>Pick the instance type</h4><p>This decides CPU and RAM. The instructor chooses <strong>t2.micro</strong> because he's only demonstrating commands, not deploying anything, and it's <strong>free-tier eligible</strong>. See <a href="#s4">the next section</a>.</p></li>
+  <li><h4>Create a key pair</h4><p>Click <em>Create new key pair</em> and give it a name (the instructor uses <span class="field">Linux test</span>). A key file downloads. You need it to connect with SSH clients such as <strong>PuTTY</strong> or <strong>MobaXterm</strong>. The instructor connects through the browser instead.</p></li>
+  <li><h4>Network settings</h4><p>Tick <strong>Allow HTTP traffic</strong> and <strong>Allow HTTPS traffic</strong> from the internet, so a web app on this machine can be reached later.</p></li>
+  <li><h4>Storage</h4><p>Keep the default <strong>8 GB</strong> disk.</p></li>
+  <li><h4>Launch</h4><p>Leave everything else at the defaults and click <span class="field">Launch instance</span>. Wait until the state shows <strong>Running</strong>.</p></li>
+  <li><h4>Connect</h4><p>Open the instance, click <span class="field">Connect</span> → <strong>EC2 Instance Connect</strong> → Connect. A black <strong>bash terminal</strong> opens in the browser. This is your production environment.</p></li>
+</ol>
+
+<div class="callout wrong"><span class="label">Check before relying on this · free credit</span>
+<p>The instructor says new accounts get <strong>"$300 credit"</strong>. AWS's free-tier terms have changed over time, and $300 is actually Google Cloud's trial amount. Check the current <strong>AWS Free Tier</strong> page before launching anything, and set a <strong>billing alarm / budget</strong> in the Billing console on day one.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>Choosing an instance type <span class="ts">01:28:55</span></h2>
+<p>The instance type decides <strong>how much RAM and CPU</strong> you get. The instructor's rule: <strong>big, complex projects (such as large deep-learning models) need a large instance, which costs more. Small tasks should use a small, cheap one.</strong></p>
+
+<figure>
+  <p class="fig-title">Memory by t2 instance size</p>
+  <p class="fig-sub">RAM (GiB) per type. Hover a bar for vCPUs and a typical use.</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 260" role="img" aria-label="Bar chart of RAM: t2.nano 0.5, t2.micro 1, t2.small 2, t2.medium 4, t2.large 8, t2.xlarge 16 GiB">
+    <!-- y: 0..16 GiB over 210..20 → 11.875 px/GiB -->
+    <g class="t-xs">
+      <line x1="60" y1="210" x2="740" y2="210" class="axis"/>
+      <line x1="60" y1="162.5" x2="740" y2="162.5" class="grid-line"/><text x="52" y="166" text-anchor="end">4</text>
+      <line x1="60" y1="115" x2="740" y2="115" class="grid-line"/><text x="52" y="119" text-anchor="end">8</text>
+      <line x1="60" y1="67.5" x2="740" y2="67.5" class="grid-line"/><text x="52" y="71" text-anchor="end">12</text>
+      <line x1="60" y1="20" x2="740" y2="20" class="grid-line"/><text x="52" y="24" text-anchor="end">16</text>
+      <text x="52" y="214" text-anchor="end">0</text>
+      <text x="16" y="115" text-anchor="middle" transform="rotate(-90 16 115)">RAM (GiB)</text>
+    </g>
+    <g data-tip="<b>t2.nano</b><br>0.5 GiB RAM · 1 vCPU<br>Too small for Python ML"><rect x="85" y="204.1" width="72" height="5.9" rx="3" fill="var(--s1)"/><text x="121" y="198" text-anchor="middle" class="t-xs t-b">0.5</text><text x="121" y="228" text-anchor="middle" class="t-xs">t2.nano</text></g>
+    <g data-tip="<b>t2.micro</b> · used in the video<br>1 GiB RAM · 1 vCPU · free-tier eligible<br>Learning commands, tiny APIs"><rect x="195" y="198.1" width="72" height="11.9" rx="3" fill="var(--s2)"/><text x="231" y="192" text-anchor="middle" class="t-xs t-b">1</text><text x="231" y="228" text-anchor="middle" class="t-xs t-b">t2.micro ★</text></g>
+    <g data-tip="<b>t2.small</b><br>2 GiB RAM · 1 vCPU<br>Small scikit-learn API"><rect x="305" y="186.3" width="72" height="23.7" rx="3" fill="var(--s1)"/><text x="341" y="180" text-anchor="middle" class="t-xs t-b">2</text><text x="341" y="228" text-anchor="middle" class="t-xs">t2.small</text></g>
+    <g data-tip="<b>t2.medium</b><br>4 GiB RAM · 2 vCPU<br>API + Docker, small pipelines"><rect x="415" y="162.5" width="72" height="47.5" rx="3" fill="var(--s1)"/><text x="451" y="156" text-anchor="middle" class="t-xs t-b">4</text><text x="451" y="228" text-anchor="middle" class="t-xs">t2.medium</text></g>
+    <g data-tip="<b>t2.large</b><br>8 GiB RAM · 2 vCPU<br>Jenkins server, bigger models"><rect x="525" y="115" width="72" height="95" rx="3" fill="var(--s1)"/><text x="561" y="109" text-anchor="middle" class="t-xs t-b">8</text><text x="561" y="228" text-anchor="middle" class="t-xs">t2.large</text></g>
+    <g data-tip="<b>t2.xlarge</b><br>16 GiB RAM · 4 vCPU<br>Heavier training (still no GPU; use g-family for GPUs)"><rect x="635" y="20" width="72" height="190" rx="3" fill="var(--s1)"/><text x="671" y="14" text-anchor="middle" class="t-xs t-b">16</text><text x="671" y="228" text-anchor="middle" class="t-xs">t2.xlarge</text></g>
+    <text x="400" y="252" text-anchor="middle" class="t-xs">cost per hour rises with size →</text>
+  </svg>
+  </div>
+  <div class="legend"><span><i style="background:var(--s2)"></i>Chosen in the video</span><span><i style="background:var(--s1)"></i>Other sizes</span></div>
+</figure>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Type</th><th class="num">vCPU</th><th class="num">RAM</th><th>When to pick it</th></tr></thead>
+  <tbody>
+    <tr><td><strong>t2.micro</strong> ★</td><td class="num">1</td><td class="num">1 GiB</td><td>Learning Linux commands (this chapter). Free-tier eligible.</td></tr>
+    <tr><td>t2.small</td><td class="num">1</td><td class="num">2 GiB</td><td>The instructor's example for "I need 2 GB RAM".</td></tr>
+    <tr><td>t2.medium</td><td class="num">2</td><td class="num">4 GiB</td><td>The instructor's "4 GB RAM" example.</td></tr>
+    <tr><td>t2.large</td><td class="num">2</td><td class="num">8 GiB</td><td>The instructor's "8 GB with two CPUs" example: bigger projects.</td></tr>
+    <tr><td>g4dn / g5 …</td><td class="num">4+</td><td class="num">16+ GiB</td><td>Beyond the video: GPU instances for deep learning.</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="callout beyond"><span class="label">Beyond the video · sizing tip</span><p>1 GiB is tight once you install pandas, scikit-learn and Docker. <code>pip install</code> can run out of memory on t2.micro. For the end-to-end deployment later in the course, plan on <strong>t2.medium or larger</strong>. The console marks which types are free-tier eligible for your account and region; newer accounts may see t3.micro instead of t2.micro.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>Key pairs and the security group <span class="ts">01:29:58</span></h2>
+<figure>
+  <p class="fig-title">What the network settings actually do</p>
+  <p class="fig-sub">The security group is a firewall in front of the instance. Hover the ports.</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 230" role="img" aria-label="Internet traffic passes the security group on ports 22, 80 and 443 to reach the EC2 instance; SSH uses the private key file">
+    <defs><marker id="d2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <rect x="10" y="30" width="150" height="70" rx="10" class="box"/><text x="85" y="60" text-anchor="middle" class="t-sm t-b">💻 You</text><text x="85" y="80" text-anchor="middle" class="t-xs">holds key.pem 🔑</text>
+    <rect x="10" y="130" width="150" height="70" rx="10" class="box"/><text x="85" y="160" text-anchor="middle" class="t-sm t-b">🌍 Website users</text><text x="85" y="180" text-anchor="middle" class="t-xs">browser requests</text>
+    <rect x="280" y="14" width="190" height="200" rx="10" fill="var(--warn-soft)" stroke="var(--s4)" stroke-width="2"/>
+    <text x="375" y="36" text-anchor="middle" class="t-sm t-b">🛡 Security group</text>
+    <g data-tip="<b>Port 22 · SSH</b><br>Opened by default. Used to log in with the key pair."><rect x="300" y="50" width="150" height="36" rx="6" class="box"/><text x="375" y="73" text-anchor="middle" class="t-xs t-b">22 · SSH</text></g>
+    <g data-tip="<b>Port 80 · HTTP</b><br>Enabled with the 'Allow HTTP traffic' checkbox."><rect x="300" y="100" width="150" height="36" rx="6" class="box"/><text x="375" y="123" text-anchor="middle" class="t-xs t-b">80 · HTTP ✓</text></g>
+    <g data-tip="<b>Port 443 · HTTPS</b><br>Enabled with the 'Allow HTTPS traffic' checkbox."><rect x="300" y="150" width="150" height="36" rx="6" class="box"/><text x="375" y="173" text-anchor="middle" class="t-xs t-b">443 · HTTPS ✓</text></g>
+    <text x="375" y="204" text-anchor="middle" class="t-xs">everything else: blocked</text>
+    <rect x="580" y="50" width="170" height="130" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+    <text x="665" y="84" text-anchor="middle" class="t-sm t-b">🖥 EC2 instance</text><text x="665" y="104" text-anchor="middle" class="t-xs">Ubuntu 24.04</text><text x="665" y="122" text-anchor="middle" class="t-xs">public IP</text><text x="665" y="140" text-anchor="middle" class="t-xs">holds the public key</text>
+    <path d="M160,65 L298,68" class="edge" marker-end="url(#d2)"/><path d="M160,160 L298,120" class="edge" marker-end="url(#d2)"/><path d="M160,170 L298,168" class="edge" marker-end="url(#d2)"/>
+    <path d="M450,68 L578,90" class="edge" marker-end="url(#d2)"/><path d="M450,118 L578,115" class="edge" marker-end="url(#d2)"/><path d="M450,168 L578,140" class="edge" marker-end="url(#d2)"/>
+  </svg>
+  </div>
+</figure>
+<div class="grid">
+  <div class="card"><h4>🔑 Key pair</h4><p>AWS keeps the <strong>public key</strong> on the instance, and you download the <strong>private key</strong> (<code>.pem</code> for OpenSSH, <code>.ppk</code> for PuTTY). Only someone holding that file can log in over SSH. You can download it <strong>once</strong>, so store it safely and never commit it to Git.</p></div>
+  <div class="card"><h4>🛡 HTTP / HTTPS checkboxes</h4><p>These open ports 80 and 443 so a web app on the instance can be reached from a browser. Later you'll also open your app's own port (for example 8000 or 8080) as an inbound rule.</p></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>Connecting to the machine <span class="ts">01:31:02</span></h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Method</th><th>How</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><strong>EC2 Instance Connect</strong> ★</td><td>Instance → Connect → EC2 Instance Connect → Connect</td><td>What the instructor uses. The terminal opens in the browser with no key file needed.</td></tr>
+    <tr><td>SSH from your terminal</td><td><code>ssh -i key.pem ubuntu@&lt;public-ip&gt;</code></td><td>Mac, Linux and Windows 10+ all have <code>ssh</code> built in.</td></tr>
+    <tr><td>PuTTY / MobaXterm</td><td>Load the key file in the client</td><td>The instructor mentions these as third-party SSH clients.</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="callout beyond"><span class="label">Beyond the video · SSH from your own laptop</span>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>your laptop</span></div>
+<pre><code><span class="p">$</span> chmod 400 ~/Downloads/linux-test.pem          <span class="c"># ssh refuses keys other users can read</span>
+<span class="p">$</span> ssh -i ~/Downloads/linux-test.pem ubuntu@13.233.xx.xx
+Welcome to Ubuntu 24.04 LTS ...
+<span class="p">ubuntu@ip-172-31-5-20:~$</span></code></pre></div>
+<p><code>chmod 400</code> uses the permission system explained in Chapter 06. The default username on Ubuntu AMIs is <code>ubuntu</code>.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>Reading the terminal prompt <span class="ts">01:31:02</span></h2>
+<p>The instructor points out two things: the <strong>bash</strong> prompt, and the machine's <strong>IP address</strong> shown in it.</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 150" role="img" aria-label="Prompt anatomy: user ubuntu, host ip-172-31-5-20, current directory tilde, dollar sign for a normal user">
+    <rect x="20" y="20" width="720" height="50" rx="8" fill="var(--code-bg)"/>
+    <text x="40" y="52" style="font-family:var(--mono);font-size:22px;fill:#7fc79a">ubuntu</text>
+    <text x="119" y="52" style="font-family:var(--mono);font-size:22px;fill:#f1f0ea">@</text>
+    <text x="133" y="52" style="font-family:var(--mono);font-size:22px;fill:#86b6ef">ip-172-31-5-20</text>
+    <text x="317" y="52" style="font-family:var(--mono);font-size:22px;fill:#f1f0ea">:</text>
+    <text x="331" y="52" style="font-family:var(--mono);font-size:22px;fill:#f0b46a">~</text>
+    <text x="345" y="52" style="font-family:var(--mono);font-size:22px;fill:#f1f0ea">$</text>
+    <path d="M78,72 L78,96" class="edge"/><text x="78" y="112" text-anchor="middle" class="t-xs t-b">user</text><text x="78" y="128" text-anchor="middle" class="t-xs">logged-in account</text>
+    <path d="M225,72 L225,96" class="edge"/><text x="225" y="112" text-anchor="middle" class="t-xs t-b">hostname</text><text x="225" y="128" text-anchor="middle" class="t-xs">built from the private IP</text>
+    <path d="M338,72 L420,96" class="edge"/><text x="440" y="112" text-anchor="middle" class="t-xs t-b">~ = current directory</text><text x="440" y="128" text-anchor="middle" class="t-xs">~ means /home/ubuntu</text>
+    <path d="M352,72 L620,96" class="edge"/><text x="630" y="112" text-anchor="middle" class="t-xs t-b">$ = normal user</text><text x="630" y="128" text-anchor="middle" class="t-xs"># would mean root</text>
+  </svg>
+  </div>
+  <figcaption>The IP in the prompt is the instance's <b>private</b> address inside AWS. To reach the machine from outside, use the <b>public IPv4 address</b> shown on the instance page.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>Terminating: don't leave it running <span class="ts">01:53:08</span></h2>
+<p>At the end of the commands session, the instructor deletes the machine. <strong>A running instance keeps charging you.</strong></p>
+<ol>
+  <li>Close the terminal tab.</li>
+  <li>Go to <strong>EC2 → Instances</strong> (sign in again if the session expired).</li>
+  <li>Select the instance → <strong>Instance state</strong> → <strong>Terminate</strong> → confirm.</li>
+  <li>After a short while the state shows <strong>Terminated</strong>, meaning the instance has been deleted.</li>
+</ol>
+<p>Do this <strong>every time</strong> you create a practice instance. With WSL there's nothing to clean up.</p>
+
+<figure>
+  <p class="fig-title">Instance lifecycle and what you pay for</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 170" role="img" aria-label="Instance states: pending, running, stopping, stopped, and terminated; running is billed for compute, stopped is billed only for disk, terminated is not billed">
+    <defs><marker id="d3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <rect x="10" y="50" width="110" height="46" rx="8" class="box"/><text x="65" y="78" text-anchor="middle" class="t-sm t-b">pending</text>
+    <g data-tip="<b>running</b><br>Billed for compute (per second) + disk"><rect x="170" y="50" width="120" height="46" rx="8" fill="var(--bad-soft)" stroke="var(--bad)"/><text x="230" y="72" text-anchor="middle" class="t-sm t-b">running</text><text x="230" y="88" text-anchor="middle" class="t-xs">💸 compute + disk</text></g>
+    <g data-tip="<b>stopped</b><br>No compute charge, but the EBS disk is still billed. Data is kept."><rect x="400" y="50" width="130" height="46" rx="8" fill="var(--warn-soft)" stroke="var(--s4)"/><text x="465" y="72" text-anchor="middle" class="t-sm t-b">stopped</text><text x="465" y="88" text-anchor="middle" class="t-xs">💰 disk only</text></g>
+    <g data-tip="<b>terminated</b><br>Deleted. No charges, and the root disk is gone for good."><rect x="620" y="50" width="130" height="46" rx="8" fill="var(--good-soft)" stroke="var(--good)"/><text x="685" y="72" text-anchor="middle" class="t-sm t-b">terminated</text><text x="685" y="88" text-anchor="middle" class="t-xs">✓ no charge</text></g>
+    <path d="M120,73 L168,73" class="edge" marker-end="url(#d3)"/>
+    <path d="M290,64 L398,64" class="edge" marker-end="url(#d3)"/><text x="344" y="56" text-anchor="middle" class="t-xs">stop</text>
+    <path d="M398,84 L292,84" class="edge" marker-end="url(#d3)"/><text x="344" y="102" text-anchor="middle" class="t-xs">start</text>
+    <path d="M230,96 Q230,150 450,150 Q685,150 685,98" class="edge" marker-end="url(#d3)"/><text x="450" y="144" text-anchor="middle" class="t-xs t-b">terminate (what the video does)</text>
+    <path d="M530,73 L618,73" class="edge" marker-end="url(#d3)"/><text x="574" y="66" text-anchor="middle" class="t-xs">terminate</text>
+  </svg>
+  </div>
+  <figcaption>Beyond the video: <b>Stop</b> pauses the machine and keeps its disk, which is useful when you'll return to a deployment. <b>Terminate</b> deletes it permanently. Hover the states.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>Try it yourself</h2>
+<div class="callout beyond"><span class="label">Practice checklist</span>
+<ol>
+  <li>Create a <strong>budget alert</strong> (Billing → Budgets) for a small amount such as $5.</li>
+  <li>Launch <strong>Ubuntu 24.04 LTS</strong> on a free-tier type, create a key pair, and tick HTTP/HTTPS.</li>
+  <li>Connect with <strong>EC2 Instance Connect</strong>, then again with <code>ssh -i</code> from your laptop.</li>
+  <li>Run <code>whoami</code>, <code>pwd</code>, <code>hostname</code>, <code>free -h</code> and <code>df -h</code>, and match the output to the instance type you chose.</li>
+  <li>Work through the <a href="06_linux_commands.html">Chapter 06 commands</a> on this machine.</li>
+  <li><strong>Terminate</strong> the instance and confirm the state says <em>Terminated</em>.</li>
+</ol></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>Interview questions</h2>
+<details class="qa"><summary>What is EC2, and what is an AMI?</summary>
+<p>EC2 is AWS's virtual machine service; each VM is an instance. An AMI (Amazon Machine Image) is the template the instance boots from: the OS (such as Ubuntu 24.04) plus any pre-installed software.</p></details>
+<details class="qa"><summary>How do you choose an instance type for serving a model?</summary>
+<p>Base it on the model's memory footprint, request volume and whether it needs a GPU. Small scikit-learn APIs run on t-family burstable instances (t2/t3 small or medium). Memory-heavy models need r-family, and deep learning inference or training needs g/p-family GPU instances. Start small, load-test, then scale up or out. Bigger instances cost more per hour.</p></details>
+<details class="qa"><summary>What's the difference between a key pair and a security group?</summary>
+<p>A key pair is <em>authentication</em>: it proves who can log in over SSH, using the private key file. A security group is a <em>firewall</em>: it decides which ports and sources can reach the instance at all (for example 22 for SSH, 80/443 for web, 8000 for your API).</p></details>
+<details class="qa"><summary>Stop vs terminate?</summary>
+<p>Stop shuts the VM down but keeps its EBS disk, so you pay only for storage and can start it again. Terminate deletes the instance and, by default, its root disk, so there are no further charges and no way to recover it.</p></details>
+<details class="qa"><summary>Why use an LTS release on servers?</summary>
+<p>Long-Term Support releases (such as Ubuntu 24.04) get around 5 years of security and maintenance updates, so production machines stay patched without a major OS upgrade every few months.</p></details>
+<details class="qa"><summary>What is WSL and when would you use it?</summary>
+<p>Windows Subsystem for Linux runs a Linux distro (such as Ubuntu) inside Windows. It's useful for local development and practising commands without cloud costs, but production still runs on real Linux servers.</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s11"><span class="num">11</span>Recap</h2>
+<ul>
+  <li>Two options: <strong>WSL</strong> (local, free, a few commands behave differently) or an <strong>AWS EC2</strong> cloud VM (the real production setting).</li>
+  <li>Launch: <strong>EC2 → Launch instance → name → Ubuntu 24.04 LTS → t2.micro → key pair → allow HTTP/HTTPS → 8 GB → Launch</strong>.</li>
+  <li>Instance type sets RAM and CPU: <strong>small 2 GB, medium 4 GB, large 8 GB</strong>. Bigger costs more.</li>
+  <li>Connect with <strong>EC2 Instance Connect</strong> to get a browser <strong>bash</strong> terminal. The prompt shows the user and the machine's IP-based hostname.</li>
+  <li>When you're done: <strong>Instance state → Terminate</strong>, or it keeps charging you.</li>
+</ul>
+
+<div class="pager">
+  <a href="04_why_linux_for_mlops.html"><small>← Previous</small>04 · Why Linux for MLOps</a>
+  <a class="next" href="06_linux_commands.html"><small>Next →</small>06 · Required Linux commands</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+</body>
+</html>
