@@ -90,6 +90,12 @@ images inside the HTML page). Every chapter also touches `notes/index.html`, the
    best interview story: it uses DVC, MLflow, Docker, ECR, EC2, CI/CD and monitoring together.
 4. Optional: ask for the Jenkins/CircleCI chapters, or for a deeper drift-monitoring chapter beyond ch23.
 
+## 6 · Claude's memory
+
+`docs/memory/` holds the memory entries from the machine where this was built (working agreement, the to-do-list
+habit, and the chapter-scope decisions). Claude Code's memory is per-machine, so on a new machine either point
+Claude at that folder or let it re-create the entries from `CLAUDE.md`.
+
 ## 7 · Publishing the notes site
 
 The site at **https://hemanthreddyllm.github.io/mlops-course-notes/** is served from the **`gh-pages`** branch,
@@ -113,9 +119,3 @@ mkdir -p .github/workflows && git mv docs/pages-workflow.yml.example .github/wor
 git commit -am "ci: publish notes to Pages" && git push
 gh api -X POST repos/hemanthreddyllm/mlops-course-notes/pages -f build_type=workflow
 ```
-
-## 6 · Claude's memory
-
-`docs/memory/` holds the memory entries from the machine where this was built (working agreement, the to-do-list
-habit, and the chapter-scope decisions). Claude Code's memory is per-machine, so on a new machine either point
-Claude at that folder or let it re-create the entries from `CLAUDE.md`.
