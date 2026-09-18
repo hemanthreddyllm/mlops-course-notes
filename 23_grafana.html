@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>23 · Grafana for monitoring — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .steps { counter-reset: st; list-style: none; padding: 0; margin: 16px 0; }
+  .steps > li { counter-increment: st; position: relative; padding: 12px 16px 12px 56px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; margin: 8px 0; }
+  .steps > li::before { content: counter(st); position: absolute; left: 16px; top: 12px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font: 600 13px/26px var(--sans); text-align: center; }
+  .steps p:last-child, .steps pre:last-child { margin-bottom: 0; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+  .cols > * { min-width: 0; }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+  .shot { border: 1px solid var(--rule); border-radius: 10px; display: block; margin: 0 auto; background: #fff; max-width: 100%; }
+  /* promql explorer */
+  .pq { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; margin: 18px 0; }
+  .pq .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .pq .tabs button { font: 12px var(--sans); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--surface-2); color: var(--ink); cursor: pointer; }
+  .pq .tabs button[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .pq .q { background: var(--code-bg); border-radius: 10px; padding: 14px 16px; font: 13.5px/1.9 var(--mono); color: #e9e8e2; overflow-x: auto; }
+  .pq .q span[data-i] { padding: 2px 3px; border-radius: 4px; cursor: pointer; border-bottom: 2px solid transparent; white-space: pre; }
+  .pq .q span[data-i]:hover { background: rgba(255,255,255,.10); }
+  .pq .q span[aria-pressed="true"] { background: rgba(57,135,229,.30); border-bottom-color: #3987e5; }
+  .pq .ex { background: var(--surface-2); border: 1px solid var(--rule); border-radius: 10px; padding: 12px 14px; margin-top: 12px; font-size: 14px; min-height: 76px; }
+  .pq .ex b { display: block; margin-bottom: 4px; }
+  .pq .ans { font-size: 13px; color: var(--ink-2); margin-top: 10px; }
+  .mtype { font: 600 11px var(--sans); padding: 2px 7px; border-radius: 999px; background: var(--accent-soft); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 23</span></div>
+<div class="eyebrow">Chapter 23 · Grafana for monitoring · the final chapter</div>
+<h1>Grafana: watching the model after it ships</h1>
+<p class="lede">The course ends where MLOps actually begins: production. The instructor launches an EC2 instance, installs Docker, runs <strong>Grafana</strong> and <strong>Prometheus</strong> as containers, opens ports 3000 and 9090, connects one to the other and builds a live dashboard — then makes the point that matters: store your model's predictions somewhere Grafana can read, and you can see whether the model is drifting or going wrong.</p>
+<div class="meta">
+  <span class="chip">Video 11:08:48 – end (≈ 17 min)</span>
+  <span class="chip">Hands-on: real Prometheus + Grafana watching our Chapter 17 API</span>
+  <span class="chip">Last chapter of the course</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">What Grafana is — and what it isn't</a></li>
+    <li><a href="#s2">The monitoring stack</a></li>
+    <li><a href="#s3">The video's setup, step by step</a></li>
+    <li><a href="#s4">Metrics: the four types</a></li>
+    <li><a href="#s5">PromQL, one piece at a time (interactive)</a></li>
+    <li><a href="#s6">Our dashboard, with live data</a></li>
+    <li><a href="#s7">What to monitor for an ML system</a></li>
+    <li><a href="#s8">Alerts, and dashboards as code</a></li>
+    <li><a href="#s9">Precision notes</a></li>
+    <li><a href="#hands-on">Hands-on files: what we built</a></li>
+    <li><a href="#s10">Interview questions</a></li>
+    <li><a href="#s11">Recap</a></li>
+    <li><a href="#s12">The course, end to end</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>What Grafana is — and what it isn't <span class="ts">11:08:49</span></h2>
+<p>The instructor's description: <strong>an open-source visualisation tool that can connect to almost any data source</strong> — databases, time-series stores, cloud services, your own application's data — and turn it into dashboards.</p>
+<div class="grid">
+  <div class="card"><h4 style="color:var(--good)">What Grafana does</h4><ul>
+    <li>queries data sources you configure</li>
+    <li>draws panels: time series, gauges, tables, logs</li>
+    <li>arranges them into dashboards you can share</li>
+    <li>refreshes them live (5 s in our dashboard)</li>
+    <li>can also evaluate alert rules</li>
+  </ul></div>
+  <div class="card"><h4 style="color:var(--bad)">What Grafana does not do</h4><ul>
+    <li>collect metrics from your app</li>
+    <li>store them</li>
+    <li>know anything about your model</li>
+  </ul>
+  <p style="margin-bottom:0">All three are someone else's job: your app exposes metrics, <strong>Prometheus</strong> collects and stores them.</p></div>
+</div>
+<div class="callout key"><span class="label">The sentence that matters most in this chapter</span><p>Grafana can only show what something else already measured. The work of monitoring an ML service is <strong>deciding what to measure and exposing it</strong> — the dashboard is the easy part.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>The monitoring stack</h2>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 820 300" role="img" aria-label="Monitoring stack: the model API exposes /metrics; Prometheus scrapes it every few seconds, stores samples and evaluates alert rules; Alertmanager routes alerts; Grafana queries Prometheus to draw dashboards for the engineer.">
+    <defs>
+      <marker id="gr1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker>
+      <marker id="gr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker>
+    </defs>
+    <g data-tip="<b>Your application</b><br>The Chapter 17 sentiment API plus <code>prometheus_client</code>. It exposes a plain-text <code>/metrics</code> page: counters, gauges and histograms with labels. No agent, no push.">
+      <rect x="10" y="30" width="190" height="94" rx="10" class="box-2"/>
+      <text x="105" y="56" text-anchor="middle" class="t-b">Model API</text>
+      <text x="105" y="78" text-anchor="middle" class="t-xs">Flask + prometheus_client</text>
+      <text x="105" y="98" text-anchor="middle" class="t-xs">GET /metrics</text>
+      <text x="105" y="116" text-anchor="middle" class="t-xs">:5002</text></g>
+    <g data-tip="<b>Exporters</b><br>For things you can't modify — the machine, a database, a queue — a small sidecar process exposes their metrics in the same format (node_exporter, postgres_exporter…).">
+      <rect x="10" y="150" width="190" height="80" rx="10" class="box"/>
+      <text x="105" y="176" text-anchor="middle" class="t-b">Exporters</text>
+      <text x="105" y="198" text-anchor="middle" class="t-xs">node_exporter (CPU, RAM)</text>
+      <text x="105" y="216" text-anchor="middle" class="t-xs">db / queue exporters</text></g>
+    <g data-tip="<b>Prometheus</b><br>Pulls each target's /metrics on a timer, stores the samples in its own time-series database, answers PromQL queries and evaluates alert rules.">
+      <rect x="290" y="70" width="210" height="130" rx="12" fill="var(--accent-soft)"/>
+      <text x="395" y="96" text-anchor="middle" class="t-b">Prometheus :9090</text>
+      <text x="395" y="120" text-anchor="middle" class="t-xs">scrape every 5–60 s</text>
+      <text x="395" y="140" text-anchor="middle" class="t-xs">time-series database</text>
+      <text x="395" y="160" text-anchor="middle" class="t-xs">PromQL engine</text>
+      <text x="395" y="180" text-anchor="middle" class="t-xs">alert rule evaluation</text></g>
+    <g data-tip="<b>Grafana</b><br>Asks Prometheus (or MySQL, Postgres, CloudWatch, Loki…) and draws the panels. Dashboards are JSON, so they belong in git.">
+      <rect x="590" y="40" width="210" height="110" rx="12" class="box-2"/>
+      <text x="695" y="66" text-anchor="middle" class="t-b">Grafana :3000</text>
+      <text x="695" y="90" text-anchor="middle" class="t-xs">dashboards + panels</text>
+      <text x="695" y="110" text-anchor="middle" class="t-xs">any data source</text>
+      <text x="695" y="130" text-anchor="middle" class="t-xs">admin / admin at first login</text></g>
+    <g data-tip="<b>Alertmanager</b><br>Receives firing alerts from Prometheus and handles grouping, silencing and routing to Slack, email or PagerDuty. Grafana can do this too — choose one.">
+      <rect x="590" y="176" width="210" height="76" rx="10" class="box"/>
+      <text x="695" y="202" text-anchor="middle" class="t-b">Alertmanager</text>
+      <text x="695" y="224" text-anchor="middle" class="t-xs">Slack · email · PagerDuty</text>
+      <text x="695" y="242" text-anchor="middle" class="t-xs">grouping &amp; silences</text></g>
+    <path d="M286,110 L206,84" class="edge-accent" fill="none" marker-end="url(#gr2)"/>
+    <path d="M286,150 L206,182" class="edge-accent" fill="none" marker-end="url(#gr2)"/>
+    <text x="243" y="140" text-anchor="middle" class="t-xs">pull</text>
+    <path d="M500,110 L586,96" class="edge" fill="none" marker-end="url(#gr1)"/><text x="543" y="92" text-anchor="middle" class="t-xs">PromQL</text>
+    <path d="M500,165 L586,205" class="edge" fill="none" marker-end="url(#gr1)"/><text x="543" y="196" text-anchor="middle" class="t-xs">firing alerts</text>
+    <text x="400" y="248" text-anchor="middle" class="t-xs">Prometheus <b>pulls</b>: targets never push, which is why the port must be reachable (the security-group rule in the video)</text>
+    <text x="400" y="274" text-anchor="middle" class="t-xs">Logs and traces are separate stores (Loki, Tempo) — Grafana shows all of them side by side.</text>
+  </svg>
+  </div>
+  <figcaption><b>Three processes, three jobs.</b> The video runs Grafana and Prometheus on one EC2 instance with Docker; our hands-on runs the same two plus an instrumented model API locally. Hover each box.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>The video's setup, step by step <span class="ts">11:09:51</span></h2>
+<ol class="steps">
+  <li><p><strong>EC2 instance</strong> named <code>grafana-demo</code>: Ubuntu, at least 4 GB memory, an existing key pair, allow HTTP/HTTPS, 8 GB storage → Launch → Connect (browser terminal).</p></li>
+  <li><p><strong>Install Docker</strong> (same commands as Chapter 18):</p>
+<pre><code>sudo apt-get update -y
+sudo apt-get upgrade -y
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker ubuntu &amp;&amp; newgrp docker
+docker --version</code></pre></li>
+  <li><p><strong>Run Grafana</strong> from the official docs, swapping the Enterprise image for the free one:</p>
+<pre><code>docker run -d -p 3000:3000 --name=grafana \
+  -v grafana-storage:/var/lib/grafana \
+  grafana/grafana-oss        <span class="c"># the docs show grafana-enterprise; oss is the open-source build</span></code></pre>
+    <p>Then open inbound <strong>TCP 3000</strong> in the security group and visit <code>http://&lt;public-ip&gt;:3000</code>. First login is <strong>admin / admin</strong>, and Grafana immediately asks for a new password.</p></li>
+  <li><p><strong>Run Prometheus</strong> (the video first mistypes the image name and gets <em>"repository does not exist"</em>):</p>
+<pre><code>docker run -d -p 9090:9090 --name=prometheus prom/prometheus</code></pre>
+    <p>Open inbound <strong>TCP 9090</strong>, then visit <code>http://&lt;public-ip&gt;:9090</code>. Its own <code>/metrics</code> page shows the sort of data it collects, and the expression browser can graph any of it.</p></li>
+  <li><p><strong>Connect them</strong>: Grafana → Connections → Data sources → Prometheus → URL <code>http://&lt;ip&gt;:9090</code> → <strong>Save &amp; test</strong> → "Successfully queried the Prometheus API". The data-source list shows the categories Grafana supports: time series, logging and document databases, tracing, profiling, SQL, cloud services and enterprise plugins.</p></li>
+  <li><p><strong>Build a dashboard</strong>: New dashboard → Add visualisation → pick Prometheus → choose a metric → <em>Run queries</em> → the graph appears → <em>Back to dashboard</em>. Repeat for more panels, drag them into place, and refresh to watch the values move in real time.</p></li>
+  <li><p><strong>Terminate the instance</strong> when finished: "otherwise it will charge you".</p></li>
+</ol>
+<div class="callout wrong"><span class="label">The gap in the demo</span><p>Every panel in the video graphs <strong>Prometheus's own metrics</strong> — the server monitoring itself. Nothing measures the model, the API, or even the machine (that would need <code>node_exporter</code>). The missing step is <em>instrumenting the application</em>, which is where our hands-on picks up: the Chapter 17 API gains a <code>/metrics</code> endpoint, and the dashboard then shows request rate, latency, errors and the prediction mix.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>Metrics: the four types</h2>
+<p>A metrics endpoint is plain text: one line per time series, with labels in braces. These are the four types the client libraries give you:</p>
+<div class="table-wrap"><table>
+  <tr><th>Type</th><th>Behaviour</th><th>Our example</th><th>How you query it</th></tr>
+  <tr><td><span class="mtype">Counter</span></td><td>only ever increases (resets to 0 on restart)</td><td><code>http_requests_total{endpoint,status}</code><br><code>model_predictions_total{label}</code></td><td>never graph it raw — use <code>rate(...[1m])</code> for per-second</td></tr>
+  <tr><td><span class="mtype">Gauge</span></td><td>goes up and down</td><td><code>http_requests_in_flight</code><br><code>model_info{version}</code></td><td>graph directly; <code>max_over_time</code>, <code>avg</code></td></tr>
+  <tr><td><span class="mtype">Histogram</span></td><td>counts observations into buckets, plus a sum and count</td><td><code>http_request_duration_seconds</code><br><code>model_batch_size</code></td><td><code>histogram_quantile(0.95, …)</code> for p95</td></tr>
+  <tr><td><span class="mtype">Summary</span></td><td>quantiles computed in the client</td><td>not used here</td><td>rarely: summaries can't be aggregated across instances</td></tr>
+</table></div>
+<pre><code><span class="c"># a real excerpt from our API's /metrics</span>
+http_requests_total{endpoint="/predict",method="POST",status="200"} 486.0
+model_predictions_total{label="negative"} 512.0
+model_predictions_total{label="neutral"} 1298.0
+model_predictions_total{label="positive"} 803.0
+http_request_duration_seconds_bucket{endpoint="/predict",le="0.1"} 470.0
+http_requests_in_flight 1.0
+model_info{source="local-pickle",version="v1"} 1.0</code></pre>
+<div class="callout beyond"><span class="label">Two rules that save you later</span>
+<ul>
+  <li><strong>Name things consistently:</strong> <code>&lt;thing&gt;_&lt;unit&gt;_total</code> for counters, base units (seconds, bytes), and no units in label values.</li>
+  <li><strong>Watch cardinality:</strong> every distinct label combination is its own stored series. A label like <code>user_id</code>, a comment's text, or a raw URL with ids will explode the database. Labels are for things with few values: endpoint, status, model version, environment.</li>
+</ul></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>PromQL, one piece at a time</h2>
+<p>A dashboard panel is just a query. Pick one and <strong>click the parts</strong> to see what each does.</p>
+<div class="pq" id="pq">
+  <div class="tabs" id="pq-tabs"></div>
+  <div class="q" id="pq-query"></div>
+  <div class="ex" id="pq-explain"></div>
+  <div class="ans" id="pq-answer"></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>Our dashboard, with live data</h2>
+<p>Same idea as the video's dashboard, but the metrics come from the Chapter 17 model API. The hands-on notebook ran a scripted load — baseline, a traffic spike, a burst of malformed requests, then a phase where the incoming comments turn negative — and screenshotted Grafana while it was happening:</p>
+<figure>
+  <img class="shot" src="assets/img/ch23_grafana_dashboard.png" alt="Grafana dashboard with eight panels: requests per second, p95 latency, error rate, in-flight requests, request rate by endpoint, latency percentiles, prediction mix and responses by status code" style="width:100%">
+  <figcaption><b>Real Grafana (v13, light theme, kiosk mode), reading real Prometheus data from our own API.</b> The four stat panels are the service's vital signs; the bottom-left panel is the ML-specific one.</figcaption>
+</figure>
+<figure>
+  <img class="shot" src="assets/img/ch23_promql.png" alt="Four stacked charts from PromQL queries: request rate by endpoint, p95 latency, responses by status code, and prediction mix over time with phase markers" style="width:100%;max-width:820px">
+  <figcaption><b>The same queries plotted from Python.</b> Dotted lines mark the phases. In <em>drift</em> the negative share of predictions goes from <b>0.9% to 16.8%</b> — no deployment, no code change, no error, and nothing visible in the CPU or latency graphs. That ratio is the signal a model owner watches.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>What to monitor for an ML system</h2>
+<p>The instructor gets to the heart of it near the end: <em>save your model's predictions in a database, connect that database, and you can see whether the model is becoming biased or predicting badly.</em> Here's that idea laid out properly — four layers, from the machine up to the model:</p>
+<div class="table-wrap"><table>
+  <tr><th>Layer</th><th>What you watch</th><th>Where it comes from</th><th>Alert on</th></tr>
+  <tr><td><strong>1 · Infrastructure</strong></td><td>CPU, memory, disk, GPU, restarts, pod count</td><td><code>node_exporter</code>, cAdvisor, cloud metrics</td><td>saturation, restart loops</td></tr>
+  <tr><td><strong>2 · Service</strong> (RED)</td><td><strong>R</strong>ate, <strong>E</strong>rrors, <strong>D</strong>uration (p50/p95/p99)</td><td>the app itself, via a client library</td><td>error rate &gt; x%, p95 &gt; SLO</td></tr>
+  <tr><td><strong>3 · Data</strong></td><td>schema changes, missing values, out-of-range inputs, feature drift</td><td>validation in the pipeline; Evidently, Great Expectations, Deequ</td><td>schema break (page), drift (ticket)</td></tr>
+  <tr><td><strong>4 · Model</strong></td><td>prediction distribution, confidence, and accuracy once labels arrive</td><td>counters per predicted class; a delayed evaluation job</td><td>prediction mix shift, accuracy drop</td></tr>
+</table></div>
+<div class="cols">
+<div class="card"><h4>Why the prediction mix is the fast signal</h4><p>In our run it moved from <strong>0.9% negative to 16.8%</strong> within two minutes of the input changing, while latency and error rate stayed flat. Ground truth usually arrives <strong>late</strong> — hours for a click, days for a refund, never for some tasks. Meanwhile, the distribution of what the model predicts is available <em>immediately</em>. A sudden shift means either the world changed or your input pipeline broke; both need looking at.</p></div>
+<div class="card"><h4>Closing the loop</h4><p>Monitoring feeds back into everything earlier in the course: an alert triggers an investigation, which triggers a <strong>retrain</strong> (Chapter 12's DVC pipeline), a new <strong>run</strong> in MLflow (Chapter 14–15), a new registry version (Chapter 17) and a deployment through <strong>CI/CD</strong> (Chapter 18). That loop <em>is</em> MLOps.</p></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>Alerts, and dashboards as code</h2>
+<div class="cols">
+<div>
+<h3>Alerts belong with the data</h3>
+<p>Prometheus evaluates rule files on a timer; an alert fires only after the condition has held for the <code>for:</code> duration, which stops one bad scrape from waking anyone. Our rules:</p>
+<pre><code>- alert: HighErrorRate
+  expr: sum(rate(http_requests_total{status!~"2.."}[1m])) &gt; 0.05
+  for: 30s
+
+- alert: NegativeSentimentSurge
+  expr: sum(rate(model_predictions_total{label="negative"}[2m]))
+        / sum(rate(model_predictions_total[2m])) &gt; 0.5
+  for: 1m</code></pre>
+<p>Firing alerts go to <strong>Alertmanager</strong> for grouping, silences and routing. Grafana has its own alerting engine too — pick one so alerts don't arrive twice.</p>
+</div>
+<div>
+<h3>Dashboards as code</h3>
+<p>The video builds the data source and the dashboard by clicking. Both are just configuration, and Grafana can load them from files at startup:</p>
+<pre><code>provisioning/datasources/prometheus.yml   <span class="c"># the URL you'd paste in the UI</span>
+provisioning/dashboards/dashboards.yml    <span class="c"># "load dashboards from this folder"</span>
+dashboards/mlops.json                     <span class="c"># the dashboard itself</span></code></pre>
+<p>Keep those in git and a fresh Grafana comes up fully configured — no clicking, reviewable changes, and the same dashboard in staging and production. That's exactly what our hands-on does.</p>
+<p style="margin-bottom:0">Worth knowing next: <strong>variables</strong> (a dropdown for environment or model version), <strong>annotations</strong> (mark deployments on the graph — very useful for "did the new model cause this?"), and <strong>Loki</strong> / <strong>Tempo</strong> for logs and traces beside the metrics.</p>
+</div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>Precision notes</h2>
+<ul>
+  <li><strong>Grafana doesn't monitor anything by itself.</strong> It's a query and display layer. The chapter's title is really "Prometheus + Grafana", and the useful skill is deciding what to expose.</li>
+  <li><strong>The dashboard only shows Prometheus watching itself.</strong> Those <code>prometheus_*</code> and <code>go_*</code> series describe the monitoring server, not the machine and not any application. Real system metrics need <code>node_exporter</code>; real app metrics need instrumentation.</li>
+  <li><strong>No persistent volume.</strong> The Grafana docs' command mounts <code>grafana-storage:/var/lib/grafana</code>; without it, dashboards and the changed password vanish when the container is recreated. The same applies to Prometheus's TSDB.</li>
+  <li><strong>admin / admin on the open internet.</strong> Port 3000 opened to <code>0.0.0.0/0</code> over plain HTTP, with the default account, is fine for a demo and dangerous otherwise. Restrict the security group to your IP, put TLS in front, and change the password (the video does change it).</li>
+  <li><strong>Prometheus has no authentication at all</strong> by design. Anyone who can reach :9090 can read every metric and delete series. Keep it on a private network or behind a proxy.</li>
+  <li><strong>"Connect MongoDB"</strong> — MySQL and PostgreSQL data sources ship with Grafana, but the official <strong>MongoDB</strong> data source is an Enterprise feature (community plugins exist). Worth checking before promising it.</li>
+  <li><strong>Reading predictions out of a SQL table</strong> works at small scale, but it makes Grafana query your production database on every refresh. The usual pattern is the one in our hands-on: expose counters from the service, or compute drift in a scheduled job and export the result as metrics.</li>
+  <li><strong>Counters need <code>rate()</code>.</strong> Graphing <code>http_requests_total</code> raw gives an ever-rising line that says nothing. This is the most common first mistake in PromQL.</li>
+  <li><strong>Label cardinality is the way to kill Prometheus:</strong> one series per unique label combination, held in memory. Never label by user, request id, or free text.</li>
+  <li><strong>Scrape interval vs rate window:</strong> the range in <code>rate(x[1m])</code> must cover at least two scrapes, so with a 60 s scrape interval a 1-minute window is unreliable — use 2–5 minutes.</li>
+  <li><strong>Grafana vs Power BI / Tableau</strong> (the video mentions both): Grafana is for operational, time-series, near-real-time monitoring; BI tools are for business analytics over warehouses. Different refresh rates, different audiences.</li>
+  <li><strong>4 GB for Grafana</strong> is generous — Grafana and Prometheus together run comfortably in well under 1 GB for a demo. What does grow is Prometheus's disk as series accumulate.</li>
+  <li><strong>Terminate the instance,</strong> as the video says — and remember the security-group rules and any EBS volume that outlives it.</li>
+</ul>
+
+<!-- ───────────────────────────── -->
+<h2 id="hands-on"><span class="num">▶</span>Hands-on files: what we built</h2>
+<div class="handson">
+<span class="label">Hands-on project · real Prometheus + real Grafana, watching the Chapter 17 model API on this machine</span>
+<div class="files">
+  <a href="https://github.com/hemanthreddyllm/mlops-course-notes/blob/main/projects/ch23_grafana/grafana_walkthrough.ipynb">grafana_walkthrough.ipynb</a>
+  <a href="https://github.com/hemanthreddyllm/mlops-course-notes/blob/main/projects/ch23_grafana/instrumented_api.py">instrumented_api.py</a>
+  <a href="https://github.com/hemanthreddyllm/mlops-course-notes/blob/main/projects/ch23_grafana/prometheus.yml">prometheus.yml</a>
+  <a href="https://github.com/hemanthreddyllm/mlops-course-notes/blob/main/projects/ch23_grafana/alerts.yml">alerts.yml</a>
+  <a href="https://github.com/hemanthreddyllm/mlops-course-notes/blob/main/projects/ch23_grafana/grafana/dashboards/mlops.json">mlops.json</a>
+  <a href="https://github.com/hemanthreddyllm/mlops-course-notes/blob/main/projects/ch23_grafana/traffic.py">traffic.py</a>
+</div>
+<pre style="margin:0 0 12px"><code>projects/ch23_grafana/
+├── instrumented_api.py      <span class="c"># ch17 API + /metrics (counters, gauges, histograms)</span>
+├── prometheus.yml           <span class="c"># scrape the API every 5s + rule_files</span>
+├── alerts.yml               <span class="c"># HighErrorRate · SlowResponses · NegativeSentimentSurge</span>
+├── grafana/provisioning/    <span class="c"># data source + dashboard provider, as files</span>
+├── grafana/dashboards/mlops.json   <span class="c"># 8 panels, the dashboard as code</span>
+├── traffic.py               <span class="c"># baseline → spike → errors → drift → recovery</span>
+├── stack.py                 <span class="c"># start/stop the three processes; downloads the binaries once</span>
+└── grafana_walkthrough.ipynb</code></pre>
+<div id="ho-boxes">
+<h4>Results</h4>
+<div class="result" id="ho-main">…</div>
+</div>
+<p><strong>Not run here</strong> (it's on your <a href="todo_after_course.html">after-course to-do list</a>): the video's EC2 + Docker version, <code>node_exporter</code> for machine metrics, and Alertmanager wired to Slack.</p>
+<p style="font-size:13px;color:var(--ink-2)">The notebook downloads Prometheus (~100 MB) and Grafana (~450 MB) once into <code>~/.cache/mlops-course-tools</code>. Remove it with <code>rm -rf ~/.cache/mlops-course-tools</code> when you're done.</p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>Interview questions</h2>
+<details class="qa"><summary>How would you monitor a deployed ML model?</summary>
+<p>In four layers: <strong>infrastructure</strong> (CPU, memory, restarts), <strong>service</strong> (request rate, error rate, latency percentiles), <strong>data</strong> (schema, missing values, feature drift) and <strong>model</strong> (prediction distribution, confidence, and accuracy once ground truth arrives). Fast signals first — prediction mix and input statistics are available immediately, accuracy usually is not. Alert on the things that need a human tonight; dashboard the rest. Feed alerts back into retraining.</p></details>
+<details class="qa"><summary>Prometheus pull vs push — why does it matter?</summary>
+<p>Prometheus <strong>scrapes</strong> targets over HTTP, so it must be able to reach them (network rules), and targets don't need to know where Prometheus is. It also gives you a free health signal (<code>up</code>) per target. Short-lived batch jobs can't be scraped, so they push to a <strong>Pushgateway</strong> instead. Push-based systems (StatsD, OpenTelemetry collectors) suit ephemeral workloads and client-side metrics.</p></details>
+<details class="qa"><summary>Counter, gauge, histogram — when do you use each?</summary>
+<p><strong>Counter</strong> for things that only accumulate (requests, errors, predictions) — always query with <code>rate()</code>. <strong>Gauge</strong> for a current value (queue depth, in-flight requests, memory). <strong>Histogram</strong> for distributions (latency, payload size) so you can compute p95 across instances with <code>histogram_quantile</code>. Summaries compute quantiles client-side and can't be aggregated, so prefer histograms.</p></details>
+<details class="qa"><summary>Write a PromQL query for the 95th-percentile latency of an endpoint.</summary>
+<p><code>histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{endpoint="/predict"}[5m])))</code>. The key points: aggregate the <em>buckets</em> with <code>sum by (le)</code> before taking the quantile, and use a range long enough to cover several scrapes.</p></details>
+<details class="qa"><summary>How do you detect data drift in production, and what do you do about it?</summary>
+<p>Compare the live input distribution with a reference (the training set or last week) using statistical distances — PSI, KL divergence, Kolmogorov–Smirnov per feature — computed in a scheduled job (Evidently, or your own), and export the score as a metric so it can be alerted and graphed. Also watch the prediction mix, which needs no labels. On a real drift: investigate whether the data pipeline broke first, then consider retraining on recent data, and compare the candidate against production before promoting it.</p></details>
+<details class="qa"><summary>What makes a good alert?</summary>
+<p>It's actionable, it's based on symptoms users feel (error rate, latency) rather than causes, it has a <code>for:</code> duration so noise doesn't page anyone, it has an owner and a runbook, and there are few of them. Alert fatigue is a real failure mode: if people routinely ignore alerts, the monitoring has failed even though it "works".</p></details>
+<details class="qa"><summary>How do you keep dashboards maintainable across environments?</summary>
+<p>Treat them as code: dashboard JSON and data sources in git, loaded by Grafana's provisioning (or Terraform / Grizzly). Use template <strong>variables</strong> for environment, service and model version instead of copying dashboards, and annotate deployments so you can line up a metric change with a release.</p></details>
+<details class="qa"><summary>Your model's accuracy looks fine but users complain. Where do you look?</summary>
+<p>Accuracy on <em>labelled</em> data may not reflect live traffic: check whether the input distribution moved (drift), whether labels are delayed or biased in collection, whether a feature pipeline silently changed (nulls filled differently, a unit change), whether latency or errors are the real problem, and whether a segment is failing while the average holds. Segment the metrics — overall averages hide exactly this.</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s11"><span class="num">11</span>Recap</h2>
+<ul>
+  <li><strong>Grafana</strong> is an open-source visualisation layer that connects to many data sources; it doesn't collect or store metrics.</li>
+  <li><strong>The stack:</strong> your app exposes <code>/metrics</code> → <strong>Prometheus</strong> scrapes, stores and evaluates alert rules → <strong>Grafana</strong> queries it and draws dashboards → <strong>Alertmanager</strong> routes alerts.</li>
+  <li><strong>The video's setup:</strong> EC2 + Docker → <code>grafana/grafana-oss</code> on 3000 and <code>prom/prometheus</code> on 9090 → open both ports → admin/admin → add the Prometheus data source → Save &amp; test → New dashboard → Add visualisation → pick a metric → Run queries → arrange panels → terminate the instance afterwards.</li>
+  <li><strong>Metric types:</strong> counter (with <code>rate()</code>), gauge, histogram (with <code>histogram_quantile()</code>), summary.</li>
+  <li><strong>For ML:</strong> infrastructure → service (RED) → data → model. The prediction mix is the fast, label-free signal; accuracy comes later.</li>
+  <li><strong>Keep it as code:</strong> provisioning files and dashboard JSON in git; alert rules beside the data.</li>
+</ul>
+
+<!-- ───────────────────────────── -->
+<h2 id="s12"><span class="num">12</span>The course, end to end</h2>
+<p>That's the last chapter. The pieces now form one loop:</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 820 190" role="img" aria-label="The MLOps loop: data and DVC pipelines, experiments in MLflow, a model registry, packaging with Docker, CI/CD with GitHub Actions, serving on EC2, Kubernetes or SageMaker, monitoring with Prometheus and Grafana, feeding back into retraining.">
+    <defs><marker id="loop1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g class="t-xs">
+      <g data-tip="Chapters 11–12, 17: versioned data and a reproducible pipeline (dvc.yaml, dvc repro)."><rect x="8" y="30" width="118" height="48" rx="8" class="box"/><text x="67" y="50" text-anchor="middle" class="t-b">Data + pipeline</text><text x="67" y="66" text-anchor="middle">DVC · ch11–12</text></g>
+      <g data-tip="Chapters 14–15, 17: every run tracked, compared and the best one chosen."><rect x="146" y="30" width="118" height="48" rx="8" class="box"/><text x="205" y="50" text-anchor="middle" class="t-b">Experiments</text><text x="205" y="66" text-anchor="middle">MLflow · ch14–15</text></g>
+      <g data-tip="Chapter 17: the chosen model registered with a version and an alias (@staging, @production)."><rect x="284" y="30" width="118" height="48" rx="8" class="box"/><text x="343" y="50" text-anchor="middle" class="t-b">Registry</text><text x="343" y="66" text-anchor="middle">ch17</text></g>
+      <g data-tip="Chapters 16–18: the model and its API packaged as an image and pushed to a registry by CI."><rect x="422" y="30" width="118" height="48" rx="8" class="box"/><text x="481" y="50" text-anchor="middle" class="t-b">Package + CI/CD</text><text x="481" y="66" text-anchor="middle">Docker · ch16–18</text></g>
+      <g data-tip="Chapters 17–18, 21–22: Flask on EC2, a Kubernetes Deployment, or a SageMaker endpoint."><rect x="560" y="30" width="118" height="48" rx="8" class="box"/><text x="619" y="50" text-anchor="middle" class="t-b">Serve</text><text x="619" y="66" text-anchor="middle">ch18 · 21 · 22</text></g>
+      <g data-tip="This chapter: metrics, dashboards and alerts on the running service and on the model's behaviour."><rect x="698" y="30" width="114" height="48" rx="8" class="box-2"/><text x="755" y="50" text-anchor="middle" class="t-b">Monitor</text><text x="755" y="66" text-anchor="middle">ch23</text></g>
+    </g>
+    <path d="M126,54 L142,54" class="edge" marker-end="url(#loop1)"/><path d="M264,54 L280,54" class="edge" marker-end="url(#loop1)"/>
+    <path d="M402,54 L418,54" class="edge" marker-end="url(#loop1)"/><path d="M540,54 L556,54" class="edge" marker-end="url(#loop1)"/>
+    <path d="M678,54 L694,54" class="edge" marker-end="url(#loop1)"/>
+    <path d="M755,78 C755,140 400,150 67,120 L67,82" class="edge" fill="none" stroke-dasharray="5 4" marker-end="url(#loop1)"/>
+    <text x="410" y="164" text-anchor="middle" class="t-xs">drift, errors or a new requirement → retrain → the loop runs again (that feedback arrow is what makes it MLOps rather than a deployment)</text>
+  </svg>
+  </div>
+  <figcaption><b>Where every chapter sits.</b> Linux, Git and the cloud (ch04–10, 13) are the ground everything stands on; this chapter closes the loop.</figcaption>
+</figure>
+<p>What's left is practice on your own project — the <a href="todo_after_course.html">after-course to-do list</a> has the account-based steps we deferred, chapter by chapter.</p>
+
+<div class="pager">
+  <a href="22_sagemaker.html"><small>← Previous</small>22 · ML project using AWS SageMaker</a>
+  <a class="next" href="index.html"><small>Back to</small>All chapters</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+<script>
+const HANDS_ON = {"ho-main": "API        http://127.0.0.1:5002        ready\nPrometheus http://127.0.0.1:9090        ready\nGrafana    http://127.0.0.1:3000        ready\n\n(scrape targets: sentiment-api, prometheus — both up)\n\n  14:22:01  baseline  2 rps for 60s\n  14:23:03  spike     12 rps for 45s\n  14:23:48  errors    4 rps for 30s  (35% malformed requests)\n  14:24:19  drift     3 rps for 75s  (comments turn negative)\n  14:25:35  recovery  2 rps for 30s\ntotal 245s of traffic\n\nrequests served : 1057.0\npredictions made: 9867.0\n   positive     2263\n   negative      324\n   neutral      7280\n\nalert rules (state at the end of the run, after recovery):\n   HighErrorRate  inactive   30           0\n   SlowResponses  inactive   60           0\n   NegativeSentimentSurge  inactive   60           0\nalerts that fired during the run:\n       HighErrorRate, firing, warning\n\ngrafana        : 13.2.2\ndata source    : Prometheus → http://127.0.0.1:9090 (provisioned, no clicking)\ndashboard      : Sentiment API · service and model → /d/mlops-api/sentiment-api-c2b7-service-and-model\nsaved ch23_grafana_dashboard.png (80 KB)"};
+
+// ---- PromQL explorer
+(function () {
+  const QUERIES = [
+    {
+      name: "Request rate",
+      answer: "Panel: “Request rate by endpoint”. Answers “how much traffic is each endpoint getting right now?”",
+      parts: [
+        ["sum by (endpoint) ", "Aggregate", "Add the series together, keeping one result per <code>endpoint</code> label. Without <code>by</code>, everything collapses into a single number; with <code>by (endpoint)</code> you get one line per endpoint in the panel."],
+        ["(rate(", "rate()", "The per-second average increase of a counter over the window. Counters only go up, so the raw value is meaningless — <code>rate()</code> turns “1,482 requests since start-up” into “3.2 requests per second”. It also handles restarts (counter resets) for you."],
+        ["http_requests_total", "The metric", "A counter our API exposes. Every distinct label combination (endpoint, method, status) is its own time series."],
+        ["[30s]", "Range", "Look back 30 seconds. The range must cover at least two scrapes — with a 5 s scrape interval that's fine; with a 60 s interval you'd need minutes."],
+        ["))", "", "Closes <code>rate(</code> and <code>sum(</code>."],
+      ],
+    },
+    {
+      name: "p95 latency",
+      answer: "Panel: “Latency percentiles”. Answers “how slow is the request that 95% of users are faster than?”",
+      parts: [
+        ["histogram_quantile(0.95, ", "histogram_quantile()", "Estimates a quantile from histogram buckets. 0.95 = the p95: 95% of requests were faster than this. Averages hide the slow tail; percentiles are what SLOs are written against."],
+        ["sum by (le) ", "Aggregate by bucket", "<code>le</code> (“less than or equal”) is the bucket boundary label. Summing <b>by (le)</b> merges the histograms of every instance and endpoint correctly — this is why histograms beat client-side summaries."],
+        ["(rate(", "rate()", "Bucket counters are counters too, so they need <code>rate()</code> before anything else."],
+        ["http_request_duration_seconds_bucket", "The buckets", "One series per bucket boundary, e.g. <code>le=\"0.1\"</code> counts requests that took ≤ 100 ms. The bucket list is chosen when you define the histogram."],
+        ["[1m]", "Range", "Average over the last minute so a single slow request doesn't dominate."],
+        [")))", "", "Closes the three calls."],
+      ],
+    },
+    {
+      name: "Error rate",
+      answer: "Panel: “Errors (non-2xx) / second”, and the <code>HighErrorRate</code> alert.",
+      parts: [
+        ["sum", "Aggregate", "One number for the whole service — that's what you page on. Break it down by endpoint on the dashboard when investigating."],
+        ["(rate(", "rate()", "Errors per second rather than a running total."],
+        ["http_requests_total", "The metric", "The same counter as before, just filtered differently — one well-labelled metric answers many questions."],
+        ["{status!~\"2..\"}", "Label filter", "A regex-not-match on the status label: keep everything that isn't a 2xx. Operators: <code>=</code>, <code>!=</code>, <code>=~</code> (regex), <code>!~</code> (regex not)."],
+        ["[1m])) > 0.05", "Threshold", "In a panel you'd stop before the comparison; in an alert rule the comparison makes it a condition. Combined with <code>for: 30s</code>, the alert fires only if it stays true."],
+      ],
+    },
+    {
+      name: "Prediction mix (drift)",
+      answer: "Panel: “Prediction mix”, and the <code>NegativeSentimentSurge</code> alert. Answers “what is the model actually saying, and has that changed?”",
+      parts: [
+        ["sum by (label) (rate(model_predictions_total[1m]))", "Predictions per class", "Our API increments <code>model_predictions_total{label=...}</code> for every prediction it returns. Grouped by label, this is the model's output distribution over time."],
+        [" / ignoring(label) group_left ", "Division across labels", "Divides each class's rate by the total. <code>ignoring(label) group_left</code> tells PromQL to match the many-labelled left side against the single-valued right side — the usual way to turn counts into shares."],
+        ["sum(rate(model_predictions_total[1m]))", "Total predictions", "The denominator: all predictions per second, regardless of class."],
+      ],
+      note: "A shift here with no deployment is what drift looks like from the outside — and unlike accuracy, it needs no ground-truth labels.",
+    },
+  ];
+  const tabs = document.getElementById("pq-tabs"), q = document.getElementById("pq-query"),
+        ex = document.getElementById("pq-explain"), ans = document.getElementById("pq-answer");
+  let current = 0;
+  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  function render(qi) {
+    current = qi;
+    [...tabs.children].forEach((b, i) => b.setAttribute("aria-pressed", String(i === qi)));
+    const spec = QUERIES[qi];
+    q.innerHTML = spec.parts.map(([text], i) => `<span data-i="${i}">${esc(text)}</span>`).join("");
+    q.querySelectorAll("span[data-i]").forEach(s => s.addEventListener("click", () => show(+s.dataset.i)));
+    ans.innerHTML = spec.answer + (spec.note ? `<br><b>${spec.note}</b>` : "");
+    show(0);
+  }
+  function show(i) {
+    const [, title, text] = QUERIES[current].parts[i];
+    q.querySelectorAll("span[data-i]").forEach(s => s.setAttribute("aria-pressed", String(+s.dataset.i === i)));
+    ex.innerHTML = title ? `<b>${title}</b>${text}` : text;
+  }
+  QUERIES.forEach((spec, i) => {
+    const b = document.createElement("button");
+    b.textContent = spec.name;
+    b.addEventListener("click", () => render(i));
+    tabs.appendChild(b);
+  });
+  render(0);
+})();
+
+// ---- hands-on results
+(function () {
+  if (!HANDS_ON) return;
+  for (const [id, text] of Object.entries(HANDS_ON)) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+})();
+</script>
+</body>
+</html>

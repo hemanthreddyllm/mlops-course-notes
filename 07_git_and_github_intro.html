@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>07 · Getting Started with Git & GitHub — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .term { background: var(--code-bg); border-radius: 10px; overflow: hidden; margin: 14px 0; }
+  .term .bar { display: flex; gap: 6px; padding: 9px 12px; background: #2b2b29; }
+  .term .bar i { width: 10px; height: 10px; border-radius: 50%; background: #5b5a55; }
+  .term .bar span { margin-left: 8px; font: 12px var(--mono); color: #a8a79f; }
+  .term pre { margin: 0; border-radius: 0; }
+  .term .p { color: #7fc79a; }
+  .term .o { color: #c3c2b7; }
+  .vs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+  @media (max-width: 560px) { .vs { grid-template-columns: 1fr; } }
+  .glossary dt { font: 600 14px var(--mono); margin-top: 10px; }
+  .glossary dd { margin: 2px 0 0 0; color: var(--ink-2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 07</span></div>
+<div class="eyebrow">Chapter 07 · Getting Started with Git and GitHub</div>
+<h1>Git and GitHub: why teams need version control</h1>
+<p class="lede">This chapter starts the version-control part of the course. The instructor explains why every piece of code you write from now on goes into GitHub: teams in different places have to share code, and old versions must never be lost. He then separates Git (the tool on your machine) from GitHub (the website that hosts your repositories) and shows how to install Git and set up a GitHub account.</p>
+<div class="meta">
+  <span class="chip">Video 01:54:09 – 02:08:22</span>
+  <span class="chip">Concepts + setup</span>
+  <span class="chip">MLOps component: version control</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">What this Git series covers</a></li>
+    <li><a href="#s2">Why: a team building a self-driving feature</a></li>
+    <li><a href="#s3">Why: versions must never be lost</a></li>
+    <li><a href="#s4">Git vs GitHub</a></li>
+    <li><a href="#s5">Installing Git</a></li>
+    <li><a href="#s6">Creating a GitHub account and looking around</a></li>
+    <li><a href="#s7">Stars, forks and open source</a></li>
+    <li><a href="#s8">Git vocabulary you'll need next</a></li>
+    <li><a href="#s9">Why this matters for MLOps</a></li>
+    <li><a href="#s10">Interview questions</a></li>
+    <li><a href="#s11">Recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>What this Git series covers <span class="ts">01:54:09</span></h2>
+<p>Chapter 03 explained why version control matters (the <a href="03_intro_to_mlops_importance.html#p3">version problem</a>). This series is the practical side. From here on, <strong>all code you write is committed to GitHub</strong>, and repositories and branches are kept organised there. The instructor calls this a very important topic and asks you to finish it, because you'll rely on it for code management.</p>
+<p>Git has many features, and the instructor only teaches the ones the course's projects need:</p>
+<div class="grid">
+  <div class="card"><span class="tag">CH 07 · THIS PAGE</span><h4>Intro</h4><p>What Git and GitHub are, why they're used, installation and account setup.</p></div>
+  <div class="card"><span class="tag">CH 08</span><h4>Repo setup</h4><p>Create a GitHub repository and clone it to your machine.</p></div>
+  <div class="card"><span class="tag">CH 09</span><h4>Code management</h4><p>The required commands: commit, push, pull.</p></div>
+  <div class="card"><span class="tag">CH 10</span><h4>Branches</h4><p>Create and manage branches.</p></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>Why: a team building a self-driving feature <span class="ts">01:55:11</span></h2>
+<p>The instructor's example: you work at <strong>Tesla</strong> on <strong>self-driving cars</strong>. Your manager asks your team (he calls it <strong>"VGZ16"</strong>) to add a self-driving feature. You're the <strong>team lead</strong>, and you split the job: <em>feature 1</em> to one developer, <em>feature 2</em> to another, <em>feature 3</em> to a third.</p>
+<p>The complication is that <strong>everyone works from somewhere different</strong>: one person from home, one from the office, one from their village. Even people who work in the office keep coding at home in their free time. The code still has to end up in one place.</p>
+
+<div class="callout wrong"><span class="label">The wrong way</span><p>Zip the project and send it around. Nobody knows which zip is newest, changes get overwritten, and there's no history.</p></div>
+
+<figure>
+  <p class="fig-title">The push / pull loop</p>
+  <p class="fig-sub">GitHub sits in the cloud, and everyone syncs through it. Hover the arrows and boxes.</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 330" role="img" aria-label="Team lead and three developers in different locations push code to and pull code from GitHub in the cloud">
+    <defs>
+      <marker id="g1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker>
+      <marker id="g2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--s2)"/></marker>
+    </defs>
+    <g data-tip="<b>GitHub (cloud)</b><br>One shared copy of the code that everyone can reach over the internet.">
+      <rect x="290" y="120" width="180" height="90" rx="14" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="380" y="154" text-anchor="middle" class="t-sm t-b">☁ GitHub</text>
+      <text x="380" y="174" text-anchor="middle" class="t-xs">shared repository</text>
+      <text x="380" y="192" text-anchor="middle" class="t-xs">feature 0 → 1 → 2 → 3</text></g>
+    <g data-tip="<b>Team lead (you)</b><br>Pulls everyone's work, checks the features were added, finalises, and assigns the next tasks.">
+      <rect x="290" y="10" width="180" height="60" rx="10" class="box"/><text x="380" y="36" text-anchor="middle" class="t-sm t-b">👩‍💼 Team lead</text><text x="380" y="54" text-anchor="middle" class="t-xs">reviews · assigns · finalises</text></g>
+    <g data-tip="<b>Developer 1 · works from home</b><br>Assigned feature 1">
+      <rect x="20" y="130" width="170" height="60" rx="10" class="box"/><text x="105" y="156" text-anchor="middle" class="t-sm t-b">🏠 Dev 1 (home)</text><text x="105" y="174" text-anchor="middle" class="t-xs">feature 1</text></g>
+    <g data-tip="<b>Developer 2 · works from the office</b><br>Assigned feature 2">
+      <rect x="120" y="255" width="170" height="60" rx="10" class="box"/><text x="205" y="281" text-anchor="middle" class="t-sm t-b">🏢 Dev 2 (office)</text><text x="205" y="299" text-anchor="middle" class="t-xs">feature 2</text></g>
+    <g data-tip="<b>Developer 3 · works from their village</b><br>Assigned feature 3">
+      <rect x="470" y="255" width="170" height="60" rx="10" class="box"/><text x="555" y="281" text-anchor="middle" class="t-sm t-b">🏡 Dev 3 (village)</text><text x="555" y="299" text-anchor="middle" class="t-xs">feature 3</text></g>
+    <g data-tip="<b>Any other developer</b><br>Anyone joining later just pulls the latest code.">
+      <rect x="570" y="130" width="170" height="60" rx="10" class="box" stroke-dasharray="4 3"/><text x="655" y="156" text-anchor="middle" class="t-sm t-b">💻 New teammate</text><text x="655" y="174" text-anchor="middle" class="t-xs">pulls to get started</text></g>
+    <!-- push (blue) / pull (orange) -->
+    <path d="M190,150 L288,150" class="edge-accent" marker-end="url(#g1)"/><path d="M288,172 L192,172" stroke="var(--s2)" stroke-width="2" fill="none" marker-end="url(#g2)"/>
+    <path d="M230,255 L310,212" class="edge-accent" marker-end="url(#g1)"/><path d="M330,212 L250,256" stroke="var(--s2)" stroke-width="2" fill="none" marker-end="url(#g2)"/>
+    <path d="M530,255 L450,212" class="edge-accent" marker-end="url(#g1)"/><path d="M430,212 L510,256" stroke="var(--s2)" stroke-width="2" fill="none" marker-end="url(#g2)"/>
+    <path d="M472,172 L568,160" stroke="var(--s2)" stroke-width="2" fill="none" marker-end="url(#g2)"/>
+    <path d="M360,70 L360,118" class="edge-accent" marker-end="url(#g1)"/><path d="M400,118 L400,72" stroke="var(--s2)" stroke-width="2" fill="none" marker-end="url(#g2)"/>
+  </svg>
+  </div>
+  <div class="legend"><span><i style="background:var(--accent)"></i>push (upload your changes)</span><span><i style="background:var(--s2)"></i>pull (download others' changes)</span></div>
+</figure>
+
+<ol>
+  <li>You write code and <strong>push</strong> it to GitHub (think of it as a cloud platform that stores code).</li>
+  <li>The other developers <strong>pull</strong> (download) your changes, see what you added (say, feature 0), and build features 1, 2 and 3 on top of it.</li>
+  <li>They <strong>push</strong> their work back.</li>
+  <li>As team lead, you <strong>pull</strong>, check that every feature was added, <strong>finalise</strong>, and assign the next piece of work.</li>
+  <li>Repeat until the project is finished.</li>
+</ol>
+<div class="callout key"><span class="label">Name for this</span><p>The instructor calls this cycle <strong>code management</strong>: sharing, combining and reviewing code across a team through a central remote repository.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>Why: versions must never be lost <span class="ts">01:59:26</span></h2>
+<p>No real project reaches production-grade code in one go, a self-driving car included. The instructor shows <strong>TensorFlow's release history on PyPI</strong>: many versions, each with its own date, released over months and years. When a new version is published, <strong>the old ones stay available</strong>.</p>
+
+<figure>
+  <p class="fig-title">Releases pile up; nothing is replaced</p>
+  <p class="fig-sub">TensorFlow minor releases (approximate dates). Hover a release.</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 170" role="img" aria-label="Timeline of TensorFlow releases 2.14 to 2.18 from late 2023 to late 2024, all still installable; 2.17 is used as a fallback when 2.18 breaks">
+    <line x1="40" y1="80" x2="730" y2="80" class="axis"/>
+    <g class="t-xs"><text x="40" y="140">2023</text><text x="330" y="140">2024</text><text x="690" y="140">2025</text></g>
+    <line x1="330" y1="72" x2="330" y2="88" class="axis"/><line x1="700" y1="72" x2="700" y2="88" class="axis"/>
+    <g data-tip="<b>TensorFlow 2.14</b><br>≈ Sep 2023 · still installable"><circle cx="240" cy="80" r="8" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/><text x="240" y="62" text-anchor="middle" class="t-xs t-b">2.14</text></g>
+    <g data-tip="<b>TensorFlow 2.15</b><br>≈ Nov 2023 · still installable"><circle cx="300" cy="80" r="8" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/><text x="300" y="62" text-anchor="middle" class="t-xs t-b">2.15</text></g>
+    <g data-tip="<b>TensorFlow 2.16</b><br>≈ Mar 2024 · still installable"><circle cx="400" cy="80" r="8" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/><text x="400" y="62" text-anchor="middle" class="t-xs t-b">2.16</text></g>
+    <g data-tip="<b>TensorFlow 2.17</b><br>≈ Jul 2024 · the instructor's 'older version that worked'"><circle cx="500" cy="80" r="8" fill="var(--good)" stroke="var(--surface)" stroke-width="2"/><text x="500" y="62" text-anchor="middle" class="t-xs t-b">2.17 ✓</text></g>
+    <g data-tip="<b>TensorFlow 2.18</b><br>≈ Oct 2024 · the 'latest' in the example, which breaks the project"><circle cx="580" cy="80" r="8" fill="var(--s8)" stroke="var(--surface)" stroke-width="2"/><text x="580" y="62" text-anchor="middle" class="t-xs t-b">2.18 ✗</text></g>
+    <path d="M572,96 Q540,118 508,96" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="540" y="124" text-anchor="middle" class="t-xs">go back: pip install tensorflow==2.17.0</text>
+  </svg>
+  </div>
+  <figcaption>The instructor's scenario: the newest release (2.18.0) errors in your project, so you reinstall 2.17.0, which worked. That's only possible because <b>old versions were kept</b>.</figcaption>
+</figure>
+
+<p>That is what <strong>version control</strong> means: keep every older version and release new ones on top, instead of replacing code. Git and GitHub do this for your project automatically:</p>
+<div class="vs">
+  <div class="card"><h4>Without version control</h4><p>v2 overwrites v1. If v2 has bugs, v1 is gone.</p></div>
+  <div class="card"><h4>With Git + GitHub</h4><p>v1 stays, and v2 is committed on top of it. <strong>Every version remains available</strong>, and you don't manage any of it by hand.</p></div>
+</div>
+<p>This is why Git and GitHub are among the most widely used tools in the software industry.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>Git vs GitHub <span class="ts">02:00:28</span></h2>
+<p>People often mix the two up. The instructor's comparison:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th></th><th>Git</th><th>GitHub</th></tr></thead>
+  <tbody>
+    <tr><td><strong>What it is</strong></td><td>Version control <strong>software</strong></td><td>A <strong>web application</strong> that hosts remote Git repositories</td></tr>
+    <tr><td><strong>How you use it</strong></td><td><strong>Command-line tool</strong></td><td>Website (plus integrations)</td></tr>
+    <tr><td><strong>Where it runs</strong></td><td><strong>Locally</strong> on your machine</td><td><strong>Remotely</strong>, on the internet</td></tr>
+    <tr><td><strong>Who owns it</strong></td><td>Open source (created by Linus Torvalds in 2005)</td><td>Owned by <strong>Microsoft</strong></td></tr>
+    <tr><td><strong>Main job</strong></td><td>Tracks code and its <strong>version history</strong></td><td>Adds features on top of Git for collaboration</td></tr>
+    <tr><td><strong>Branches</strong></td><td>Lets you work on different versions (<strong>branches</strong>) of the code</td><td>Shows and compares branches on the website</td></tr>
+    <tr><td><strong>Sync</strong></td><td><strong>Synchronises</strong> versions between local and remote code bases</td><td>Deeply <strong>integrated with Git</strong>; it doesn't work without Git</td></tr>
+    <tr><td><strong>Typical user</strong></td><td>Anyone, even working alone</td><td>Mainly <strong>teams of two or more</strong></td></tr>
+  </tbody>
+</table>
+</div>
+
+<figure>
+  <p class="fig-title">How they fit together</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 220" role="img" aria-label="Git runs locally on each laptop with its own repository; GitHub hosts the remote repository on the internet; push and pull connect them">
+    <defs><marker id="g3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <text x="20" y="22" class="t-xs t-b">LOCAL · Git</text>
+    <rect x="20" y="32" width="220" height="80" rx="10" class="box"/>
+    <text x="130" y="58" text-anchor="middle" class="t-sm t-b">💻 Your laptop</text>
+    <rect x="40" y="70" width="180" height="30" rx="6" class="box-2"/><text x="130" y="90" text-anchor="middle" class="t-xs">git · local repo (.git history)</text>
+    <rect x="20" y="126" width="220" height="80" rx="10" class="box"/>
+    <text x="130" y="152" text-anchor="middle" class="t-sm t-b">💻 Teammate's laptop</text>
+    <rect x="40" y="164" width="180" height="30" rx="6" class="box-2"/><text x="130" y="184" text-anchor="middle" class="t-xs">git · local repo (.git history)</text>
+    <text x="520" y="22" class="t-xs t-b">REMOTE · GitHub (internet)</text>
+    <rect x="520" y="60" width="220" height="110" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+    <text x="630" y="92" text-anchor="middle" class="t-sm t-b">☁ Remote repository</text>
+    <text x="630" y="112" text-anchor="middle" class="t-xs">+ web UI, pull requests,</text>
+    <text x="630" y="128" text-anchor="middle" class="t-xs">issues, Actions (CI/CD), stars</text>
+    <text x="630" y="152" text-anchor="middle" class="t-xs">alternatives: GitLab · Bitbucket</text>
+    <path d="M240,62 L518,90" class="edge" marker-end="url(#g3)"/><text x="380" y="66" text-anchor="middle" class="t-xs">push ↑</text>
+    <path d="M518,104 L240,92" class="edge" marker-end="url(#g3)"/><text x="380" y="112" text-anchor="middle" class="t-xs">pull ↓</text>
+    <path d="M240,160 L518,140" class="edge" marker-end="url(#g3)"/><path d="M518,152 L240,178" class="edge" marker-end="url(#g3)"/>
+  </svg>
+  </div>
+  <figcaption>The instructor's summary: <b>Git alone</b> gives you version control on your own machine. To share changes with other developers, you need a remote service such as <b>GitHub</b>, because it runs on a remote server rather than locally. Beyond the video: GitLab and Bitbucket (mentioned in Chapter 01) play the same role.</figcaption>
+</figure>
+<p>A <strong>Git repo (repository)</strong> is simply <strong>a project</strong> tracked by Git. When it's hosted on a remote server such as GitHub, it's called a <em>remote repository</em>.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>Installing Git <span class="ts">02:04:43</span></h2>
+<p>Git is a command-line utility, which the instructor describes as the "client" for GitHub.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>OS</th><th>How to get Git</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Windows</strong></td><td>Search "git scm" and open <strong>git-scm.com</strong> → Download for Windows → run the <code>.exe</code> → Next, Next, Next like any installer. This also installs <strong>Git Bash</strong>, used in Chapter 08.</td></tr>
+    <tr><td><strong>macOS</strong></td><td>The instructor says it's built in. Beyond the video: the first time you run <code>git</code>, macOS offers to install the Xcode Command Line Tools, which include it. <code>brew install git</code> gives a newer version.</td></tr>
+    <tr><td><strong>Linux</strong></td><td>Usually pre-installed (Ubuntu on EC2 has it). Otherwise: <code>sudo apt install -y git</code>.</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="callout beyond"><span class="label">Beyond the video · check the install and set your identity (do this once)</span>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>terminal / Git Bash</span></div>
+<pre><code><span class="p">$</span> git --version
+<span class="o">git version 2.4x.x</span>
+<span class="p">$</span> git config --global user.name  "Your Name"
+<span class="p">$</span> git config --global user.email "you@example.com"   <span class="c"># use the email on your GitHub account</span>
+<span class="p">$</span> git config --global init.defaultBranch main
+<span class="p">$</span> git config --list                                   <span class="c"># check the settings</span></code></pre></div>
+<p>Git stamps every commit with this name and email, and GitHub uses the email to link commits to your profile.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>Creating a GitHub account and looking around <span class="ts">02:05:47</span></h2>
+<ol>
+  <li>Go to <strong>github.com</strong> → <strong>Sign up</strong> with your email and complete the verification.</li>
+  <li>After signing in you land on the dashboard. Open your <strong>profile</strong>.</li>
+</ol>
+<div class="grid">
+  <div class="card"><h4>👤 Profile</h4><p>You can <strong>customise</strong> your profile page, as the instructor has. Plenty of blogs and videos explain how. (Beyond the video: create a repo named exactly after your username, and its README appears on your profile.)</p></div>
+  <div class="card" style="border-color:var(--accent)"><h4>📁 Repositories</h4><p>The feature you'll use most. Each project is a repository holding its source code. The instructor has about <strong>223</strong> of them.</p></div>
+  <div class="card"><h4>👥 Followers / following</h4><p>Follow people to see what they publish, and build up your own followers.</p></div>
+  <div class="card"><h4>🏅 Achievements</h4><p>Badges for activity such as open-source contributions.</p></div>
+</div>
+<div class="callout beyond"><span class="label">Beyond the video · GitHub as a portfolio</span><p>For interviews, your GitHub is your portfolio. Pin 4–6 of your best ML projects, and give each a clear README: the problem, the architecture diagram, how to run it, a <strong>link to the live deployed demo</strong>, and the MLOps tools used. A repo that clearly shows a deployment stands out much more than one containing only a notebook.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>Stars, forks and open source <span class="ts">02:06:51</span></h2>
+<p>The instructor opens the <strong>MLOps foundation</strong> repository he made for this playlist to show two buttons:</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 170" role="img" aria-label="Star bookmarks a repository you like; Fork creates a full copy of someone else's repository under your own account">
+    <defs><marker id="g4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker></defs>
+    <rect x="20" y="20" width="330" height="130" rx="10" class="box"/>
+    <text x="40" y="50" class="t-sm t-b">⭐ Star</text>
+    <text x="40" y="76" class="t-xs">"I like this / it helped me"</text>
+    <text x="40" y="96" class="t-xs">• works like a like or bookmark</text>
+    <text x="40" y="116" class="t-xs">• nothing is copied</text>
+    <text x="40" y="136" class="t-xs">• more stars = more visibility for the author</text>
+    <rect x="380" y="20" width="360" height="130" rx="10" class="box"/>
+    <text x="400" y="50" class="t-sm t-b">🍴 Fork</text>
+    <rect x="400" y="66" width="130" height="36" rx="6" class="box-2"/><text x="465" y="89" text-anchor="middle" class="t-xs">author/repo</text>
+    <rect x="590" y="66" width="130" height="36" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="655" y="89" text-anchor="middle" class="t-xs t-b">you/repo (copy)</text>
+    <path d="M530,84 L588,84" class="edge-accent" marker-end="url(#g4)"/>
+    <text x="400" y="126" class="t-xs">A full copy in <tspan class="t-b">your</tspan> account that you can change freely.</text>
+    <text x="400" y="142" class="t-xs">It's the first step of an open-source contribution.</text>
+  </svg>
+  </div>
+</figure>
+<p><strong>Open source:</strong> much new Python and AI research is released as open source, and anyone can contribute. The instructor mentions that active contributors can earn <strong>awards and recognition</strong> from GitHub, and says the course will cover open-source contribution later. For now, the goal is to learn to use GitHub properly.</p>
+<div class="callout wrong"><span class="label">Clarification</span><p>The video links repository stars to the <strong>"GitHub Stars"</strong> program. Those are different things. The <em>GitHub Stars</em> program recognises community leaders through <strong>nominations</strong>. Stars on a repo count towards profile <strong>achievement badges</strong> (for example, one for a repo that reaches a certain number of stars).</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>Git vocabulary you'll need next</h2>
+<div class="callout beyond"><span class="label">Beyond the video · a glossary for Chapters 08–10</span>
+<dl class="glossary">
+  <dt>repository (repo)</dt><dd>A project folder whose full history Git tracks.</dd>
+  <dt>clone</dt><dd>Download a remote repo, including its full history, to your machine.</dd>
+  <dt>commit</dt><dd>A saved snapshot of your changes, with a message. Commits are the "versions".</dd>
+  <dt>push / pull</dt><dd>Upload your commits to the remote / download other people's commits.</dd>
+  <dt>branch</dt><dd>A separate line of work (for example <code>feature/login</code>) that doesn't affect <code>main</code> until it's merged.</dd>
+  <dt>merge</dt><dd>Combine one branch's changes into another.</dd>
+  <dt>pull request (PR)</dt><dd>A GitHub request to merge your branch, where teammates review the code first. This is how the "team lead reviews" step works in practice.</dd>
+  <dt>fork / star</dt><dd>Your own copy of someone else's repo / a bookmark.</dd>
+  <dt>remote (origin)</dt><dd>The name Git uses for the GitHub copy of your repo.</dd>
+</dl></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>Why this matters for MLOps</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>MLOps need</th><th>How Git and GitHub help</th></tr></thead>
+  <tbody>
+    <tr><td>Reproducibility</td><td>Every model can be traced to the exact <strong>commit</strong> of code that trained it (MLflow records the Git commit of each run).</td></tr>
+    <tr><td>Collaboration</td><td>Modular components (Chapter 03) are owned by different people and brought together through push, pull and PRs.</td></tr>
+    <tr><td>CI/CD</td><td>A <code>git push</code> is the <strong>trigger</strong> for GitHub Actions, Jenkins and CircleCI pipelines (Chapter 18).</td></tr>
+    <tr><td>Rollback</td><td>A bad deployment is fixed by going back to the last good commit or tag.</td></tr>
+    <tr><td>Data and models</td><td>Git handles code; large data and model files go to <strong>DVC</strong> (Chapter 11), which stores small pointer files in Git.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>Interview questions</h2>
+<details class="qa"><summary>What's the difference between Git and GitHub?</summary>
+<p>Git is open-source version-control software that runs locally from the command line and tracks history and branches. GitHub is a Microsoft-owned web platform that hosts remote Git repositories and adds collaboration features: pull requests, code review, issues, Actions for CI/CD, and access control. GitLab and Bitbucket are alternatives to GitHub. Git works without GitHub, but GitHub doesn't work without Git.</p></details>
+<details class="qa"><summary>Why is version control essential in ML projects?</summary>
+<p>Several people change the same codebase from different places; you need to roll back when a new version breaks; you must reproduce exactly which code produced a model; and CI/CD pipelines are triggered by commits. For ML specifically, pair Git (code) with DVC (data and models) and MLflow (experiments).</p></details>
+<details class="qa"><summary>Explain push and pull.</summary>
+<p><code>git push</code> uploads your local commits to the remote repository. <code>git pull</code> downloads new commits from the remote and merges them into your local branch (it's a fetch followed by a merge).</p></details>
+<details class="qa"><summary>Fork vs clone?</summary>
+<p>A fork is a server-side copy of someone else's repository under your GitHub account, used to contribute to projects you can't push to directly. A clone is a local copy of any repository on your machine. The usual open-source flow is fork → clone your fork → branch → push → open a PR to the original.</p></details>
+<details class="qa"><summary>A new library version breaks your project. What do you do?</summary>
+<p>Pin the last working version (for example <code>tensorflow==2.17.0</code>) in <code>requirements.txt</code>, commit it, and rebuild. Longer term, pin all dependencies (a lock file), test upgrades in a branch with CI before merging, and build Docker images from pinned versions so production is reproducible.</p></details>
+<details class="qa"><summary>How would you use GitHub to show your MLOps skills?</summary>
+<p>Public repos with modular code, a clear README with an architecture diagram and run instructions, CI workflows (tests, Docker build, deploy), DVC and MLflow configuration, and a link to the live deployed endpoint.</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s11"><span class="num">11</span>Recap</h2>
+<ul>
+  <li>From now on, all course code lives in GitHub. The series covers the intro, repo setup, commands, and branches.</li>
+  <li><strong>Why (team):</strong> developers in different places <strong>push</strong> to and <strong>pull</strong> from GitHub, and the team lead pulls, reviews and assigns. This is <strong>code management</strong>.</li>
+  <li><strong>Why (versions):</strong> as with TensorFlow's releases, old versions stay available (install 2.17.0 if 2.18.0 breaks). This is <strong>version control</strong>.</li>
+  <li><strong>Git</strong> = local command-line version-control software. <strong>GitHub</strong> = Microsoft's web app hosting remote repos, integrated with Git and used by teams.</li>
+  <li>Install Git from <strong>git-scm.com</strong> on Windows (Mac and Linux usually have it), then sign up at <strong>github.com</strong>.</li>
+  <li>The feature you'll use most is <strong>repositories</strong>. <strong>Star</strong> means like; <strong>fork</strong> copies a repo into your account.</li>
+</ul>
+
+<div class="pager">
+  <a href="06_linux_commands.html"><small>← Previous</small>06 · Required Linux commands</a>
+  <a class="next" href="08_local_and_remote_repo_setup.html"><small>Next →</small>08 · Local &amp; remote repository setup</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+</body>
+</html>

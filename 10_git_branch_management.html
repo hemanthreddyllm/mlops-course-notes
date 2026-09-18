@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>10 · Git Branch Management — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .term { background: var(--code-bg); border-radius: 10px; overflow: hidden; margin: 14px 0; }
+  .term .bar { display: flex; gap: 6px; padding: 9px 12px; background: #2b2b29; }
+  .term .bar i { width: 10px; height: 10px; border-radius: 50%; background: #5b5a55; }
+  .term .bar span { margin-left: 8px; font: 12px var(--mono); color: #a8a79f; }
+  .term pre { margin: 0; border-radius: 0; }
+  .term .p { color: #7fc79a; }
+  .term .o { color: #c3c2b7; }
+  .term .r { color: #f08a82; }
+  .term .g { color: #7fc79a; }
+  .cmd { font: 600 13px var(--mono); white-space: nowrap; }
+  .switcher { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; margin: 18px 0; }
+  .seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 999px; overflow: hidden; }
+  .seg button { font: 600 13px var(--mono); padding: 7px 14px; border: 0; background: var(--surface); color: var(--ink-2); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .editor { margin-top: 12px; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+  .editor .tab { font: 12px var(--mono); padding: 6px 12px; background: var(--surface-2); border-bottom: 1px solid var(--rule); color: var(--ink-2); display: flex; justify-content: space-between; }
+  .editor pre { margin: 0; border-radius: 0; min-height: 70px; }
+  .conflict .hl1 { background: rgba(57,135,229,.25); display: block; }
+  .conflict .hl2 { background: rgba(235,104,52,.25); display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 10</span></div>
+<div class="eyebrow">Chapter 10 · Git Branch Management</div>
+<h1>Branches: build new work without touching main</h1>
+<p class="lede">The last part of the Git series. The instructor creates a branch named after himself, commits a change to <code>test3.py</code> there, pushes the branch to GitHub, and switches back to <code>main</code> to show that <code>main</code> didn't change. The video ends there. These notes add the missing piece, which is how a branch gets <strong>merged</strong> back, because every real team and CI/CD pipeline depends on it.</p>
+<div class="meta">
+  <span class="chip">Video 02:22:01 – 02:25:53</span>
+  <span class="chip">Hands-on · terminal + GitHub</span>
+  <span class="chip">Branch: bappy</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">Why branches?</a></li>
+    <li><a href="#s2">List branches: git branch</a></li>
+    <li><a href="#s3">Create and switch: git checkout -b</a></li>
+    <li><a href="#s4">Commit and push to the new branch</a></li>
+    <li><a href="#s5">Switch back: main is untouched</a></li>
+    <li><a href="#s6">Big projects: TensorFlow's branches</a></li>
+    <li><a href="#s7">Merging and pull requests</a></li>
+    <li><a href="#s8">Merge conflicts</a></li>
+    <li><a href="#s9">Branching workflow for ML projects</a></li>
+    <li><a href="#s10">Git series cheat sheet (Ch 07–10)</a></li>
+    <li><a href="#hands-on">Hands-on files: what we built</a></li>
+    <li><a href="#s11">Interview questions</a></li>
+    <li><a href="#s12">Recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>Why branches? <span class="ts">02:22:04</span></h2>
+<p>The instructor's scenario: <strong>another team</strong> is assigned to your project. You want the current repository (<code>main</code>) to <strong>stay as it is</strong>, but the new work still has to happen somewhere. The answer is a <strong>branch</strong>: a separate line of development where changes don't affect <code>main</code>.</p>
+
+<figure>
+  <p class="fig-title">What the demo builds</p>
+  <p class="fig-sub">Hover the commits. The dashed part is the merge step the video leaves out.</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 200" role="img" aria-label="Branch graph: main has commits up to files added; branch bappy splits off and gets a commit new code added; main is unchanged; a later merge brings bappy into main">
+    <text x="20" y="64" class="t-sm t-b" style="fill:var(--s1)">main</text>
+    <text x="20" y="144" class="t-sm t-b" style="fill:var(--s2)">bappy</text>
+    <line x1="70" y1="60" x2="720" y2="60" stroke="var(--s1)" stroke-width="3"/>
+    <g data-tip="<b>3f9c2a1</b> · test.py file added"><circle cx="100" cy="60" r="8" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/></g>
+    <g data-tip="<b>8d41e07</b> · test.py file updated"><circle cx="180" cy="60" r="8" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/></g>
+    <g data-tip="<b>c07fa55</b> · files added (end of Chapter 09)<br>test3.py is empty here"><circle cx="270" cy="60" r="10" fill="var(--s1)" stroke="var(--surface)" stroke-width="3"/><text x="270" y="36" text-anchor="middle" class="t-xs t-b">c07fa55</text><text x="270" y="24" text-anchor="middle" class="t-xs">files added</text></g>
+    <path d="M270,60 C320,60 320,140 370,140 L500,140" fill="none" stroke="var(--s2)" stroke-width="3"/>
+    <g data-tip="<b>git checkout -b bappy</b><br>New branch starts from the current commit"><text x="290" y="118" text-anchor="end" class="t-xs">checkout -b bappy</text></g>
+    <g data-tip="<b>e5a90b2</b> · new code added (on bappy)<br>test3.py: print('hello world, this is new')<br>pushed with git push origin bappy"><circle cx="440" cy="140" r="10" fill="var(--s2)" stroke="var(--surface)" stroke-width="3"/><text x="440" y="172" text-anchor="middle" class="t-xs t-b">e5a90b2</text><text x="440" y="188" text-anchor="middle" class="t-xs">new code added</text></g>
+    <g data-tip="<b>main is unchanged</b><br>git checkout main → test3.py is still empty"><text x="440" y="46" text-anchor="middle" class="t-xs" style="fill:var(--good)">main unaffected ✓</text></g>
+    <path d="M500,140 C560,140 560,60 620,60" fill="none" stroke="var(--s2)" stroke-width="3" stroke-dasharray="6 5"/>
+    <g data-tip="<b>merge (beyond the video)</b><br>git merge bappy, or a pull request on GitHub"><circle cx="620" cy="60" r="10" fill="var(--surface)" stroke="var(--s1)" stroke-width="3" stroke-dasharray="3 2"/><text x="620" y="36" text-anchor="middle" class="t-xs t-b">merge</text><text x="620" y="24" text-anchor="middle" class="t-xs">(beyond video)</text></g>
+  </svg>
+  </div>
+  <div class="legend"><span><i style="background:var(--s1)"></i>main</span><span><i style="background:var(--s2)"></i>bappy (feature branch)</span></div>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>List branches: git branch <span class="ts">02:22:04</span></h2>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>~/github-learning-test (main)</span></div>
+<pre><code><span class="p">$</span> git branch
+<span class="g">* main</span>          <span class="c"># only one branch; * marks the one you're on</span></code></pre></div>
+<p>Beyond the video: <code>git branch -a</code> also lists remote branches (<code>remotes/origin/…</code>).</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>Create and switch: git checkout -b <span class="ts">02:22:04</span></h2>
+<p>The instructor considers naming it something like <em>new-feature</em>, then uses his own name, <strong>bappy</strong>.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>~/github-learning-test (main)</span></div>
+<pre><code><span class="p">$</span> git checkout -b bappy      <span class="c"># -b = create the branch, then switch to it</span>
+<span class="o">Switched to a new branch 'bappy'</span>
+<span class="p">$</span> git branch
+<span class="g">* bappy</span>
+<span class="o">  main</span></code></pre></div>
+<div class="grid">
+  <div class="card"><h4><span class="cmd">git checkout -b name</span></h4><p>What the video uses. It creates the branch <strong>from the commit you're on</strong> and switches to it.</p></div>
+  <div class="card"><h4><span class="cmd">git switch -c name</span></h4><p>Beyond the video: the newer equivalent. <code>switch</code> only changes branches, whereas <code>checkout</code> also restores files, so it's harder to misuse.</p></div>
+</div>
+<div class="callout beyond"><span class="label">Naming branches in real teams</span><p>Name branches after the <em>work</em>, not the person: <code>feature/drift-monitoring</code>, <code>fix/scaler-nan</code>, <code>exp/xgboost-tuning</code>. Many CI setups use these prefixes to decide what to run.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>Commit and push to the new branch <span class="ts">02:23:07</span></h2>
+<p>On <code>bappy</code>, the instructor edits <code>test3.py</code> (a hello-world print plus "this is new"), then runs the Chapter 09 cycle. The only difference is the <strong>branch name in the push</strong>.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>~/github-learning-test (bappy)</span></div>
+<pre><code><span class="p">$</span> git add .
+<span class="p">$</span> git commit -m "new code added"
+<span class="p">$</span> git push origin bappy      <span class="c"># push to the NEW branch, not main</span>
+<span class="o">To https://github.com/&lt;you&gt;/github-learning-test.git
+ * [new branch]      bappy -&gt; bappy</span></code></pre></div>
+<p>On GitHub, the repo page still shows <strong>main</strong> by default. Open the <strong>branch dropdown</strong> and choose <code>bappy</code>: there <code>test3.py</code> contains the new code. On <code>main</code> it doesn't.</p>
+<div class="callout beyond"><span class="label">Tip</span><p><code>git push -u origin bappy</code> also sets the upstream, so afterwards plain <code>git push</code> and <code>git pull</code> know which remote branch to use. GitHub also shows a <strong>"Compare &amp; pull request"</strong> banner after you push a new branch. That's where merging starts (<a href="#s7">below</a>).</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>Switch back: main is untouched <span class="ts">02:24:11</span></h2>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>~/github-learning-test (bappy)</span></div>
+<pre><code><span class="p">$</span> git checkout main
+<span class="o">Switched to branch 'main'</span>
+<span class="p">$</span> cat test3.py
+<span class="c">                                # empty: the change exists only on bappy</span></code></pre></div>
+<p>Switching branches <strong>changes the files in your folder</strong> to match that branch. Try it:</p>
+
+<div class="switcher" id="sw">
+  <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+    <span class="t-b" style="font-size:13px">$ git checkout</span>
+    <div class="seg" role="group" aria-label="Choose branch">
+      <button type="button" data-b="main" aria-pressed="true">main</button>
+      <button type="button" data-b="bappy" aria-pressed="false">bappy</button>
+    </div>
+    <span id="sw-msg" style="font-size:13px;color:var(--ink-2)"></span>
+  </div>
+  <div class="editor">
+    <div class="tab"><span>📄 test3.py</span><span id="sw-br"></span></div>
+    <pre><code id="sw-code"></code></pre>
+  </div>
+  <div class="editor">
+    <div class="tab"><span>📄 test.py</span><span>same on both branches</span></div>
+    <pre><code>print("feature 1")
+print("feature 2")</code></pre>
+  </div>
+</div>
+
+<div class="callout key"><span class="label">The point of the demo</span><p>You changed code <strong>without modifying the main code</strong>. The branch took the change, and <code>main</code> stayed exactly as it was. Many branches can carry different work at the same time.</p></div>
+<div class="callout beyond"><span class="label">Watch out</span><p>Commit (or <code>git stash</code>) your work before switching. Git refuses to switch if uncommitted changes would be overwritten. Uncommitted, non-conflicting changes stay in your folder and come with you to the other branch.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>Big projects: TensorFlow's branches <span class="ts">02:25:14</span></h2>
+<p>The instructor goes back to TensorFlow's GitHub repo, which has <strong>many branches</strong>. A package that large can't have everyone committing straight to the main line, so work happens on separate branches and releases are made from them (TensorFlow keeps release branches such as <code>r2.17</code>).</p>
+<p>He closes the Git series by saying that <strong>these concepts are what you need to implement projects</strong>. Git has more features, and you can explore them if you're interested. The course moves on to DVC next.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>Merging and pull requests</h2>
+<div class="callout wrong"><span class="label">What the video doesn't cover</span><p>A branch is only useful if its work eventually reaches <code>main</code>. The video never merges <code>bappy</code>, so here are the two ways to do it.</p></div>
+
+<div class="grid">
+  <div class="card"><span class="tag">OPTION A · LOCAL</span><h4>git merge</h4>
+<pre><code>git checkout main
+git pull                 <span class="c"># be up to date</span>
+git merge bappy          <span class="c"># bring bappy's commits in</span>
+git push origin main
+git branch -d bappy      <span class="c"># optional cleanup</span></code></pre></div>
+  <div class="card" style="border-color:var(--accent)"><span class="tag">OPTION B · TEAMS USE THIS</span><h4>Pull request (PR) on GitHub</h4>
+<ol style="margin:0">
+  <li>Push the branch (done in the video).</li>
+  <li>Click <strong>Compare &amp; pull request</strong>: base <code>main</code> ← compare <code>bappy</code>.</li>
+  <li>Teammates <strong>review</strong> the diff and comment. <strong>CI runs tests</strong> automatically.</li>
+  <li>Click <strong>Merge pull request</strong>, then delete the branch.</li>
+  <li>Locally: <code>git checkout main &amp;&amp; git pull</code>.</li>
+</ol></div>
+</div>
+
+<figure>
+  <p class="fig-title">Pull request lifecycle</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 126" role="img" aria-label="Pull request flow: push branch, open PR, review plus CI checks, merge into main, CD deploys">
+    <defs><marker id="m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g class="t-xs">
+      <rect x="6" y="30" width="118" height="50" rx="8" class="box"/><text x="65" y="52" text-anchor="middle" class="t-b">push branch</text><text x="65" y="68" text-anchor="middle">origin bappy</text>
+      <rect x="156" y="30" width="118" height="50" rx="8" class="box"/><text x="215" y="52" text-anchor="middle" class="t-b">open PR</text><text x="215" y="68" text-anchor="middle">bappy → main</text>
+      <rect x="306" y="30" width="138" height="50" rx="8" fill="var(--warn-soft)" stroke="var(--s4)"/><text x="375" y="52" text-anchor="middle" class="t-b">review + CI ✓</text><text x="375" y="68" text-anchor="middle">tests, lint, build</text>
+      <rect x="476" y="30" width="118" height="50" rx="8" fill="var(--good-soft)" stroke="var(--good)"/><text x="535" y="52" text-anchor="middle" class="t-b">merge</text><text x="535" y="68" text-anchor="middle">into main</text>
+      <rect x="626" y="30" width="128" height="50" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="690" y="52" text-anchor="middle" class="t-b">CD deploys</text><text x="690" y="68" text-anchor="middle">new model/API live</text>
+    </g>
+    <path d="M124,55 L154,55" class="edge" marker-end="url(#m1)"/><path d="M274,55 L304,55" class="edge" marker-end="url(#m1)"/><path d="M444,55 L474,55" class="edge" marker-end="url(#m1)"/><path d="M594,55 L624,55" class="edge" marker-end="url(#m1)"/>
+    <path d="M375,82 Q375,108 275,108 Q215,108 215,84" fill="none" stroke="var(--s8)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#m1)"/>
+    <text x="388" y="112" class="t-xs" style="fill:var(--s8)">changes requested → push more commits</text>
+  </svg>
+  </div>
+  <figcaption>This is the "team lead pulls and reviews" step from Chapter 07, done properly. It also hands off to the CI/CD chapters later in the course (7:20:16 onward).</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>Merge conflicts</h2>
+<p>If <code>main</code> and <code>bappy</code> both changed <strong>the same lines</strong> of <code>test3.py</code>, Git can't decide which to keep, so it stops and marks the file:</p>
+<div class="term conflict"><div class="bar"><i></i><i></i><i></i><span>test3.py during git merge bappy</span></div>
+<pre><code><span class="hl1">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+print("hello from main")
+</span>=======
+<span class="hl2">print("hello world, this is new")
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; bappy</span></code></pre></div>
+<ol>
+  <li>Edit the file to the version you want (keep one side, the other, or both) and <strong>delete the marker lines</strong>. VS Code offers <em>Accept Current / Incoming / Both</em> buttons.</li>
+  <li><code>git add test3.py</code></li>
+  <li><code>git commit</code> (Git pre-fills the merge message), then <code>git push</code>.</li>
+</ol>
+<p class="fig-sub">Pull often and keep branches short-lived: small, frequent merges mean fewer and simpler conflicts. <code>git merge --abort</code> cancels a merge that went wrong.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>Branching workflow for ML projects</h2>
+<div class="callout beyond"><span class="label">Beyond the video · a practical setup</span>
+<div class="table-wrap" style="margin:8px 0 0">
+<table>
+  <thead><tr><th>Branch</th><th>Purpose</th><th>What CI/CD does</th></tr></thead>
+  <tbody>
+    <tr><td><code>main</code></td><td>Always deployable. Protected: changes only through reviewed PRs.</td><td>Build the Docker image → deploy to production</td></tr>
+    <tr><td><code>feature/*</code>, <code>fix/*</code></td><td>One task each, short-lived, merged by PR</td><td>Tests, lint, a quick training smoke test</td></tr>
+    <tr><td><code>exp/*</code></td><td>Model experiments (new algorithm, features)</td><td>Run the pipeline, log metrics to MLflow, post them in the PR</td></tr>
+    <tr><td>tags <code>v1.2.0</code></td><td>Mark released versions</td><td>Tag the image and model with the version for rollback</td></tr>
+  </tbody>
+</table>
+</div>
+<p style="margin-top:10px">This is <strong>GitHub Flow</strong> (short feature branches plus PRs into <code>main</code>), the most common model for small and medium teams. <em>Git Flow</em> adds long-lived <code>develop</code> and <code>release</code> branches for projects with scheduled releases. On GitHub, set up <strong>branch protection</strong> on <code>main</code> (Settings → Branches) to require reviews and passing checks.</p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>Git series cheat sheet (Chapters 07–10)</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Stage</th><th>Command</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td>Setup</td><td class="cmd">git clone &lt;url&gt;</td><td>Copy a GitHub repo to your machine (Ch 08)</td></tr>
+    <tr><td>Inspect</td><td class="cmd">git status</td><td>What changed or is staged (Ch 09)</td></tr>
+    <tr><td>Save</td><td class="cmd">git add . / git add &lt;file&gt;</td><td>Stage changes (Ch 09)</td></tr>
+    <tr><td>Save</td><td class="cmd">git commit -m "msg"</td><td>Create a version (Ch 09)</td></tr>
+    <tr><td>Share</td><td class="cmd">git push origin main</td><td>Upload to GitHub (Ch 09)</td></tr>
+    <tr><td>Share</td><td class="cmd">git pull</td><td>Get teammates' commits (Ch 09)</td></tr>
+    <tr><td>Branch</td><td class="cmd">git branch</td><td>List branches; * marks the current one (Ch 10)</td></tr>
+    <tr><td>Branch</td><td class="cmd">git checkout -b &lt;name&gt;</td><td>Create and switch to a branch (Ch 10)</td></tr>
+    <tr><td>Branch</td><td class="cmd">git push origin &lt;name&gt;</td><td>Publish the branch to GitHub (Ch 10)</td></tr>
+    <tr><td>Branch</td><td class="cmd">git checkout &lt;name&gt;</td><td>Switch branches (Ch 10)</td></tr>
+    <tr><td>Merge</td><td class="cmd">git merge &lt;name&gt;</td><td>Bring a branch into the current one (beyond)</td></tr>
+    <tr><td>Merge</td><td class="cmd">git branch -d &lt;name&gt;</td><td>Delete a merged branch (beyond)</td></tr>
+    <tr><td>Park work</td><td class="cmd">git stash / git stash pop</td><td>Set aside uncommitted work and bring it back (beyond)</td></tr>
+    <tr><td>History</td><td class="cmd">git log --oneline --graph --all</td><td>Draw the branch graph in the terminal (beyond)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="hands-on"><span class="num">▶</span>Hands-on files: what we built</h2>
+<div class="handson">
+<span class="label">Hands-on notebook · Part 10 of the Git notebook</span>
+<div class="files"><a href="https://github.com/hemanthreddyllm/mlops-course-notes/blob/main/projects/ch08_10_git/git_workflow_practice.ipynb">projects/ch08_10_git/git_workflow_practice.ipynb</a></div>
+<ul>
+  <li><strong>10.1–10.2</strong> <code>git checkout -b bappy</code>, commit "new code added", <code>git push origin bappy</code>. <code>git ls-remote --heads</code> then lists both <code>refs/heads/bappy</code> and <code>refs/heads/main</code>.</li>
+  <li><strong>10.3</strong> Switching branches changes the files: <em>on main, test3.py has 0 lines · on bappy, test3.py has 2 lines</em>.</li>
+  <li><strong>10.4</strong> The merge the video skips: <code>git merge bappy</code> (fast-forward), push, then delete the branch locally and on the remote.</li>
+  <li><strong>10.5</strong> A real <strong>merge conflict</strong>, with markers, then resolved by keeping both greetings.</li>
+  <li><strong>10.6</strong> The whole history as a graph:</li>
+</ul>
+<div class="result">*   Merge branch 'feature/greeting'
+|\
+| * feature: new greeting
+* | main: different greeting
+|/
+* new code added
+* files added
+* Revert "buggy change"
+* buggy change
+…</div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s11"><span class="num">11</span>Interview questions</h2>
+<details class="qa"><summary>What is a branch in Git, technically?</summary>
+<p>A lightweight, movable pointer to a commit. Creating one only writes a small reference, which is why branching is cheap. <code>HEAD</code> points to the branch you're currently on, and each new commit moves that branch forward.</p></details>
+<details class="qa"><summary>Merge vs rebase?</summary>
+<p><code>merge</code> joins histories with a merge commit and preserves exactly what happened. <code>rebase</code> replays your commits on top of the target branch, giving a linear history but rewriting commit IDs. Rule of thumb: rebase your own unpushed branch to tidy it; never rebase commits others already have.</p></details>
+<details class="qa"><summary>How do you resolve a merge conflict?</summary>
+<p>Open the conflicted files, choose the correct content between the <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code> and <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> markers, remove the markers, run the tests, <code>git add</code> the files and commit. If needed, <code>git merge --abort</code> returns to the pre-merge state.</p></details>
+<details class="qa"><summary>What is a pull request and why use one?</summary>
+<p>A request on GitHub to merge one branch into another. It gives code review, discussion, a visible diff, and automated CI checks before anything reaches <code>main</code>. With branch protection it's the only way to change production code.</p></details>
+<details class="qa"><summary>Describe a branching strategy for an ML team.</summary>
+<p>GitHub Flow: protected <code>main</code> that is always deployable, short-lived <code>feature/</code> and <code>exp/</code> branches, and PRs that trigger tests plus a pipeline run with metrics logged to MLflow. Merging to <code>main</code> triggers CD to build and deploy, and releases are tagged so models and images can be rolled back.</p></details>
+<details class="qa"><summary>git checkout vs git switch?</summary>
+<p><code>checkout</code> is overloaded: it switches branches <em>and</em> restores files. Git 2.23 split it into <code>switch</code> (branches: <code>switch -c</code> creates) and <code>restore</code> (files). Both still work.</p></details>
+<details class="qa"><summary>You committed to main by mistake instead of a feature branch (not pushed yet). Fix it.</summary>
+<p><code>git branch feature/x</code> (keeps the commit on a new branch), <code>git reset --hard origin/main</code> (moves main back to the remote), then <code>git switch feature/x</code>. Since nothing was pushed, rewriting local main is safe.</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s12"><span class="num">12</span>Recap</h2>
+<ul>
+  <li>Branches let another team, or you, add work <strong>without changing <code>main</code></strong>.</li>
+  <li><code>git branch</code> lists branches. <code>git checkout -b bappy</code> creates one and switches to it.</li>
+  <li>Commit as usual, then <code>git push origin bappy</code>. On GitHub, pick the branch from the dropdown to see its code.</li>
+  <li><code>git checkout main</code> switches back, and the files return to main's version (<code>test3.py</code> is empty there).</li>
+  <li>Large projects like TensorFlow use many branches. These basics are enough for the course.</li>
+  <li>Beyond the video: finish a branch with <strong>git merge</strong> or, in teams, a <strong>pull request</strong> with review and CI. Resolve conflicts by editing the marked lines.</li>
+</ul>
+
+<div class="pager">
+  <a href="09_code_management_with_git.html"><small>← Previous</small>09 · Code management using Git</a>
+  <a class="next" href="11_introduction_to_dvc.html"><small>Next →</small>11 · Introduction to DVC</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+<script>
+(function () {
+  const content = {
+    main: { code: '# (empty)', msg: "Switched to branch 'main'", note: 'on main' },
+    bappy: { code: 'print("hello world")\nprint("this is new")', msg: "Switched to branch 'bappy'", note: 'on bappy · commit "new code added"' },
+  };
+  const btns = document.querySelectorAll('#sw .seg button');
+  function show(b) {
+    btns.forEach(x => x.setAttribute('aria-pressed', String(x.dataset.b === b)));
+    document.getElementById('sw-code').textContent = content[b].code;
+    document.getElementById('sw-msg').textContent = content[b].msg;
+    document.getElementById('sw-br').textContent = content[b].note;
+  }
+  btns.forEach(x => x.addEventListener('click', () => show(x.dataset.b)));
+  show('main');
+})();
+</script>
+</body>
+</html>

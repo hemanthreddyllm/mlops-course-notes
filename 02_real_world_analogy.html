@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>02 · MLOps Through a Real-World Analogy — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 02</span></div>
+<div class="eyebrow">Chapter 02 · Understand MLOps with a Real-World Analogy</div>
+<h1>The home-kitchen chicken business</h1>
+<p class="lede">The instructor explains every MLOps component with one story: a student who cooks great chicken, starts selling it on a food-delivery app, and has to keep changing how the business runs as orders grow. Each problem in the story matches a problem in ML systems, and each fix matches an MLOps component.</p>
+<div class="meta">
+  <span class="chip">Video 00:04:14 – 00:39:14</span>
+  <span class="chip">Analogy → 7 MLOps components</span>
+  <span class="chip">Example project: US Visa prediction</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">The story in one picture</a></li>
+    <li><a href="#s2">Stage by stage</a></li>
+    <li><a href="#s3">Growth curve: saturation and recovery</a></li>
+    <li><a href="#s4">The final automated architecture</a></li>
+    <li><a href="#s5">The 7 components of MLOps</a></li>
+    <li><a href="#s6">Mapping the analogy to MLOps</a></li>
+    <li><a href="#s7">Mapping to a real ML project</a></li>
+    <li><a href="#s8">Components → tools</a></li>
+    <li><a href="#s9">Interview questions</a></li>
+    <li><a href="#s10">Recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>The story in one picture</h2>
+<p><strong>Setup:</strong> You're a college student (engineering, CS, data science…) with a side skill: you cook chicken really well. You invite <strong>10 friends</strong>, they love it and give great feedback. That makes you think: <em>"Can I start a small business?"</em> Food-delivery platforms such as <strong>Zomato</strong> and <strong>Swiggy</strong> make that easy, so you open an account and list your "special chicken". A delivery person picks orders up and takes them to customers.</p>
+<p>Then orders keep growing, and each jump in orders brings a new problem:</p>
+
+<figure>
+  <p class="fig-title">Each jump in orders forces a new fix</p>
+  <p class="fig-sub">Hover a stage for the problem and the fix.</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 210" role="img" aria-label="Six stages of the business, from manual cooking to an automated, experimenting kitchen">
+    <defs><marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <line x1="30" y1="150" x2="730" y2="150" class="axis"/>
+    <text x="30" y="200" class="t-xs">orders / day →</text>
+    <g data-tip="<b>Stage 1 · 1–2 orders/day</b><br>Problem: none yet.<br>Fix: cook everything yourself.">
+      <rect x="20" y="30" width="105" height="92" rx="8" class="box"/><text x="72" y="54" text-anchor="middle" class="t-sm t-b">Stage 1</text>
+      <text x="72" y="74" text-anchor="middle" class="t-xs">Manual</text><text x="72" y="92" text-anchor="middle" class="t-xs">cooking</text>
+      <circle cx="72" cy="150" r="5" fill="var(--s1)"/><text x="72" y="172" text-anchor="middle" class="t-xs">1–2</text></g>
+    <g data-tip="<b>Stage 2 · 4–5 orders/day</b><br>Problem: more work.<br>Fix: work harder, more market trips.">
+      <rect x="140" y="30" width="105" height="92" rx="8" class="box"/><text x="192" y="54" text-anchor="middle" class="t-sm t-b">Stage 2</text>
+      <text x="192" y="74" text-anchor="middle" class="t-xs">Work</text><text x="192" y="92" text-anchor="middle" class="t-xs">harder</text>
+      <circle cx="192" cy="150" r="5" fill="var(--s1)"/><text x="192" y="172" text-anchor="middle" class="t-xs">4–5</text></g>
+    <g data-tip="<b>Stage 3 · 10–15 orders/day</b><br>Problem: can't go to the market 15× a day.<br>Fix: shops deliver to an inventory room monthly.<br>= DATA MANAGEMENT">
+      <rect x="260" y="30" width="105" height="92" rx="8" class="box"/><rect x="260" y="30" width="105" height="5" rx="2" fill="var(--s1)"/><text x="312" y="54" text-anchor="middle" class="t-sm t-b">Stage 3</text>
+      <text x="312" y="74" text-anchor="middle" class="t-xs">Suppliers +</text><text x="312" y="92" text-anchor="middle" class="t-xs">inventory</text>
+      <circle cx="312" cy="150" r="5" fill="var(--s1)"/><text x="312" y="172" text-anchor="middle" class="t-xs">10–15</text></g>
+    <g data-tip="<b>Stage 4 · 30–40 orders/day</b><br>Problem: the new hire (Alex) cooks differently → bad reviews.<br>Fix: a shared RECIPE BOOK.<br>= VERSION CONTROL">
+      <rect x="380" y="30" width="105" height="92" rx="8" class="box"/><rect x="380" y="30" width="105" height="5" rx="2" fill="var(--s1)"/><text x="432" y="54" text-anchor="middle" class="t-sm t-b">Stage 4</text>
+      <text x="432" y="74" text-anchor="middle" class="t-xs">Hire Alex +</text><text x="432" y="92" text-anchor="middle" class="t-xs">recipe book</text>
+      <circle cx="432" cy="150" r="5" fill="var(--s1)"/><text x="432" y="172" text-anchor="middle" class="t-xs">30–40</text></g>
+    <g data-tip="<b>Stage 5 · 50–80 orders/day</b><br>Problem: small kitchen, hiring/renting is costly.<br>Fix: an automatic cooking MACHINE (40 per batch).<br>= AUTOMATION / PIPELINE">
+      <rect x="500" y="30" width="105" height="92" rx="8" class="box"/><rect x="500" y="30" width="105" height="5" rx="2" fill="var(--s1)"/><text x="552" y="54" text-anchor="middle" class="t-sm t-b">Stage 5</text>
+      <text x="552" y="74" text-anchor="middle" class="t-xs">Cooking</text><text x="552" y="92" text-anchor="middle" class="t-xs">machine</text>
+      <circle cx="552" cy="150" r="5" fill="var(--s1)"/><text x="552" y="172" text-anchor="middle" class="t-xs">50–80</text></g>
+    <g data-tip="<b>Stage 6 · plateau → 100–200/day</b><br>Problem: growth stalls, customers are bored.<br>Fix: research room + experiments, auto-update menu &amp; machine, monitor reviews, re-experiment.<br>= EXPERIMENTS, CI/CD, MONITORING, RETRAINING">
+      <rect x="620" y="30" width="120" height="92" rx="8" class="box-2" stroke="var(--accent)"/><rect x="620" y="30" width="120" height="5" rx="2" fill="var(--s1)"/><text x="680" y="54" text-anchor="middle" class="t-sm t-b">Stage 6</text>
+      <text x="680" y="74" text-anchor="middle" class="t-xs">Experiment +</text><text x="680" y="92" text-anchor="middle" class="t-xs">monitor + loop</text>
+      <circle cx="680" cy="150" r="5" fill="var(--s1)"/><text x="680" y="172" text-anchor="middle" class="t-xs">100–200</text></g>
+  </svg>
+  </div>
+  <figcaption>The blue bar marks the stages where a <b>new MLOps component</b> shows up.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>Stage by stage</h2>
+
+<h3>Stage 1: Launch (1–2 orders/day) <span class="ts">06:20</span></h3>
+<p>You list "special chicken" on Zomato. A delivery person picks up each order. With one or two orders a day you handle everything yourself, and nothing is a problem yet.</p>
+
+<h3>Stage 2: Work harder (4–5 orders/day) <span class="ts">07:24</span></h3>
+<p>People like the food, and after a few weeks you get 4–5 orders a day. You go to the market, buy <strong>chicken, potato and spicy masala</strong>, combine them into your recipe and cook more. It's still manageable if you put in extra effort.</p>
+
+<h3>Stage 3: Suppliers + inventory (10–15 orders/day) <span class="ts">09:32</span></h3>
+<div class="grid">
+  <div class="card"><h4 style="color:var(--bad)">Problem</h4><p>After a month you get 10–15 orders a day. Going to the market 10–15 times a day while also studying is impossible. You need <strong>more business with less effort</strong>.</p></div>
+  <div class="card"><h4 style="color:var(--good)">Fix</h4><p>Contract a <strong>chicken shop, a potato shop and a masala shop</strong>. On the first day of each month they deliver enough ingredients for the month to an <strong>inventory room</strong> in your home. The time you used to spend on market trips now goes into cooking.</p></div>
+</div>
+<div class="callout key"><span class="label">Maps to → Data management</span><p>Ingredients are the <strong>data</strong>. Different shops are different <strong>data sources</strong>. The inventory room is a central store (a <strong>data warehouse</strong>). Instead of fetching raw material by hand each time, it arrives reliably in one place.</p></div>
+
+<h3>Stage 4: Hire a junior + recipe book (≈ 30–40 orders/day) <span class="ts">12:47</span></h3>
+<div class="grid">
+  <div class="card"><h4 style="color:var(--bad)">Problem</h4><p>Demand grows again, so you hire a junior, <strong>Alex</strong>, and split orders (about 20 each). Soon <strong>bad reviews</strong> start coming in, all from Alex's orders. He doesn't know your special recipe and cooks his own way, so customers don't get the taste they expect.</p></div>
+  <div class="card"><h4 style="color:var(--good)">Fix</h4><p>Write a <strong>Recipe Book (RB)</strong>, like a restaurant's menu guide with exact instructions. Both of you cook <strong>from the same book</strong>, so every dish tastes the same. Good reviews return, and the business grows steadily.</p></div>
+</div>
+<div class="callout key"><span class="label">Maps to → Version control</span><p>Several people working on the same product need <strong>one shared source of truth</strong>. In software that is Git/GitHub: everyone works from the same versioned code, so nobody's output drifts from the agreed "recipe".</p></div>
+
+<h3>Stage 5: Buy a cooking machine (50–80 orders/day) <span class="ts">17:01</span></h3>
+<div class="grid">
+  <div class="card"><h4 style="color:var(--bad)">Problem</h4><p>Orders climb to 50–60, then 70–80 a day. You could keep hiring, but a <strong>home kitchen is small</strong>, and renting a bigger kitchen <strong>raises costs</strong>, which you want to avoid.</p></div>
+  <div class="card"><h4 style="color:var(--good)">Fix</h4><p>Buy an <strong>automatic cooking machine</strong>. It reads the <strong>recipe book</strong>, takes <strong>ingredients from inventory</strong>, cooks and outputs about <strong>40 portions per batch</strong>. It can run many batches a day. Only one junior is needed to load ingredients, hand orders to delivery, and <strong>monitor</strong> the machine.</p></div>
+</div>
+<div class="callout key"><span class="label">Maps to → Automation / pipeline</span><p>The machine repeats the <strong>same ordered steps</strong> every time: take ingredients → follow recipe → cook → deliver. The instructor's definition: <em>"a pipeline means steps of a task"</em> that run in a fixed order, repeatedly, without manual work.</p></div>
+
+<h3>Stage 6: Saturation → experiments → continuous updates <span class="ts">20:15</span></h3>
+<div class="grid">
+  <div class="card"><h4 style="color:var(--bad)">Problem</h4><p>You <strong>monitor</strong> your growth graph and see it <strong>flatten</strong> (a saturation point). Customers are <strong>bored</strong>: after ordering the same dish 5–7 times, people want a different taste.</p></div>
+  <div class="card"><h4 style="color:var(--good)">Fix</h4><p>Set up a small <strong>research room</strong> with a sample of the inventory. Run <strong>experiments</strong> (below), pick the best recipe and launch it as a new dish.</p></div>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Experiment</th><th>Change tried</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>Ex 1</td><td>More potato</td><td>Tested</td></tr>
+    <tr><td>Ex 2</td><td>Sweet masala instead of spicy</td><td>Tested</td></tr>
+    <tr><td><strong>Ex 3</strong></td><td>More potato + sweet-spicy masala + a little more salt</td><td><strong>Best taste → selected</strong></td></tr>
+    <tr><td>Ex 4</td><td>Extra spicy</td><td>Tested</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Experiment 3 becomes a new menu item, <strong>"Sweet Chicken"</strong>, next to the original "Chicken Special". Selecting it triggers two updates automatically:</p>
+<ol>
+  <li>The <strong>Zomato menu</strong> is updated, so customers see and try the new dish.</li>
+  <li>The <strong>recipe book</strong> is updated with Ex 3's ingredients, so the <strong>machine</strong> starts cooking the new dish.</li>
+</ol>
+<p>Customers try it, reviews are good, and the growth curve rises again. A person keeps <strong>watching reviews</strong>. If they turn bad, the <strong>experiment cycle starts again</strong>. The business, which began at 1–2 orders, now handles <strong>100–200 orders a day</strong> almost entirely automatically.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>Growth curve: saturation and recovery <span class="ts">20:15</span></h2>
+<p>The instructor draws a monitoring graph: growth, then a plateau, then renewed growth after the new recipe. Below is that sketch using the order numbers from the story.</p>
+<figure>
+  <p class="fig-title">Orders per day over the life of the business</p>
+  <p class="fig-sub">Illustrative. Values follow the story's order ranges; hover for the stage.</p>
+  <svg data-linechart='{
+    "x":["Launch","Wk 2","Wk 4","Mo 1","Mo 2","Mo 3","Mo 4","Mo 5","Mo 6","Mo 7","Mo 8","Mo 9"],
+    "series":[{"name":"Orders/day","color":"var(--s1)","values":[2,5,15,35,55,62,63,63,62,95,140,190]}],
+    "ymax":200, "xlabel":"time", "ylabel":"orders per day",
+    "bands":[{"from":5,"to":8,"label":"saturation (customers bored)"}],
+    "marks":[{"i":2,"label":"suppliers + inventory","anchor":"end","dx":-6},{"i":3,"label":"hire Alex + recipe book","anchor":"end","dx":-6},{"i":4,"label":"machine","dy":-12},{"i":9,"label":"Ex 3 → Sweet Chicken","anchor":"end","dx":-8,"dy":-6}],
+    "notes":["Stage 1: manual","Stage 2: work harder","Stage 3: data management","Stage 4: version control","Stage 5: automation","Plateau begins","Monitoring flags flat growth","Research room: experiments","Best experiment selected","CI/CD: menu + machine updated","Monitoring: reviews good","Scaled to 100–200/day"]
+  }' role="img" aria-label="Line chart: orders per day rise from 2 to about 60, plateau for three months, then rise to about 190 after the new recipe is launched"></svg>
+  <figcaption><b>Lesson:</b> a system that works today will plateau or degrade (customers change, or in ML, <b>data changes</b>). Monitoring detects this, and experimentation plus retraining brings growth back.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>The final automated architecture</h2>
+<p>Putting all six stages together gives this architecture, which the instructor builds up on the board:</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 420" role="img" aria-label="Kitchen architecture: shops to inventory to machine with recipe book to Zomato to delivery to customers; reviews monitored; research room experiments update the recipe book and menu">
+    <defs>
+      <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker>
+      <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker>
+    </defs>
+    <!-- shops -->
+    <text x="20" y="24" class="t-xs t-b">SHOPS (data sources)</text>
+    <rect x="20" y="34" width="110" height="34" rx="6" class="box"/><text x="75" y="56" text-anchor="middle" class="t-sm">🐔 Chicken</text>
+    <rect x="20" y="76" width="110" height="34" rx="6" class="box"/><text x="75" y="98" text-anchor="middle" class="t-sm">🥔 Potato</text>
+    <rect x="20" y="118" width="110" height="34" rx="6" class="box"/><text x="75" y="140" text-anchor="middle" class="t-sm">🌶 Masala</text>
+    <!-- inventory -->
+    <rect x="180" y="62" width="120" height="62" rx="8" class="box"/><text x="240" y="88" text-anchor="middle" class="t-sm t-b">Inventory</text><text x="240" y="106" text-anchor="middle" class="t-xs">≈ data warehouse</text>
+    <path d="M130,51 L178,82" class="edge" marker-end="url(#a2)"/><path d="M130,93 L178,93" class="edge" marker-end="url(#a2)"/><path d="M130,135 L178,104" class="edge" marker-end="url(#a2)"/>
+    <!-- machine -->
+    <rect x="350" y="52" width="140" height="82" rx="8" class="box-2" stroke="var(--s1)"/><text x="420" y="80" text-anchor="middle" class="t-sm t-b">Cooking machine</text><text x="420" y="98" text-anchor="middle" class="t-xs">≈ ML pipeline</text><text x="420" y="116" text-anchor="middle" class="t-xs">40 / batch</text>
+    <path d="M300,93 L348,93" class="edge" marker-end="url(#a2)"/>
+    <!-- recipe book -->
+    <rect x="335" y="170" width="170" height="44" rx="8" class="box"/><text x="420" y="190" text-anchor="middle" class="t-sm t-b">📖 Recipe book</text><text x="420" y="206" text-anchor="middle" class="t-xs">≈ versioned config/model</text>
+    <path d="M420,170 L420,136" class="edge" marker-end="url(#a2)"/>
+    <!-- zomato & delivery -->
+    <rect x="540" y="52" width="100" height="40" rx="8" class="box"/><text x="590" y="77" text-anchor="middle" class="t-sm t-b">Delivery</text>
+    <rect x="540" y="104" width="100" height="40" rx="8" class="box"/><text x="590" y="129" text-anchor="middle" class="t-sm t-b">Zomato menu</text>
+    <path d="M490,82 L538,74" class="edge" marker-end="url(#a2)"/><path d="M490,110 L538,120" class="edge" marker-end="url(#a2)"/>
+    <rect x="670" y="80" width="80" height="40" rx="8" class="box"/><text x="710" y="105" text-anchor="middle" class="t-sm t-b">Customers</text>
+    <path d="M640,124 L668,108" class="edge" marker-end="url(#a2)"/><path d="M640,72 L668,92" class="edge" marker-end="url(#a2)"/>
+    <!-- monitoring -->
+    <rect x="620" y="250" width="130" height="54" rx="8" class="box"/><text x="685" y="273" text-anchor="middle" class="t-sm t-b">👀 Monitor reviews</text><text x="685" y="291" text-anchor="middle" class="t-xs">≈ monitoring</text>
+    <path d="M710,120 L700,248" class="edge" marker-end="url(#a2)"/><text x="700" y="172" text-anchor="end" class="t-xs">⭐ reviews</text>
+    <!-- research room -->
+    <rect x="200" y="300" width="300" height="100" rx="10" class="box-2" stroke-dasharray="5 4"/>
+    <text x="350" y="292" text-anchor="middle" class="t-sm t-b">🔬 Research room ≈ experiment tracking</text>
+    <rect x="215" y="336" width="60" height="30" rx="6" class="box"/><text x="245" y="356" text-anchor="middle" class="t-xs">Ex 1</text>
+    <rect x="285" y="336" width="60" height="30" rx="6" class="box"/><text x="315" y="356" text-anchor="middle" class="t-xs">Ex 2</text>
+    <rect x="355" y="336" width="60" height="30" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="385" y="356" text-anchor="middle" class="t-xs t-b">Ex 3 ✓</text>
+    <rect x="425" y="336" width="60" height="30" rx="6" class="box"/><text x="455" y="356" text-anchor="middle" class="t-xs">Ex 4</text>
+    <text x="350" y="388" text-anchor="middle" class="t-xs">sample of inventory → try variations → pick best</text>
+    <path d="M240,124 L240,270" class="edge"/><path d="M240,270 L240,298" class="edge" marker-end="url(#a2)"/><text x="190" y="220" class="t-xs">sample</text>
+    <path d="M620,286 Q560,300 502,330" class="edge" marker-end="url(#a2)"/><text x="530" y="280" class="t-xs">bad reviews →</text><text x="530" y="294" class="t-xs">retrain</text>
+    <!-- CI/CD arrows -->
+    <path d="M385,336 L412,216" class="edge-accent" marker-end="url(#a3)"/>
+    <path d="M400,336 Q560,260 588,146" class="edge-accent" marker-end="url(#a3)"/>
+    <text x="575" y="212" class="t-xs" style="fill:var(--accent)">CI/CD: auto-update</text><text x="575" y="226" class="t-xs" style="fill:var(--accent)">recipe + menu</text>
+  </svg>
+  </div>
+  <figcaption>The <b>blue arrows</b> are CI/CD: choosing an experiment updates the production recipe (the machine) and the storefront (Zomato) automatically. The loop from reviews back to the research room is <b>monitoring → retraining</b>.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>The 7 components of MLOps <span class="ts">29:42</span></h2>
+<p>After the story, the instructor lists the core components of MLOps:</p>
+<div class="grid">
+  <div class="card"><span class="tag">1</span><h4>Data management</h4><p>Getting data from many sources into one reliable place.</p></div>
+  <div class="card"><span class="tag">2</span><h4>Version control</h4><p>Tracking versions of code (and data) so people can collaborate and roll back.</p></div>
+  <div class="card"><span class="tag">3</span><h4>Automation / pipeline</h4><p>Ordered, repeatable steps that run without manual work.</p></div>
+  <div class="card"><span class="tag">4</span><h4>Experiment tracking</h4><p>Trying many variants, logging them all, choosing the best.</p></div>
+  <div class="card"><span class="tag">5</span><h4>CI/CD</h4><p>Continuous integration and continuous delivery/deployment: changes go live automatically.</p></div>
+  <div class="card"><span class="tag">6</span><h4>Monitoring</h4><p>Watching the live system and its quality.</p></div>
+  <div class="card"><span class="tag">7</span><h4>Retraining</h4><p>Re-running the pipeline when quality drops.</p></div>
+  <div class="card" style="border-style:dashed"><span class="tag">+ extras</span><h4>Provisioning, security</h4><p>Mentioned but set aside for now: infrastructure provisioning and security layers.</p></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>Mapping the analogy to MLOps <span class="ts">30:48</span></h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>#</th><th>MLOps component</th><th>In the kitchen story</th><th>In an ML system</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td><strong>Data management</strong></td><td>Shops deliver ingredients to the inventory room on day 1 of each month, so no more daily market trips</td><td>Sources (APIs, DBs, scraping, CSV) → ETL → data warehouse</td></tr>
+    <tr><td>2</td><td><strong>Version control</strong></td><td>One recipe book that you and Alex both follow, so the taste stays the same</td><td>Git/GitHub: one shared, versioned codebase for all developers</td></tr>
+    <tr><td>3</td><td><strong>Automation / pipeline</strong></td><td>Machine: ingredients → recipe → cook → deliver, repeated</td><td>Ingest → validate → transform → train → evaluate, run automatically</td></tr>
+    <tr><td>4</td><td><strong>Experiment tracking</strong></td><td>Research room: Ex 1–4, Ex 3 wins</td><td>Try RF / DT / KNN with different hyperparameters, log runs, pick the best</td></tr>
+    <tr><td>5</td><td><strong>CI/CD</strong></td><td>Selected recipe automatically updates the Zomato menu <em>and</em> the machine</td><td>Best model automatically integrated and deployed to production</td></tr>
+    <tr><td>6</td><td><strong>Monitoring</strong></td><td>A person watches reviews and the growth graph</td><td>Watch production metrics and data drift</td></tr>
+    <tr><td>7</td><td><strong>Retraining</strong></td><td>Bad reviews → run experiments again → new recipe</td><td>Performance drops → retrain on new data → redeploy</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="callout key"><span class="label">The takeaway</span><p>The business went from <strong>1–2 orders to 100–200 orders a day</strong> because each bottleneck was fixed with <strong>structure and automation</strong>, not because the cook worked harder. That is the goal of MLOps for an ML application.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>Mapping to a real ML project <span class="ts">27:34</span></h2>
+<p>The instructor uses the <strong>US Visa approval prediction</strong> project (a classification problem) as the ML example.</p>
+
+<h3>Initial phase = Stage 1 of the kitchen</h3>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 110" role="img" aria-label="Simple ML flow: data, EDA, feature engineering, model, deploy">
+    <defs><marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g class="t-sm">
+      <rect x="20" y="30" width="110" height="44" rx="8" class="box"/><text x="75" y="57" text-anchor="middle" class="t-b">Data (CSV)</text>
+      <rect x="170" y="30" width="110" height="44" rx="8" class="box"/><text x="225" y="57" text-anchor="middle" class="t-b">EDA</text>
+      <rect x="320" y="30" width="130" height="44" rx="8" class="box"/><text x="385" y="57" text-anchor="middle" class="t-b">Feature eng.</text>
+      <rect x="490" y="30" width="110" height="44" rx="8" class="box"/><text x="545" y="57" text-anchor="middle" class="t-b">Build model</text>
+      <rect x="640" y="30" width="100" height="44" rx="8" class="box"/><text x="690" y="57" text-anchor="middle" class="t-b">Deploy</text>
+    </g>
+    <path d="M130,52 L168,52" class="edge" marker-end="url(#a4)"/><path d="M280,52 L318,52" class="edge" marker-end="url(#a4)"/><path d="M450,52 L488,52" class="edge" marker-end="url(#a4)"/><path d="M600,52 L638,52" class="edge" marker-end="url(#a4)"/>
+    <text x="380" y="100" text-anchor="middle" class="t-xs">Works for 10–15 users, but fails with a massive audience: no proper infrastructure or architecture.</text>
+  </svg>
+  </div>
+</figure>
+<p>Like the cook at 1–2 orders, this is fine at first. When a <strong>massive audience</strong> arrives, it <strong>fails</strong>, because there is no infrastructure or architecture behind it.</p>
+
+<h3>With MLOps = the fully automated kitchen <span class="ts">34:00</span></h3>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 330" role="img" aria-label="MLOps architecture: many sources into a data warehouse, pipeline, experiments, best model, CI/CD deploy, monitoring, retraining loop, with Git versioning">
+    <defs>
+      <marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker>
+      <marker id="a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker>
+    </defs>
+    <text x="20" y="20" class="t-xs t-b">SOURCES</text>
+    <rect x="20" y="28" width="100" height="28" rx="6" class="box"/><text x="70" y="47" text-anchor="middle" class="t-xs">API</text>
+    <rect x="20" y="62" width="100" height="28" rx="6" class="box"/><text x="70" y="81" text-anchor="middle" class="t-xs">Web scraping</text>
+    <rect x="20" y="96" width="100" height="28" rx="6" class="box"/><text x="70" y="115" text-anchor="middle" class="t-xs">CSV files</text>
+    <rect x="20" y="130" width="100" height="28" rx="6" class="box"/><text x="70" y="149" text-anchor="middle" class="t-xs">Databases</text>
+    <rect x="160" y="68" width="110" height="56" rx="8" class="box"/><text x="215" y="92" text-anchor="middle" class="t-sm t-b">Data</text><text x="215" y="110" text-anchor="middle" class="t-sm t-b">warehouse</text>
+    <path d="M120,42 L158,82" class="edge" marker-end="url(#a5)"/><path d="M120,76 L158,90" class="edge" marker-end="url(#a5)"/><path d="M120,110 L158,100" class="edge" marker-end="url(#a5)"/><path d="M120,144 L158,112" class="edge" marker-end="url(#a5)"/>
+    <rect x="310" y="40" width="150" height="112" rx="8" class="box-2" stroke="var(--s1)"/>
+    <text x="385" y="60" text-anchor="middle" class="t-sm t-b">Pipeline</text>
+    <text x="385" y="84" text-anchor="middle" class="t-xs">EDA</text><text x="385" y="104" text-anchor="middle" class="t-xs">Feature engineering</text><text x="385" y="124" text-anchor="middle" class="t-xs">Model building</text>
+    <path d="M270,96 L308,96" class="edge" marker-end="url(#a5)"/>
+    <rect x="500" y="40" width="140" height="112" rx="8" class="box-2" stroke-dasharray="5 4"/>
+    <text x="570" y="60" text-anchor="middle" class="t-sm t-b">Experiments</text>
+    <text x="570" y="84" text-anchor="middle" class="t-xs">Random Forest</text><text x="570" y="104" text-anchor="middle" class="t-xs">Decision Tree</text><text x="570" y="124" text-anchor="middle" class="t-xs">KNN (+ params)</text>
+    <path d="M460,96 L498,96" class="edge" marker-end="url(#a5)"/>
+    <rect x="660" y="72" width="90" height="48" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="705" y="93" text-anchor="middle" class="t-sm t-b">Best</text><text x="705" y="110" text-anchor="middle" class="t-sm t-b">model</text>
+    <path d="M640,96 L658,96" class="edge" marker-end="url(#a5)"/>
+    <rect x="590" y="200" width="160" height="48" rx="8" class="box"/><text x="670" y="221" text-anchor="middle" class="t-sm t-b">Deploy / serve</text><text x="670" y="238" text-anchor="middle" class="t-xs">production</text>
+    <path d="M705,120 L690,198" class="edge-accent" marker-end="url(#a6)"/><text x="705" y="165" class="t-xs" style="fill:var(--accent)">CI/CD</text>
+    <rect x="360" y="200" width="160" height="48" rx="8" class="box"/><text x="440" y="221" text-anchor="middle" class="t-sm t-b">Monitoring</text><text x="440" y="238" text-anchor="middle" class="t-xs">is it working well?</text>
+    <path d="M590,224 L522,224" class="edge" marker-end="url(#a5)"/>
+    <rect x="130" y="200" width="160" height="48" rx="8" class="box"/><text x="210" y="221" text-anchor="middle" class="t-sm t-b">Retraining</text><text x="210" y="238" text-anchor="middle" class="t-xs">check data, re-run</text>
+    <path d="M360,224 L292,224" class="edge" marker-end="url(#a5)"/>
+    <path d="M210,200 L212,126" class="edge" marker-end="url(#a5)"/>
+    <path d="M660,120 Q560,175 462,140" class="edge-accent" marker-end="url(#a6)"/><text x="540" y="186" class="t-xs" style="fill:var(--accent)">update pipeline</text>
+    <rect x="20" y="276" width="730" height="40" rx="8" class="box-2"/>
+    <text x="385" y="301" text-anchor="middle" class="t-sm"><tspan class="t-b">Git &amp; GitHub</tspan> wraps everything: each change to the architecture is a new version, not an overwrite</text>
+  </svg>
+  </div>
+  <figcaption>This is the full <b>end-to-end pipeline</b> the definition refers to. Every box is something you have to take care of. The course teaches the tool for each one.</figcaption>
+</figure>
+<p>Step by step, as the instructor describes it:</p>
+<ol>
+  <li><strong>Data management:</strong> data comes from APIs, web scraping, CSV files and databases. Store all of it in <strong>one main database / data warehouse</strong>.</li>
+  <li><strong>Pipeline (automation):</strong> take data from the warehouse and run the same steps every time: EDA → feature engineering → model building.</li>
+  <li><strong>Experimentation:</strong> one model gives one accuracy. For better performance, try <strong>Random Forest, Decision Tree, KNN</strong> with different parameters and pick the one with the <strong>best accuracy</strong>.</li>
+  <li><strong>Update the pipeline</strong> with the chosen model.</li>
+  <li><strong>CI/CD → deployment/serving:</strong> based on the experiment, the model in production updates automatically.</li>
+  <li><strong>Version control:</strong> with Git/GitHub, a new architecture becomes a <em>new version</em> instead of replacing the old one.</li>
+  <li><strong>Monitoring:</strong> is the app working well in production?</li>
+  <li><strong>Retraining:</strong> if not, check the data and retrain.</li>
+</ol>
+
+<div class="callout beyond">
+  <span class="label">Beyond the video · production view</span>
+  <p>In a real deployment, "Best model → Deploy" usually goes through a <strong>model registry</strong> (for example, MLflow Model Registry). The pipeline registers the model, CI/CD builds a Docker image that loads the registered version, and a web API (FastAPI/Flask) serves predictions. You'll build this path in the end-to-end project section of the course (4:52:33).</p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>Components → tools <span class="ts">38:12</span></h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Component</th><th>Tools the instructor names</th></tr></thead>
+  <tbody>
+    <tr><td>Data management</td><td><strong>DVC</strong></td></tr>
+    <tr><td>Version control</td><td><strong>Git, GitHub, Bitbucket</strong></td></tr>
+    <tr><td>Automation pipeline</td><td>Various; e.g. <strong>AWS SageMaker</strong></td></tr>
+    <tr><td>Experiment tracking</td><td><strong>MLflow</strong></td></tr>
+    <tr><td>CI/CD</td><td><strong>Jenkins, CircleCI, GitHub Actions</strong></td></tr>
+    <tr><td>Monitoring</td><td><strong>Grafana</strong></td></tr>
+    <tr><td>Retraining</td><td>Any other tool; e.g. <strong>Airflow</strong></td></tr>
+  </tbody>
+</table>
+</div>
+<blockquote>MLOps is all about tools. As a data scientist or ML engineer, learn these extra tools so you can scale your application, just as the cook scaled the business.</blockquote>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>Interview questions</h2>
+<details class="qa"><summary>Explain MLOps to a non-technical person.</summary>
+<p>Use the kitchen story: a home cook scales to hundreds of orders by (1) getting ingredients delivered to one storeroom (data management), (2) writing a shared recipe book (version control), (3) buying a machine that follows the recipe (pipeline automation), (4) testing new recipes in a research room (experiment tracking), (5) pushing the winning recipe to the menu and machine automatically (CI/CD), (6) watching reviews (monitoring), and (7) re-experimenting when reviews drop (retraining).</p></details>
+<details class="qa"><summary>What are the core components of an MLOps system?</summary>
+<p>Data management, version control, automation/pipelines, experiment tracking, CI/CD, monitoring and retraining. Extra concerns include infrastructure provisioning and security.</p></details>
+<details class="qa"><summary>Why isn't a single trained model enough?</summary>
+<p>One model gives one accuracy on one dataset. You improve it by experimenting (different algorithms, hyperparameters) and tracking every run. Over time, user behaviour and data change (the "customers get bored" moment), so a model that was best once will plateau or degrade. You need monitoring and retraining to stay good.</p></details>
+<details class="qa"><summary>What is a pipeline in ML?</summary>
+<p>An ordered sequence of steps (for example ingestion → validation → transformation → training → evaluation) that runs the same way every time without manual work. It makes results reproducible and lets you re-run everything with one command when data changes.</p></details>
+<details class="qa"><summary>What does "CI/CD" mean for ML?</summary>
+<p>Continuous Integration: every change (code, config, chosen model) is automatically integrated and tested. Continuous Delivery/Deployment: the tested result is automatically released to production. In the story, choosing Ex 3 automatically updated both the menu and the machine.</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>Recap</h2>
+<ul>
+  <li>Each growth stage exposed a bottleneck; each fix is an MLOps component.</li>
+  <li><strong>Inventory = data management · Recipe book = version control · Machine = pipeline · Research room = experiment tracking · Auto-update of menu + machine = CI/CD · Review watcher = monitoring · Re-experiment = retraining.</strong></li>
+  <li>An ML project without these works for 10–15 users and breaks at scale.</li>
+  <li>MLOps components each have tools: DVC, Git/GitHub, SageMaker, MLflow, Jenkins/CircleCI/GitHub Actions, Grafana, Airflow.</li>
+</ul>
+
+<div class="pager">
+  <a href="01_introduction_overview.html"><small>← Previous</small>01 · Introduction & Overview</a>
+  <a class="next" href="03_intro_to_mlops_importance.html"><small>Next →</small>03 · Why MLOps matters (technical intro)</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+</body>
+</html>

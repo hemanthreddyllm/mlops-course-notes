@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>17 · End-to-end ML project: YouTube Sentiment Insights — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .steps { counter-reset: st; list-style: none; padding: 0; margin: 16px 0; }
+  .steps > li { counter-increment: st; position: relative; padding: 12px 16px 12px 56px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; margin: 8px 0; }
+  .steps > li::before { content: counter(st); position: absolute; left: 16px; top: 12px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font: 600 13px/26px var(--sans); text-align: center; }
+  .steps p:last-child { margin-bottom: 0; }
+  .shot { border: 1px solid var(--rule); border-radius: 10px; display: block; margin: 0 auto; background: #fff; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+  .cols > * { min-width: 0; }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+  /* class balance bar */
+  .stack { display: flex; height: 34px; border-radius: 8px; overflow: hidden; margin: 10px 0 6px; gap: 2px; background: var(--surface); }
+  .stack div { display: flex; align-items: center; justify-content: center; color: #fff; font: 600 13px var(--sans); }
+  .pos { background: #1baf7a; } .neu { background: #8a8983; } .neg { background: #e34948; }
+  /* experiment chart */
+  .xchart { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 14px 16px; margin: 16px 0; }
+  .xchart .head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .xchart .head b { font: 600 14px var(--sans); }
+  .seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+  .seg button { font: 12px var(--sans); padding: 5px 10px; border: 0; background: var(--surface); color: var(--ink-2); cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--rule); }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .xrow { display: grid; grid-template-columns: minmax(120px, 190px) 1fr 54px; gap: 10px; align-items: center; margin: 5px 0; font-size: 13px; }
+  .xrow .lab { font: 12px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .xrow .track { height: 16px; background: var(--surface-2); border-radius: 0 4px 4px 0; }
+  .xrow .fill { height: 100%; border-radius: 0 4px 4px 0; background: #2a78d6; transition: width .3s; }
+  .xrow.best .fill { background: #1baf7a; }
+  .xrow.best .lab { font-weight: 700; }
+  .xrow .val { text-align: right; font: 12px var(--mono); }
+  .xnote { font-size: 12px; color: var(--ink-3); margin-top: 8px; }
+  /* cleaning playground */
+  .play { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; margin: 16px 0; }
+  .play textarea { width: 100%; min-height: 64px; font: 14px var(--sans); padding: 8px 10px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface-2); color: var(--ink); resize: vertical; }
+  .play ol { margin: 10px 0 0; padding-left: 20px; }
+  .play li { margin: 5px 0; }
+  .play li code { white-space: pre-wrap; word-break: break-word; }
+  .play .gone { text-decoration: line-through; color: var(--bad); }
+  .play .kept { color: var(--good); font-weight: 600; }
+  /* route table */
+  .route { font: 600 12px var(--mono); padding: 2px 6px; border-radius: 5px; background: var(--accent-soft); white-space: nowrap; }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: 14px; }
+  .kv b { font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 17</span></div>
+<div class="eyebrow">Chapter 17 · End-to-end real ML project implementation with MLOps</div>
+<h1>YouTube Sentiment Insights: from notebook to Chrome extension</h1>
+<p class="lede">The course's capstone project. A Chrome extension reads the comments on the YouTube video you're watching and shows how many are positive, neutral and negative. The instructor runs the full workflow: plan the project, explore and clean a Reddit comment dataset, host MLflow on EC2 with S3, run six rounds of tracked experiments to pick a model (LightGBM), turn the notebooks into a 5-stage DVC pipeline that registers the model, serve it with a Flask API, build the Chrome extension, and prepare the Dockerfile and CI/CD file for deployment in the next chapter.</p>
+<div class="meta">
+  <span class="chip">Video 04:52:33 – 07:20:16 (≈ 2 h 28 min)</span>
+  <span class="chip">Hands-on: full project, 3 executed notebooks</span>
+  <span class="chip">Deployment (CI/CD) continues in Chapter 18</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">The problem, and why classic ML</a></li>
+    <li><a href="#s2">The solution: a Chrome extension, and the project plan</a></li>
+    <li><a href="#s3">The data: Reddit comments</a></li>
+    <li><a href="#s4">Preprocessing and EDA</a></li>
+    <li><a href="#s5">An MLflow server on EC2 with S3</a></li>
+    <li><a href="#s6">Experiment 1: the baseline</a></li>
+    <li><a href="#s7">Experiments 2–3: vectorizer, n-grams, feature count</a></li>
+    <li><a href="#s8">Experiment 4: class imbalance</a></li>
+    <li><a href="#s9">Experiments 5–6: algorithms, tuning, stacking</a></li>
+    <li><a href="#s10">The DVC pipeline and the model registry</a></li>
+    <li><a href="#s11">Flask API and Postman</a></li>
+    <li><a href="#s12">The Chrome extension</a></li>
+    <li><a href="#s13">Dockerfile and a CI/CD preview</a></li>
+    <li><a href="#s14">Precision notes</a></li>
+    <li><a href="#hands-on">Hands-on files: what we built</a></li>
+    <li><a href="#s15">Interview questions</a></li>
+    <li><a href="#s16">Recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>The problem, and why classic ML <span class="ts">04:52:34</span></h2>
+<p>A creator with a big channel can't read thousands of comments. The project reads them automatically and gives a <strong>summary</strong>: what share of the audience is positive, neutral and negative. The creator can use that to improve their content.</p>
+<div class="grid">
+  <div class="card"><h4>Problem type</h4><p><strong>Supervised, multi-class classification.</strong> One column holds the comment text and another holds its label: positive, neutral or negative. Three classes make it multi-class; two would make it binary.</p></div>
+  <div class="card"><h4>Why classic ML, not NLP models or LLMs?</h4><p>The instructor admits that a transformer (e.g. BERT) or an LLM would give a better-quality model. The point of this chapter is the <strong>MLOps workflow</strong> (pipeline, tracking, serving), and a text classifier built with classic ML is enough to show it.</p></div>
+</div>
+<div class="callout key"><span class="label">Key idea</span><p>The problem statement matters less than the workflow: how to analyse data, track experiments, build a pipeline, and serve the model. The same MLOps skeleton works for a deep-learning, NLP or GenAI model.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>The solution: a Chrome extension, and the project plan <span class="ts">04:55:41</span></h2>
+<p>Why an extension instead of a website or app? When you open a video, the extension <strong>detects that video</strong>, fetches its comments and shows a dashboard right away. You don't need to copy links anywhere.</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 800 300" role="img" aria-label="Architecture: the YouTube tab, the Chrome extension popup, the YouTube Data API, the Flask backend and the model registry. The popup reads the video id, fetches comments from the YouTube Data API, sends them to Flask, which cleans, vectorizes and predicts, then returns labels and chart images.">
+    <defs>
+      <marker id="a17" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker>
+      <marker id="a17b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker>
+    </defs>
+    <g data-tip="<b>YouTube tab</b><br>The page the user is watching. Its URL (…/watch?v=<i>VIDEO_ID</i>) tells the extension which video to analyse.">
+      <rect x="20" y="30" width="150" height="100" rx="10" class="box"/>
+      <text x="95" y="58" text-anchor="middle" class="t-b">YouTube tab</text>
+      <text x="95" y="82" text-anchor="middle" class="t-xs">youtube.com/watch?v=…</text>
+      <text x="95" y="104" text-anchor="middle" class="t-xs">the video you opened</text>
+    </g>
+    <g data-tip="<b>Chrome extension (front end)</b><br>manifest.json + popup.html + popup.js. The instructor generated this HTML/CSS/JS with ChatGPT; in a company a front-end team would build it.">
+      <rect x="230" y="20" width="190" height="120" rx="10" class="box-2"/>
+      <text x="325" y="46" text-anchor="middle" class="t-b">Chrome extension</text>
+      <text x="325" y="68" text-anchor="middle" class="t-xs">popup.html · popup.js</text>
+      <text x="325" y="88" text-anchor="middle" class="t-xs">1 · read the video id</text>
+      <text x="325" y="106" text-anchor="middle" class="t-xs">2 · fetch comments</text>
+      <text x="325" y="124" text-anchor="middle" class="t-xs">5 · draw the dashboard</text>
+    </g>
+    <g data-tip="<b>YouTube Data API v3</b> (Google Cloud)<br>commentThreads endpoint, 100 comments per page, needs an API key from the GCP console.">
+      <rect x="230" y="200" width="190" height="80" rx="10" class="box"/>
+      <text x="325" y="228" text-anchor="middle" class="t-b">YouTube Data API v3</text>
+      <text x="325" y="250" text-anchor="middle" class="t-xs">commentThreads · API key</text>
+      <text x="325" y="266" text-anchor="middle" class="t-xs">(Google Cloud)</text>
+    </g>
+    <g data-tip="<b>Flask backend</b><br>Cleans each comment, applies the saved TF-IDF vectorizer, predicts with LightGBM, and returns JSON plus chart PNGs.">
+      <rect x="500" y="20" width="150" height="120" rx="10" class="box-2"/>
+      <text x="575" y="46" text-anchor="middle" class="t-b">Flask API</text>
+      <text x="575" y="68" text-anchor="middle" class="t-xs">3 · clean → TF-IDF</text>
+      <text x="575" y="86" text-anchor="middle" class="t-xs">→ LightGBM predict</text>
+      <text x="575" y="106" text-anchor="middle" class="t-xs">4 · labels + charts</text>
+      <text x="575" y="124" text-anchor="middle" class="t-xs">(local: port 5000)</text>
+    </g>
+    <g data-tip="<b>Model source</b><br>The model registered in MLflow (alias/stage <i>staging</i>) plus tfidf_vectorizer.pkl. In the video the EC2 server was already terminated, so the instructor loaded the local lgbm_model.pkl instead.">
+      <rect x="500" y="200" width="150" height="80" rx="10" class="box"/>
+      <text x="575" y="228" text-anchor="middle" class="t-b">MLflow registry</text>
+      <text x="575" y="250" text-anchor="middle" class="t-xs">yt_chrome_plugin_model</text>
+      <text x="575" y="266" text-anchor="middle" class="t-xs">+ tfidf_vectorizer.pkl</text>
+    </g>
+    <g data-tip="<b>Creator</b><br>Sees the positive / neutral / negative split, a trend chart, a word cloud and the top comments with their labels.">
+      <rect x="700" y="40" width="84" height="80" rx="10" class="box"/>
+      <text x="742" y="76" text-anchor="middle" class="t-b">Creator</text>
+      <text x="742" y="96" text-anchor="middle" class="t-xs">summary</text>
+    </g>
+    <path d="M170,80 L226,80" class="edge" marker-end="url(#a17)"/>
+    <path d="M300,140 L300,196" class="edge" marker-end="url(#a17)"/>
+    <path d="M350,196 L350,144" class="edge" marker-end="url(#a17)"/>
+    <text x="262" y="172" class="t-xs" text-anchor="end">request</text>
+    <text x="360" y="172" class="t-xs">comments</text>
+    <path d="M420,60 L496,60" class="edge-accent" marker-end="url(#a17b)"/>
+    <path d="M496,110 L424,110" class="edge-accent" marker-end="url(#a17b)"/>
+    <text x="460" y="52" class="t-xs" text-anchor="middle">POST</text>
+    <text x="460" y="128" class="t-xs" text-anchor="middle">JSON/PNG</text>
+    <path d="M575,196 L575,144" class="edge" marker-end="url(#a17)"/>
+    <text x="585" y="174" class="t-xs">load at start-up</text>
+    <path d="M650,80 L696,80" class="edge" marker-end="url(#a17)"/>
+  </svg>
+  </div>
+  <figcaption><b>The finished system.</b> The extension is the front end and Flask is the back end. The instructor's point: as an ML/MLOps engineer you own the back end (model plus API); a front-end team usually builds the UI. Hover the boxes for details.</figcaption>
+</figure>
+<p>Features the instructor sketches:</p>
+<ul>
+  <li>A <strong>summary</strong> (e.g. 70% positive, 10% negative, 20% neutral). Percentages are easier to read than counts.</li>
+  <li><strong>Clickable boxes</strong> that jump to the positive, negative or neutral comments.</li>
+  <li>A <strong>day-by-day graph</strong> of sentiment over time.</li>
+  <li><strong>Colour-coded icons</strong> next to comments: green for positive, red for negative, blue for neutral.</li>
+</ul>
+
+<h3>The project plan <span class="ts">05:02:07</span></h3>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 800 210" role="img" aria-label="Project plan in ten steps, from data collection to deployment, with GitHub for code management throughout.">
+    <defs><marker id="p17" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g class="t-xs">
+      <g data-tip="Collect data. Ideally your own YouTube comments from your channel's category; for speed the course uses a public Reddit dataset."><rect x="10" y="20" width="140" height="44" rx="8" class="box"/><text x="80" y="40" text-anchor="middle" class="t-b">1 Data collection</text><text x="80" y="56" text-anchor="middle" class="t-xs">Reddit dataset</text></g>
+      <g data-tip="Clean the text and explore it: missing values, duplicates, class balance, lengths, stop words, n-grams, word clouds."><rect x="170" y="20" width="140" height="44" rx="8" class="box"/><text x="240" y="40" text-anchor="middle" class="t-b">2 Preprocess + EDA</text><text x="240" y="56" text-anchor="middle" class="t-xs">notebook</text></g>
+      <g data-tip="A private MLflow server on EC2 with S3 for artifacts. DagsHub was skipped because it is public."><rect x="330" y="20" width="140" height="44" rx="8" class="box-2"/><text x="400" y="40" text-anchor="middle" class="t-b">3 MLflow on AWS</text><text x="400" y="56" text-anchor="middle" class="t-xs">EC2 + S3</text></g>
+      <g data-tip="Random Forest + bag of words as a first reference point."><rect x="490" y="20" width="140" height="44" rx="8" class="box"/><text x="560" y="40" text-anchor="middle" class="t-b">4 Baseline model</text><text x="560" y="56" text-anchor="middle" class="t-xs">RF + BoW</text></g>
+      <g data-tip="Improve the baseline: BoW vs TF-IDF (Word2Vec mentioned), max_features, imbalance handling, many models with tuning, stacking. Every run goes to MLflow."><rect x="650" y="20" width="140" height="44" rx="8" class="box-2"/><text x="720" y="40" text-anchor="middle" class="t-b">5 Improve baseline</text><text x="720" y="56" text-anchor="middle" class="t-xs">5 experiment rounds</text></g>
+      <g data-tip="Rewrite the notebook code as modules and chain them with dvc.yaml."><rect x="650" y="120" width="140" height="44" rx="8" class="box"/><text x="720" y="140" text-anchor="middle" class="t-b">6 ML pipeline</text><text x="720" y="156" text-anchor="middle" class="t-xs">DVC</text></g>
+      <g data-tip="Register the pipeline's model in the MLflow Model Registry."><rect x="490" y="120" width="140" height="44" rx="8" class="box"/><text x="560" y="140" text-anchor="middle" class="t-b">7 Model registry</text><text x="560" y="156" text-anchor="middle" class="t-xs">MLflow</text></g>
+      <g data-tip="Flask back end + Chrome extension front end."><rect x="330" y="120" width="140" height="44" rx="8" class="box-2"/><text x="400" y="140" text-anchor="middle" class="t-b">8 Chrome extension</text><text x="400" y="156" text-anchor="middle" class="t-xs">+ Flask API</text></g>
+      <g data-tip="The CI/CD workflow file and the Dockerfile."><rect x="170" y="120" width="140" height="44" rx="8" class="box"/><text x="240" y="140" text-anchor="middle" class="t-b">9 CI/CD + Docker</text><text x="240" y="156" text-anchor="middle" class="t-xs">GitHub Actions</text></g>
+      <g data-tip="Deploy on AWS (GCP or Azure also possible). Covered in Chapter 18."><rect x="10" y="120" width="140" height="44" rx="8" class="box-2"/><text x="80" y="140" text-anchor="middle" class="t-b">10 Deployment</text><text x="80" y="156" text-anchor="middle" class="t-xs">AWS (ch18)</text></g>
+    </g>
+    <path d="M150,42 L166,42" class="edge" marker-end="url(#p17)"/><path d="M310,42 L326,42" class="edge" marker-end="url(#p17)"/>
+    <path d="M470,42 L486,42" class="edge" marker-end="url(#p17)"/><path d="M630,42 L646,42" class="edge" marker-end="url(#p17)"/>
+    <path d="M720,64 L720,116" class="edge" marker-end="url(#p17)"/>
+    <path d="M650,142 L634,142" class="edge" marker-end="url(#p17)"/><path d="M490,142 L474,142" class="edge" marker-end="url(#p17)"/>
+    <path d="M330,142 L314,142" class="edge" marker-end="url(#p17)"/><path d="M170,142 L154,142" class="edge" marker-end="url(#p17)"/>
+    <rect x="10" y="182" width="780" height="22" rx="6" fill="var(--surface-2)"/>
+    <text x="400" y="197" text-anchor="middle" class="t-xs">GitHub: code management and versioning for the whole project</text>
+  </svg>
+  </div>
+  <figcaption><b>The plan</b>, in the order the chapter follows it. The instructor had already prepared the notebooks and code, so he walks through them rather than typing them live, and expects you to know Python and basic ML.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>The data: Reddit comments <span class="ts">05:02:07</span></h2>
+<p>Collecting YouTube comments through the API is possible, but slow. Comments also depend on the <strong>category</strong> of the channel (education, entertainment, movies…), so you would need to pick one first. To keep things simple, the course uses a public <strong>Reddit sentiment dataset</strong>. It's on Kaggle, and the course loads a copy from GitHub with <code>pd.read_csv(url)</code>.</p>
+<div class="table-wrap"><table>
+  <tr><th>Column</th><th>Meaning</th></tr>
+  <tr><td><code>clean_comment</code></td><td>the comment text (already partly cleaned by the dataset author)</td></tr>
+  <tr><td><code>category</code></td><td><b>1</b> = positive · <b>0</b> = neutral · <b>−1</b> = negative</td></tr>
+</table></div>
+<div class="callout key"><span class="label">Instructor's advice</span><p>For a real sentiment analyser, <strong>collect your own data</strong> from the category you want to analyse (e.g. your channel's comments). The Reddit set is only a stand-in with similar kinds of comments.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>Preprocessing and EDA <span class="ts">05:12:43</span></h2>
+<p>The instructor uses Google Colab for experiments (libraries come pre-installed) and VS Code on his own machine for the pipeline. Here are the steps from his notebook, with the numbers from our re-run:</p>
+<div class="table-wrap"><table>
+  <tr><th>Check</th><th>Finding</th><th>Action</th></tr>
+  <tr><td>Shape</td><td>37,249 rows × 2 columns</td><td>–</td></tr>
+  <tr><td>Missing values</td><td>100 empty <code>clean_comment</code>s, all labelled 0</td><td>drop them (0.3% of rows; the instructor says you'd handle it differently if 30–50% were missing)</td></tr>
+  <tr><td>Duplicates</td><td>449 in our copy (the video showed ≈350)</td><td>drop them</td></tr>
+  <tr><td>Blank comments (only spaces or newlines)</td><td>221</td><td>drop them</td></tr>
+  <tr><td>Case</td><td>"Good" ≠ "good" to a model</td><td>lowercase everything</td></tr>
+  <tr><td>Leading and trailing spaces</td><td>present; they would become empty tokens</td><td><code>strip()</code></td></tr>
+  <tr><td>URLs</td><td>none found (checked with a regex)</td><td>–</td></tr>
+  <tr><td><code>\n</code> inside comments</td><td>present</td><td>replace with a space</td></tr>
+  <tr><td>Non-English and special characters</td><td>6% of comments (Hindi, Arabic, Chinese, emoji…)</td><td>remove with a regex</td></tr>
+</table></div>
+
+<h3>Class balance: the data is imbalanced</h3>
+<div class="stack" role="img" aria-label="Positive 42.9%, neutral 34.7%, negative 22.4%">
+  <div class="pos" style="width:42.9%" data-tip="<b>Positive (1)</b><br>15,771 comments · 42.9%">positive 42.9%</div>
+  <div class="neu" style="width:34.7%" data-tip="<b>Neutral (0)</b><br>12,772 comments · 34.7%">neutral 34.7%</div>
+  <div class="neg" style="width:22.4%" data-tip="<b>Negative (−1)</b><br>8,250 comments · 22.4%">negative 22.4%</div>
+</div>
+<p style="font-size:13px;color:var(--ink-2)">36,793 comments after cleaning. The video reports 42% / 34% / 22%.</p>
+<p>Negative comments are the minority class, so a model can look accurate while missing many of them. That is why later experiments watch <strong>negative-class recall</strong>, and experiment 4 is about imbalance.</p>
+
+<h3>Length, stop words, characters and n-grams</h3>
+<div class="table-wrap"><table>
+  <tr><th>Feature (new column)</th><th class="num">negative</th><th class="num">neutral</th><th class="num">positive</th><th>What it tells us</th></tr>
+  <tr><td>median words per comment</td><td class="num">20</td><td class="num">7</td><td class="num">21</td><td>opinions take more words (thank-yous, explanations); plots are right-skewed with many outliers</td></tr>
+  <tr><td>mean words per comment</td><td class="num">34.9</td><td class="num">9.9</td><td class="num">42.9</td><td>5% of comments are over 100 words</td></tr>
+  <tr><td>median characters</td><td class="num">119</td><td class="num">40</td><td class="num">128</td><td>same pattern as words</td></tr>
+</table></div>
+<div class="callout wrong"><span class="label">Heads-up about one statement in the video</span><p>While showing the word-count plots, the instructor says the <em>neutral</em> class has more words (the tall peak near zero). A tall peak at a <em>small</em> count means neutral comments are mostly <strong>short</strong>. The table above confirms it: neutral median = 7 words, versus about 20 for the other classes. The same goes for stop words: neutral comments contain fewer in total, just a higher share of their words.</p></div>
+<ul>
+  <li><strong>Stop words</strong> ("the", "and", "that", …) are about 33% of all words. The instructor counts them per comment, plots them per class, and shows the top 25.</li>
+  <li><strong>Characters and punctuation</strong>: new columns with counts, plus a frequency table of special characters (which revealed the Chinese characters).</li>
+  <li><strong>Bigrams / trigrams</strong> (<code>CountVectorizer(ngram_range=(2,2))</code> / <code>(3,3)</code>): "free encyclopedia", "encyclopedia team", "good good"… The instructor admits this step isn't strictly necessary; he added it after seeing it in Kaggle notebooks, and recommends Kaggle notebooks as the best way to learn EDA and feature engineering.</li>
+</ul>
+
+<h3>The cleaning function: try it</h3>
+<p>Every step above ends up in <strong>one function</strong>, <code>preprocess_comment</code>. The pipeline and the API both call it: training and serving must clean text <em>identically</em>. Two steps matter most:</p>
+<ul>
+  <li><strong>Remove stop words, but keep</strong> <code>not, no, but, however, yet</code>. Without them, "I do <b>not</b> like this movie" loses its meaning.</li>
+  <li><strong>Lemmatize</strong> (WordNet): <em>plays, played, playing → play</em>. Fewer distinct tokens means fewer dimensions.</li>
+</ul>
+<div class="play">
+  <label for="clean-in"><b>Type a comment</b> (English stop-word list simplified; lemmatization shown for common endings only)</label>
+  <textarea id="clean-in">This video is NOT good at all!!
+The explanations were confusing 😡 however the examples helped</textarea>
+  <ol id="clean-out"></ol>
+</div>
+
+<h3>Word clouds: what is this data actually about?</h3>
+<figure>
+  <img class="shot" src="assets/img/ch17_eda_wordclouds.png" alt="Word clouds for positive, neutral and negative comments. Words like india, modi, bjp, people and not dominate every class." style="max-width:100%">
+  <figcaption><b>Word clouds per class</b> (from our notebook). The instructor's reading: "India, people, BJP, Modi… this data is <strong>political</strong>." A model trained on it works best on political videos; an education channel would need education comments. <code>not</code> is the most frequent word in every class, which is why it only becomes informative inside n-grams like "not good".</figcaption>
+</figure>
+<div class="callout beyond"><span class="label">Beyond the video: what else our EDA found</span>
+<ul>
+  <li><strong>Template or bot text</strong>: "free encyclopedia team reached …" and "best overall submitter …" repeat hundreds of times.</li>
+  <li><strong>Repetition spam</strong>: "good good good", "movie movie movie".</li>
+  <li><strong>Pre-cleaned text</strong>: apostrophes were already stripped ("don", "won"), and <code>no</code> never appears, so two-letter words seem to have been removed before publication.</li>
+  <li><strong>Label noise</strong>: some angry comments are labelled positive. The labels look machine-generated, and that noise limits the achievable accuracy.</li>
+</ul></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>An MLflow server on EC2 with S3 <span class="ts">05:33:45</span></h2>
+<p>In Chapter 15, MLflow was hosted on DagsHub. Here the instructor wants a <strong>private</strong> server (DagsHub repos are public by default) and notes that companies commonly host MLflow on their own cloud.</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 800 250" role="img" aria-label="Colab or laptop sends runs over HTTP to an MLflow server on EC2 port 5000; the server keeps run metadata on the instance and stores artifacts in an S3 bucket. Both clients and the server authenticate to AWS with IAM keys set via aws configure.">
+    <defs><marker id="m5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g data-tip="Where experiments run: Google Colab in the video, later VS Code on the laptop. Both run <code>aws configure</code> so they can upload artifacts to S3."><rect x="20" y="40" width="190" height="110" rx="10" class="box"/>
+    <text x="115" y="66" text-anchor="middle" class="t-b">Colab / laptop</text>
+    <text x="115" y="90" text-anchor="middle" class="t-xs">mlflow.set_tracking_uri(</text>
+    <text x="115" y="106" text-anchor="middle" class="t-xs">"http://ec2-…:5000/")</text>
+    <text x="115" y="130" text-anchor="middle" class="t-xs">aws configure (keys)</text></g>
+    <g data-tip="Ubuntu 24.04, t2.medium (4 GB RAM), 30 GB disk. Packages installed with pipenv: mlflow, awscli, boto3. Security group: custom TCP 5000 from 0.0.0.0/0."><rect x="300" y="30" width="220" height="140" rx="10" class="box-2"/>
+    <text x="410" y="56" text-anchor="middle" class="t-b">EC2 · mlflow server</text>
+    <text x="410" y="80" text-anchor="middle" class="t-xs">-h 0.0.0.0 (port 5000)</text>
+    <text x="410" y="98" text-anchor="middle" class="t-xs">--default-artifact-root s3://…</text>
+    <text x="410" y="122" text-anchor="middle" class="t-xs">run metadata: local files</text>
+    <text x="410" y="138" text-anchor="middle" class="t-xs">on the instance's disk</text>
+    <text x="410" y="158" text-anchor="middle" class="t-xs">inbound rule: TCP 5000</text></g>
+    <g data-tip="S3 bucket with a globally unique name (e.g. mlflow-bucket-25). Artifacts are stored as &lt;experiment_id&gt;/&lt;run_id&gt;/artifacts/…: confusion matrices, datasets, models."><rect x="610" y="40" width="170" height="110" rx="10" class="box"/>
+    <text x="695" y="66" text-anchor="middle" class="t-b">S3 bucket</text>
+    <text x="695" y="90" text-anchor="middle" class="t-xs">&lt;experiment_id&gt;/</text>
+    <text x="695" y="106" text-anchor="middle" class="t-xs">&lt;run_id&gt;/artifacts/</text>
+    <text x="695" y="130" text-anchor="middle" class="t-xs">models · plots · data</text></g>
+    <path d="M210,80 L296,80" class="edge" marker-end="url(#m5)"/><text x="253" y="72" text-anchor="middle" class="t-xs">params, metrics</text>
+    <path d="M520,80 L606,80" class="edge" marker-end="url(#m5)"/><text x="563" y="72" text-anchor="middle" class="t-xs">artifact paths</text>
+    <path d="M115,150 C115,215 695,215 695,154" class="edge" stroke-dasharray="5 4" marker-end="url(#m5)"/>
+    <text x="405" y="232" text-anchor="middle" class="t-xs">the client uploads artifacts directly to S3 (hence aws configure on the client)</text>
+  </svg>
+  </div>
+  <figcaption><b>The setup in the video.</b> With <code>--default-artifact-root</code>, the MLflow server only tells clients <em>where</em> to write artifacts. The client uploads them to S3 itself, which is why the Colab notebook and the laptop also need AWS credentials.</figcaption>
+</figure>
+<ol class="steps">
+  <li><p><strong>IAM user</strong> <code>mlflow-server</code>: attach policies directly → <em>AdministratorAccess</em> → create. Then Security credentials → Create access key → CLI → download the CSV. (Region: <code>us-east-1</code>, N. Virginia.)</p></li>
+  <li><p><strong>S3 bucket</strong> for artifacts, e.g. <code>mlflow-bucket-25</code>. The name must be globally unique; keep the other settings at their defaults.</p></li>
+  <li><p><strong>EC2 instance</strong> <code>mlflow-machine</code>: Ubuntu 24.04 LTS, <strong>t2.medium</strong> (4 GB RAM), a new key pair (required even if you use the browser terminal), allow HTTP/HTTPS, <strong>30 GB</strong> storage → Launch → Connect (EC2 Instance Connect).</p></li>
+  <li><p><strong>Install</strong> (the commands come from the instructor's MLflow demo repo):</p>
+<pre><code>sudo apt update
+sudo apt install python3-pip
+sudo apt install pipenv
+sudo apt install virtualenv
+mkdir mlflow &amp;&amp; cd mlflow
+pipenv install mlflow
+pipenv install awscli
+pipenv install boto3
+pipenv shell                       <span class="c"># activate the environment</span>
+aws configure                      <span class="c"># access key, secret key, us-east-1, default output</span></code></pre></li>
+  <li><p><strong>Start the server</strong> with your bucket name:</p>
+<pre><code>mlflow server -h 0.0.0.0 --default-artifact-root s3://mlflow-bucket-25</code></pre></li>
+  <li><p><strong>Open port 5000</strong>: instance → Security → security group → Edit inbound rules → Custom TCP, 5000, 0.0.0.0/0 → Save.</p></li>
+  <li><p><strong>Open the UI</strong> at <code>http://&lt;public-IPv4-DNS&gt;:5000</code>. If the browser switches to <code>https://</code>, remove the "s": the server only speaks HTTP.</p></li>
+  <li><p><strong>Test it</strong> from Colab: <code>pip install mlflow boto3 awscli</code>, <code>aws configure</code>, then <code>mlflow.set_tracking_uri("http://ec2-…:5000/")</code> and a run that logs a dummy parameter and metric. It appears under the <em>Default</em> experiment.</p></li>
+</ol>
+<div class="callout wrong"><span class="label">Security: don't copy these three shortcuts</span><p>The video uses <strong>AdministratorAccess</strong> keys, shows them on screen ("I'll delete them after recording"), and opens port 5000 to <strong>the whole internet with no login</strong>, so anyone who finds the IP can read or delete your runs. For real use:</p>
+<ul>
+  <li>Give the instance an <strong>IAM role</strong> limited to that bucket.</li>
+  <li>Allow port 5000 from <strong>your IP only</strong>, or put the server behind nginx with authentication or MLflow's basic-auth app.</li>
+  <li>Use HTTPS.</li>
+</ul>
+<p>Also, the run metadata lives on the instance's disk, so <strong>terminating the instance loses every run</strong>. The instructor actually hit this: he terminated the server between recording days and had to start a new one. For a durable server, point <code>--backend-store-uri</code> at a database such as RDS PostgreSQL.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>Experiment 1: the baseline <span class="ts">05:48:52</span></h2>
+<p>The notebook applies the same cleaning function to the whole dataset and then:</p>
+<ol>
+  <li><code>CountVectorizer(max_features=10000)</code> (bag of words) → X has shape (36k, 10000).</li>
+  <li><code>mlflow.set_tracking_uri(...)</code> and <code>mlflow.set_experiment("RF Baseline")</code>. A dedicated experiment is used instead of <em>Default</em>.</li>
+  <li><code>aws configure</code> in Colab, so artifacts can reach S3.</li>
+  <li>An 80/20 stratified split, then a <code>with mlflow.start_run():</code> block that:
+    <ul>
+      <li>sets tags and a description</li>
+      <li>logs params (<code>vectorizer_type</code>, <code>max_features</code>, and <code>n_estimators</code> and <code>max_depth</code> for the Random Forest)</li>
+      <li>trains, predicts, and logs accuracy plus per-class precision, recall and F1 from <code>classification_report</code></li>
+      <li>logs a confusion-matrix heatmap, the model and the dataset as artifacts</li>
+    </ul></li>
+</ol>
+<p><strong>Result in the video: 64% accuracy</strong>, with high precision but poor recall on the minority classes, which points to imbalance. The cleaned data is then saved as <code>reddit_preprocessing.csv</code>, so later notebooks don't repeat the preprocessing. In S3, each run's artifacts sit under <code>&lt;experiment_id&gt;/&lt;run_id&gt;/</code>.</p>
+<div id="chart-exp1"></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>Experiments 2–3: vectorizer, n-grams, feature count <span class="ts">05:57:18</span></h2>
+<div class="grid">
+  <div class="card"><h4>Bag of words (<code>CountVectorizer</code>)</h4><p>Raw counts of each term. <code>ngram_range=(1,1)</code> is unigrams; <code>(1,2)</code> adds bigrams (two-word tokens); <code>(1,3)</code> adds trigrams.</p></div>
+  <div class="card"><h4>TF-IDF (<code>TfidfVectorizer</code>)</h4><p>Counts are down-weighted for terms that appear in many documents, so rarer, more specific terms stand out. (Word2Vec was mentioned but not tried.)</p></div>
+</div>
+<p><strong>Experiment 2</strong> ("Exp 2 – BoW vs TfIdf") is a loop over 2 vectorizers × 3 n-gram settings with 5,000 features: <strong>6 runs</strong>. In the MLflow UI: select all → <strong>Compare</strong> → parallel coordinates plot, then switch the metric.</p>
+<div class="table-wrap"><table>
+  <tr><th>Metric chosen in the plot (video)</th><th>Winner</th></tr>
+  <tr><td>accuracy</td><td>BoW + bigrams (≈ 65%)</td></tr>
+  <tr><td>negative-class precision</td><td>BoW + bigrams</td></tr>
+  <tr><td><strong>negative-class recall</strong> (the deciding metric)</td><td><strong>TF-IDF + trigrams</strong> ✔</td></tr>
+</table></div>
+<p>Why recall? Because of the imbalance, precision on the minority class looks good while many negatives are still missed. Recall tells you how many of the real negatives you catch.</p>
+<div id="chart-exp2"></div>
+<p><strong>Experiment 3</strong> ("Exp 3 – TfIdf Trigram max_features") fixes TF-IDF (1,3) and loops <code>max_features</code> over 1000, 2000, …, 10000: <strong>10 runs</strong>. In the video, accuracy rises as features <em>decrease</em>, negative precision is higher with <em>more</em> features, and negative recall is best at <strong>1000</strong>. Conclusion: <strong>1000 features</strong> (fewer features, higher recall).</p>
+<div id="chart-exp3"></div>
+<figure>
+  <img class="shot" src="assets/img/ch17_mlflow_compare_exp3.png" alt="MLflow compare view: parallel coordinates plot of max_features against accuracy for 10 runs; 1000 features has the highest accuracy" style="max-width:100%">
+  <figcaption><b>The same comparison in the MLflow UI</b> (our local server): select the 10 runs → Compare → Parallel Coordinates, with <code>max_features</code> as the parameter and <code>accuracy</code> as the metric. Lines from low feature counts end at the top (red). Switch the metric to <code>negative_recall</code> to repeat the instructor's second check.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>Experiment 4: class imbalance <span class="ts">06:12:15</span></h2>
+<p>With TF-IDF (1,3) and 1000 features fixed, the notebook tries five techniques in a loop (resampling only the <strong>training</strong> split):</p>
+<div class="table-wrap"><table>
+  <tr><th>Technique</th><th>How it works</th><th>In the video's comparison</th></tr>
+  <tr><td><code>class_weight="balanced"</code></td><td>mistakes on rare classes cost more; the data is unchanged</td><td>–</td></tr>
+  <tr><td><strong>Oversampling (SMOTE)</strong></td><td>creates synthetic minority rows by interpolating between neighbours</td><td><strong>best overall</strong> once positive precision and recall are also compared ✔</td></tr>
+  <tr><td>ADASYN</td><td>SMOTE that generates more rows where the minority class is hardest to learn</td><td>–</td></tr>
+  <tr><td>Undersampling</td><td>drops majority rows (<code>RandomUnderSampler</code>)</td><td>highest accuracy and negative precision</td></tr>
+  <tr><td>SMOTEENN</td><td>SMOTE, then removes noisy rows with Edited Nearest Neighbours. (The instructor: "SMOTE-ENN and SMOTE are different things.")</td><td>highest negative recall</td></tr>
+</table></div>
+<div id="chart-exp4"></div>
+<div class="callout key"><span class="label">Settings after four experiments</span><p>TF-IDF · trigrams <code>(1,3)</code> · <code>max_features=1000</code> · SMOTE oversampling. Every later model is trained with these settings. The instructor's summary also mentions the baseline's 64%, the starting point these settings improve on.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>Experiments 5–6: algorithms, tuning, stacking <span class="ts">06:18:36</span></h2>
+<p>With the settings fixed, the instructor trains several classifiers (XGBoost, decision tree, KNN, naive Bayes, LightGBM…), each with <strong>Optuna</strong> hyperparameter tuning. Each model has its own notebook, because tuning them all in one notebook takes too long. He shows two:</p>
+<ul>
+  <li><strong>XGBoost</strong> (30 Optuna trials): XGBoost needs labels 0…n−1, so −1 is remapped to <strong>2</strong> (0 = neutral, 1 = positive, 2 = negative).</li>
+  <li><strong>LightGBM</strong>, the winner, then tuned in detail (100 trials). That produced the pipeline's parameters: <code>learning_rate=0.09</code>, <code>max_depth=20</code>, <code>n_estimators=367</code>.</li>
+</ul>
+<p>He says Optuna is more powerful than <code>GridSearchCV</code> and encourages you to try other models: "only the model changes; the rest of the code stays the same."</p>
+<div id="chart-exp5"></div>
+<p><strong>Stacking</strong> combines several models: base learners <em>logistic regression + KNN + LightGBM</em>, and a meta-learner on top (<code>StackingClassifier</code>). The result was about the same as LightGBM alone, so the instructor <strong>kept the simpler LightGBM</strong>. A stack is a more complex architecture to run and maintain.</p>
+<div id="chart-exp6"></div>
+<div class="callout beyond"><span class="label">How our re-run differs</span><p>Our <code>2_experiments.ipynb</code> puts all six rounds in one notebook with fewer Optuna trials, so it finishes in minutes. It fits vectorizers on the training split only, and tunes on a validation split carved from training data. The best configuration then gets <em>one</em> test-set score. Absolute numbers differ from the video's, but the conclusions are what matter. <span id="exp-agree"></span></p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>The DVC pipeline and the model registry <span class="ts">06:26:00</span></h2>
+<p>The notebook code is rewritten as <strong>modular Python files</strong>, chained with <code>dvc.yaml</code>. The components:</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 800 250" role="img" aria-label="DVC pipeline: data_ingestion writes data/raw, data_preprocessing writes data/interim, model_building writes lgbm_model.pkl and tfidf_vectorizer.pkl, model_evaluation logs to MLflow and writes experiment_info.json, model_registration registers the model in the MLflow registry with stage or alias staging. params.yaml feeds ingestion and building.">
+    <defs><marker id="d17" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g data-tip="<b>data_ingestion.py</b><br>load from the GitHub URL → drop NaN, duplicates and blank rows → train_test_split(test_size from params) → data/raw/train.csv, test.csv"><rect x="10" y="70" width="136" height="64" rx="10" class="box"/><text x="78" y="96" text-anchor="middle" class="t-b">data_ingestion</text><text x="78" y="116" text-anchor="middle" class="t-xs">→ data/raw/</text></g>
+    <g data-tip="<b>data_preprocessing.py</b><br>preprocess_comment() on every row (lowercase, strip, regex, stop words minus negations, lemmatize) → data/interim/*_processed.csv"><rect x="168" y="70" width="136" height="64" rx="10" class="box"/><text x="236" y="96" text-anchor="middle" class="t-b">preprocessing</text><text x="236" y="116" text-anchor="middle" class="t-xs">→ data/interim/</text></g>
+    <g data-tip="<b>model_building.py</b><br>TF-IDF(ngram_range, max_features) fitted on train → (SMOTE) → LightGBM(learning_rate, max_depth, n_estimators) → lgbm_model.pkl + tfidf_vectorizer.pkl. The vectorizer is saved so the API can transform new comments the same way."><rect x="326" y="70" width="136" height="64" rx="10" class="box-2"/><text x="394" y="96" text-anchor="middle" class="t-b">model_building</text><text x="394" y="116" text-anchor="middle" class="t-xs">→ 2 .pkl files</text></g>
+    <g data-tip="<b>model_evaluation.py</b><br>predict on the test data → classification report + confusion matrix → log params, metrics, plot, model and vectorizer to MLflow (experiment 'dvc-pipeline-runs') → experiment_info.json {run_id, model_path}"><rect x="484" y="70" width="136" height="64" rx="10" class="box-2"/><text x="552" y="96" text-anchor="middle" class="t-b">model_evaluation</text><text x="552" y="116" text-anchor="middle" class="t-xs">→ experiment_info.json</text></g>
+    <g data-tip="<b>register_model.py</b><br>read experiment_info.json → mlflow.register_model(runs:/…) as 'yt_chrome_plugin_model' → move to the Staging stage (video) / set alias @staging (MLflow 3). No outs in dvc.yaml."><rect x="642" y="70" width="148" height="64" rx="10" class="box"/><text x="716" y="96" text-anchor="middle" class="t-b">model_registration</text><text x="716" y="116" text-anchor="middle" class="t-xs">→ registry (Staging)</text></g>
+    <path d="M146,102 L164,102" class="edge" marker-end="url(#d17)"/><path d="M304,102 L322,102" class="edge" marker-end="url(#d17)"/>
+    <path d="M462,102 L480,102" class="edge" marker-end="url(#d17)"/><path d="M620,102 L638,102" class="edge" marker-end="url(#d17)"/>
+    <g data-tip="<b>params.yaml</b><br>data_ingestion: test_size 0.20<br>model_building: ngram_range [1,3], max_features 1000, learning_rate 0.09, max_depth 20, n_estimators 367"><rect x="180" y="4" width="250" height="36" rx="8" fill="var(--warn-soft)"/><text x="305" y="27" text-anchor="middle" class="t-xs">params.yaml (the winning settings)</text></g>
+    <path d="M200,40 L100,66" class="edge" stroke-dasharray="4 3" marker-end="url(#d17)"/>
+    <path d="M380,40 L394,66" class="edge" stroke-dasharray="4 3" marker-end="url(#d17)"/>
+    <g data-tip="The MLflow server (EC2 in the video, local port 5050 in the hands-on)."><rect x="484" y="176" width="306" height="54" rx="10" fill="var(--accent-soft)"/><text x="637" y="200" text-anchor="middle" class="t-b">MLflow tracking server + model registry</text><text x="637" y="218" text-anchor="middle" class="t-xs">artifacts in S3 · yt_chrome_plugin_model v1 @staging</text></g>
+    <path d="M552,134 L552,172" class="edge" marker-end="url(#d17)"/><path d="M716,134 L716,172" class="edge" marker-end="url(#d17)"/>
+    <text x="10" y="180" class="t-xs">Each box = one Python module in src/</text>
+    <text x="10" y="198" class="t-xs">Each arrow = a deps/outs link in dvc.yaml</text>
+    <text x="10" y="216" class="t-xs">dvc repro runs only the out-of-date stages</text>
+  </svg>
+  </div>
+  <figcaption><b>The pipeline.</b> Hover each stage for what it does. The instructor stresses that this template is one way to organise the code, not a fixed rule.</figcaption>
+</figure>
+<h3>Project set-up <span class="ts">06:29:13</span></h3>
+<ul>
+  <li>Create the GitHub repo <em>YouTube-Sentiment-Insights</em> (README, Python <code>.gitignore</code>, MIT licence) → <code>git clone</code> → open it in VS Code.</li>
+  <li>Folders: <code>notebooks/</code> (the Colab notebooks, for reference), <code>data/</code> (pipeline outputs), <code>src/data/</code> and <code>src/model/</code> with an <code>__init__.py</code> so <code>src</code> is a local package, plus <code>dvc.yaml</code>, <code>params.yaml</code>, <code>requirements.txt</code> and <code>setup.py</code>.</li>
+  <li><code>conda create -n youtube python=3.11</code> → <code>pip install -r requirements.txt</code>. Its last line, <code>-e .</code>, installs <code>src</code> via <code>setup.py</code>, which creates the <code>*.egg-info</code> folder.</li>
+  <li><code>dvc init</code> (git must already be initialised, which the clone provides).</li>
+  <li>Add <code>data/</code> to <code>.gitignore</code> → <code>git add . &amp;&amp; git commit &amp;&amp; git push origin main</code>.</li>
+</ul>
+<h3>Each component, built and tested one at a time</h3>
+<p>The instructor adds <strong>one stage to <code>dvc.yaml</code> at a time</strong> and runs <code>dvc repro</code> after each. Stages that already ran are skipped ("didn't change, skipping"), so each new run starts at the newest stage. Every module follows the same pattern: a logger, <code>load_params()</code>, <code>load_data()</code>, the step itself, <code>save_…()</code>, and a <code>main()</code> wrapped in try/except.</p>
+<pre><code><span class="c"># dvc.yaml (the course's version; the hands-on file is the same plus two extra deps)</span>
+stages:
+  data_ingestion:
+    cmd: python src/data/data_ingestion.py
+    deps: [src/data/data_ingestion.py]
+    params: [data_ingestion.test_size]
+    outs: [data/raw]
+  data_preprocessing:
+    cmd: python src/data/data_preprocessing.py
+    deps: [data/raw/train.csv, data/raw/test.csv, src/data/data_preprocessing.py]
+    outs: [data/interim]
+  model_building:
+    cmd: python src/model/model_building.py
+    deps: [data/interim/train_processed.csv, src/model/model_building.py]
+    params: [model_building.max_features, model_building.ngram_range, model_building.learning_rate,
+             model_building.max_depth, model_building.n_estimators]
+    outs: [lgbm_model.pkl, tfidf_vectorizer.pkl]
+  model_evaluation:
+    cmd: python src/model/model_evaluation.py
+    deps: [lgbm_model.pkl, tfidf_vectorizer.pkl, data/interim/train_processed.csv,
+           data/interim/test_processed.csv, src/model/model_evaluation.py]
+    outs: [experiment_info.json]
+  model_registration:
+    cmd: python src/model/register_model.py
+    deps: [experiment_info.json, src/model/register_model.py]   <span class="c"># no outs: its effect is in MLflow</span></code></pre>
+<div class="cols">
+<div>
+<h3>Model evaluation <span class="ts">06:43:56</span></h3>
+<p>Before this stage, the laptop needs the <strong>AWS CLI</strong> (the MSI installer on Windows) and <code>aws configure</code>, so MLflow can upload artifacts to S3. The EC2 server had been terminated between recording days, so the instructor launched a new one. The stage:</p>
+<ul>
+  <li>logs params, per-class metrics, the confusion-matrix PNG, the model and <code>tfidf_vectorizer.pkl</code> to an experiment named <strong>dvc-pipeline-runs</strong></li>
+  <li>writes <code>experiment_info.json</code> with the <strong>run ID and model path</strong>; the registration stage needs this file</li>
+</ul>
+<p>In S3, the model sits under <code>&lt;experiment_id&gt;/&lt;run_id&gt;/artifacts/lgbm_model/</code>.</p>
+</div>
+<div>
+<h3>Model registration <span class="ts">06:51:22</span></h3>
+<p><code>register_model.py</code> reads the JSON, calls <code>mlflow.register_model()</code> with the name <strong>yt_chrome_plugin_model</strong>, and moves the new version to the <strong>Staging</strong> stage. After <code>dvc repro</code>, the UI's Models tab shows <em>version 1 · Staging</em>. The API can load the model from there.</p>
+<div class="callout beyond" style="margin-top:8px"><span class="label">MLflow 3</span><p>Stages are deprecated. Use <strong>aliases</strong> instead: <code>client.set_registered_model_alias(name, "staging", version)</code>, then load <code>models:/yt_chrome_plugin_model@staging</code>. The hands-on uses aliases.</p></div>
+</div>
+</div>
+<figure>
+  <img class="shot" src="assets/img/ch17_mlflow_registry.png" alt="MLflow Models page showing yt_chrome_plugin_model with versions and the staging and production aliases" style="max-width:100%">
+  <figcaption><b>Our registry after the walkthrough notebook</b> (local MLflow 3 server). Three versions, <code>@staging</code> on the newest and <code>@production</code> on the best. The notebook shows why there are three: changing <code>n_estimators</code> and changing it back re-ran the registration stage.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s11"><span class="num">11</span>Flask API and Postman <span class="ts">06:54:33</span></h2>
+<p>The back end sits between the extension and the model. It receives comments, <strong>preprocesses</strong> them with the same function, <strong>vectorizes</strong> them with the saved TF-IDF object (raw text must become numbers the same way as in training), predicts, and returns the result.</p>
+<div class="table-wrap"><table>
+  <tr><th>Route</th><th>Input (JSON)</th><th>Output</th></tr>
+  <tr><td><span class="route">GET /</span></td><td>–</td><td>"Welcome to our flask API": a health check</td></tr>
+  <tr><td><span class="route">POST /predict</span></td><td><code>{"comments": ["…", "…"]}</code></td><td><code>[{"comment", "sentiment"}]</code>; an error if no comments are sent</td></tr>
+  <tr><td><span class="route">POST /predict_with_timestamps</span></td><td><code>{"comments": [{"text", "timestamp"}]}</code></td><td>the same, plus the timestamp (feeds the trend graph)</td></tr>
+  <tr><td><span class="route">POST /generate_chart</span></td><td><code>{"sentiment_counts": {"1": n, "0": n, "-1": n}}</code></td><td>pie chart PNG</td></tr>
+  <tr><td><span class="route">POST /generate_wordcloud</span></td><td><code>{"comments": [...]}</code></td><td>word cloud PNG</td></tr>
+  <tr><td><span class="route">POST /generate_trend_graph</span></td><td><code>{"sentiment_data": [{"timestamp", "sentiment"}]}</code></td><td>monthly sentiment-share line chart PNG</td></tr>
+</table></div>
+<p><strong>Two ways to load the model</strong> are in the code:</p>
+<ol>
+  <li>From the <strong>registry</strong>, by name and version (<code>mlflow.pyfunc.load_model("models:/yt_chrome_plugin_model/1")</code>), with the vectorizer from disk.</li>
+  <li>From the <strong>local pickle</strong> <code>lgbm_model.pkl</code>. The instructor used this option because his EC2 server was gone.</li>
+</ol>
+<p>Only the first four routes are written at first, and the rest are added when the extension asks for them. <code>python flask_api/main.py</code> starts the API on <code>localhost:5000</code>.</p>
+<h3>Testing with Postman <span class="ts">07:03:00</span></h3>
+<p>New request → <strong>POST</strong> → <code>http://localhost:5000/predict</code> → Body → raw → JSON:</p>
+<pre><code>{ "comments": ["This video is awsome! I loved a lot", "Very bad explanation. poor video"] }</code></pre>
+<p>The response is sentiment <strong>1</strong> for the first comment and <strong>−1</strong> for the second. "Your video is good, nice presentation" also comes back positive. The instructor notes that political comments work best, because that's what the training data contains.</p>
+<div class="result" id="api-result">POST /predict  (our API, model loaded from models:/yt_chrome_plugin_model@staging)
+…filled in from the walkthrough notebook…</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s12"><span class="num">12</span>The Chrome extension <span class="ts">07:05:08</span></h2>
+<p>The instructor generated the front end with ChatGPT ("even I'm not good at HTML, CSS and JavaScript"). A Chrome extension needs three files:</p>
+<div class="table-wrap"><table>
+  <tr><th>File</th><th>Role</th></tr>
+  <tr><td><code>manifest.json</code></td><td>name, version, description, the <strong>action</strong> (which HTML file pops up), permissions</td></tr>
+  <tr><td><code>popup.html</code></td><td>the popup's layout and CSS</td></tr>
+  <tr><td><code>popup.js</code></td><td>reads the tab URL → video ID → fetches comments with the <strong>YouTube Data API</strong> (API key) → calls the Flask routes → draws the metrics and charts</td></tr>
+</table></div>
+<ol class="steps">
+  <li><p><strong>API key</strong>: GCP console (needs an account with a card) → search "YouTube Data API" → enable it → create an API key. The Data API returns real-time comment data. The instructor links a video on this step in the repo README.</p></li>
+  <li><p><strong>Load the extension</strong>: <code>chrome://extensions</code> → turn on <em>Developer mode</em> → <em>Load unpacked</em> → pick the <code>yt-chrome-plugin-frontend</code> folder.</p></li>
+  <li><p>On a non-YouTube tab the popup says it's <strong>not a valid YouTube URL</strong>. On a video, it fetches the comments (the top comments, not all of them). The first try failed with <em>"Error fetching sentiment predictions"</em> because the other routes weren't in <code>main.py</code> yet. After adding them, Flask auto-reloaded and the popup worked.</p></li>
+  <li><p>After editing the extension files, click the <strong>reload</strong> icon on the extension card; there's no need to load it again. <strong>Remove</strong> deletes the extension.</p></li>
+</ol>
+<div class="cols">
+<div>
+<p><strong>The video's demo</strong> (one of the instructor's own videos):</p>
+<div class="table-wrap"><table>
+  <tr><th>Metric</th><th class="num">Value</th></tr>
+  <tr><td>comments analysed</td><td class="num">117</td></tr>
+  <tr><td>positive</td><td class="num">31%</td></tr>
+  <tr><td>neutral</td><td class="num">63.2%</td></tr>
+  <tr><td>negative</td><td class="num">5.1%</td></tr>
+</table></div>
+<p>The popup also shows unique commenters, average comment length, an average sentiment score, a pie chart, a trend graph, a word cloud ("thank sir…") and the top 25 comments with labels: "how to get a certified course?" → neutral, "great video, clear explanation" → positive.</p>
+<div class="callout key"><span class="label">Before deploying</span><p>Change <code>API_URL</code> in <code>popup.js</code> from <code>localhost</code> to the <strong>deployed URL</strong> (the EC2 address). Everything else stays the same.</p></div>
+</div>
+<figure style="margin-top:0">
+  <img class="shot" src="assets/img/ch17_extension_preview.png" alt="Our extension popup: metrics grid, sentiment bar, pie chart, trend graph" style="max-width:100%;width:420px">
+  <figcaption><b>Our popup</b>, rendered by <code>dev_preview.html</code> with 99 fake comments (no API key needed) and our real Flask API. Look at the mistakes: "Not helpful, skipped too many steps" → <em>positive</em>, and "Terrible experience, the code does not work…" → <em>neutral</em>. That's the domain shift from political Reddit data showing up in practice.</figcaption>
+</figure>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s13"><span class="num">13</span>Dockerfile and a CI/CD preview <span class="ts">07:14:35</span></h2>
+<div class="cols">
+<div>
+<p><strong>The course's Dockerfile</strong> (a file named exactly <code>Dockerfile</code>, no extension):</p>
+<pre><code>FROM python:3.8-slim-buster
+WORKDIR /app
+COPY . /app
+RUN pip install -r requirements.txt
+CMD ["python3", "flask_api/main.py"]</code></pre>
+<p>The Python base image matches the project environment. The file creates <code>/app</code>, copies all the source code in, installs the requirements, and starts the API. It uses <code>python3</code> because the image runs Linux.</p>
+</div>
+<div>
+<p><strong>Our Dockerfile</strong> (in the hands-on project):</p>
+<pre><code>FROM python:3.11-slim
+<span class="c"># LightGBM needs the OpenMP runtime</span>
+RUN apt-get update &amp;&amp; apt-get install -y \
+      --no-install-recommends libgomp1
+WORKDIR /app
+COPY requirements-api.txt .
+RUN pip install --no-cache-dir \
+      -r requirements-api.txt
+RUN python -m nltk.downloader \
+      -d /usr/local/share/nltk_data \
+      stopwords wordnet omw-1.4
+COPY src/__init__.py src/common.py src/
+COPY flask_api/ flask_api/
+COPY lgbm_model.pkl tfidf_vectorizer.pkl ./
+EXPOSE 8080
+CMD ["gunicorn", "--bind", "0.0.0.0:8080",
+     "--workers", "2", "flask_api.app:app"]</code></pre>
+</div>
+</div>
+<p><strong>Deployment plan</strong>, carried out in Chapter 18:</p>
+<ol>
+  <li>Log in to the AWS console and create an IAM user with the required policies.</li>
+  <li>Build the Docker image of the source code and push it to <strong>ECR</strong> (Elastic Container Registry, AWS's alternative to Docker Hub).</li>
+  <li>Launch an <strong>EC2</strong> virtual machine.</li>
+  <li>Pull the image from ECR onto EC2 and run it.</li>
+  <li>Map the port, then open the app.</li>
+</ol>
+<p>The automation lives in <code>.github/workflows/cicd.yaml</code> (the folder structure must be exact), run by <strong>GitHub Actions</strong>. The instructor adapted a standard "GitHub Actions + AWS" template. It does continuous integration, delivery and deployment, and exposes the app on port <strong>8080</strong>. Chapter 18 explains CI/CD from scratch.</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 800 130" role="img" aria-label="CI/CD preview: git push to main triggers tests, then build and push to ECR, then deploy on EC2 via a self-hosted runner, port 8080.">
+    <defs><marker id="c17" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g data-tip="Any push to main (except README-only changes) starts the workflow."><rect x="10" y="30" width="130" height="60" rx="10" class="box"/><text x="75" y="56" text-anchor="middle" class="t-b">git push main</text><text x="75" y="74" text-anchor="middle" class="t-xs">trigger</text></g>
+    <g data-tip="Continuous integration: install requirements, run pytest (our workflow adds this job)."><rect x="180" y="30" width="170" height="60" rx="10" class="box-2"/><text x="265" y="56" text-anchor="middle" class="t-b">CI: test</text><text x="265" y="74" text-anchor="middle" class="t-xs">pytest tests/</text></g>
+    <g data-tip="Continuous delivery: log in to ECR, docker build, tag, push."><rect x="390" y="30" width="170" height="60" rx="10" class="box-2"/><text x="475" y="56" text-anchor="middle" class="t-b">CD: build + push</text><text x="475" y="74" text-anchor="middle" class="t-xs">image → Amazon ECR</text></g>
+    <g data-tip="Continuous deployment: a self-hosted GitHub runner on EC2 pulls the image and restarts the container with -p 8080:8080."><rect x="600" y="30" width="190" height="60" rx="10" class="box-2"/><text x="695" y="56" text-anchor="middle" class="t-b">Deploy on EC2</text><text x="695" y="74" text-anchor="middle" class="t-xs">docker run -p 8080:8080</text></g>
+    <path d="M140,60 L176,60" class="edge" marker-end="url(#c17)"/><path d="M350,60 L386,60" class="edge" marker-end="url(#c17)"/><path d="M560,60 L596,60" class="edge" marker-end="url(#c17)"/>
+    <text x="400" y="118" text-anchor="middle" class="t-xs">GitHub secrets: AWS_ACCESS_KEY_ID · AWS_SECRET_ACCESS_KEY · AWS_REGION · ECR_REPOSITORY_NAME · AWS_ECR_LOGIN_URI</text>
+  </svg>
+  </div>
+  <figcaption><b>What <code>cicd.yaml</code> will do.</b> The hands-on file is written and ready; it runs for real in Chapter 18.</figcaption>
+</figure>
+<div class="callout wrong"><span class="label">Port numbers get mixed up</span><p>The API runs on <strong>5000</strong> locally (Flask's default). The container and the CI/CD file use <strong>8080</strong>; the video says "8080" and then "port number 8000" in the same sentence, and 8080 is the right one. Whatever you choose, the Flask or gunicorn port, <code>-p host:container</code>, the security-group rule and <code>API_URL</code> in <code>popup.js</code> must all match. On macOS, port 5000 is taken by AirPlay Receiver, so our local API uses <strong>5001</strong>.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s14"><span class="num">14</span>Precision notes</h2>
+<ul>
+  <li><strong>"$300 free credits"</strong> on a new AWS account: $300 is Google Cloud's trial amount. AWS's current free tier (since July 2025) gives new accounts up to <strong>$200</strong> in credits. Either way, set a <strong>billing alarm</strong>.</li>
+  <li><strong>Data leakage in two course notebooks.</strong> The baseline fits <code>CountVectorizer</code> on <em>all</em> rows before splitting. The LightGBM tuning notebook applies <strong>SMOTE to the whole dataset before splitting</strong>, so the test set contains synthetic rows made from training rows, and its accuracy is optimistic. Notebooks 2–5 do it correctly: fit and resample on train only.</li>
+  <li><strong>Tuning on the test set.</strong> The Optuna objectives score each trial on the test split, and the best trial is reported on that same split. Use a validation split or cross-validation for tuning, and keep the test set for one final check.</li>
+  <li><strong>Picking the metric.</strong> "Negative recall" was the stated criterion, but experiment 4's final pick weighed several metrics by eye. In practice, decide one primary metric <em>before</em> the experiments (e.g. macro-F1 or negative-class recall at a minimum precision).</li>
+  <li><strong>SMOTE on text</strong> interpolates between TF-IDF vectors. It works, but the synthetic "documents" aren't real text. <code>class_weight</code> is simpler and often as good, especially for boosted trees (e.g. <code>class_weight="balanced"</code> in LightGBM).</li>
+  <li><strong>MLflow stages are deprecated</strong> (MLflow 2.9+): <code>transition_model_version_stage</code> and <code>get_latest_versions(stages=…)</code>. Use aliases. In <strong>MLflow 3</strong>, <code>mlflow.sklearn.log_model</code> saves in skops format, which refuses to load LightGBM classes. Log the model with <code>mlflow.lightgbm.log_model</code> instead (we hit this).</li>
+  <li><strong><code>app.run(host="0.0.0.0", debug=True)</code></strong> in the course API: the Werkzeug debugger allows running code from the browser, so never expose it on a network. Use gunicorn or uWSGI in production. Flask's server is for development only.</li>
+  <li><strong>The course repo's <code>popup.js</code> contains a real-looking API key.</strong> Anything in extension JavaScript is readable by every user. Restrict the key in GCP (to the YouTube Data API only), rotate it if it leaks, or have the <strong>back end</strong> call YouTube so the key never ships to the browser.</li>
+  <li><strong>Dockerfile</strong>: <code>python:3.8-slim-buster</code> is doubly end-of-life (Python 3.8 in Oct 2024, Debian buster in June 2024). <code>COPY . /app</code> without a <code>.dockerignore</code> also copies data, notebooks, <code>.git</code> and any local secrets into the image. The course <code>README</code> itself says to use Python 3.11.</li>
+  <li><strong>Model loaded from a local pickle.</strong> That skips the registry, so there's no guarantee the API serves the registered version. Load by alias (<code>@staging</code> / <code>@production</code>) or bake the exact registered version into the image in CI.</li>
+  <li><strong>"Chrome plug-in"</strong>: Chrome calls these <em>extensions</em>. (NPAPI plug-ins were removed from Chrome in 2015.) New extensions must use <strong>Manifest V3</strong>.</li>
+  <li><strong>Domain shift.</strong> The model learned from (mostly Indian political) Reddit comments, and the extension applies it to any YouTube video. Expect worse results on tech or entertainment comments, and on short, sarcastic or emoji-only comments. Monitoring and retraining with real YouTube data would be the next MLOps step.</li>
+  <li><strong><code>register_model</code> has side effects that DVC doesn't track.</strong> Re-running the stage creates a new registry version even when the model is identical. Our walkthrough shows this happening.</li>
+</ul>
+
+<!-- ───────────────────────────── -->
+<h2 id="hands-on"><span class="num">▶</span>Hands-on files: what we built</h2>
+<div class="handson">
+<span class="label">Hands-on project · everything executed locally; a local MLflow server stands in for EC2 + S3</span>
+<div class="files">
+  <a href="https://github.com/hemanthreddyllm/mlops-course-notes/blob/main/projects/ch17_youtube_sentiment/notebooks/1_preprocessing_eda.ipynb">1_preprocessing_eda.ipynb</a>
+  <a href="https://github.com/hemanthreddyllm/mlops-course-notes/blob/main/projects/ch17_youtube_sentiment/notebooks/2_experiments.ipynb">2_experiments.ipynb</a>
+  <a href="https://github.com/hemanthreddyllm/mlops-course-notes/blob/main/projects/ch17_youtube_sentiment/pipeline_walkthrough.ipynb">pipeline_walkthrough.ipynb</a>
+  <a href="https://github.com/hemanthreddyllm/mlops-course-notes/blob/main/projects/ch17_youtube_sentiment/dvc.yaml">dvc.yaml</a>
+  <a href="https://github.com/hemanthreddyllm/mlops-course-notes/blob/main/projects/ch17_youtube_sentiment/params.yaml">params.yaml</a>
+  <a href="https://github.com/hemanthreddyllm/mlops-course-notes/blob/main/projects/ch17_youtube_sentiment/flask_api/app.py">flask_api/app.py</a>
+  <a href="https://github.com/hemanthreddyllm/mlops-course-notes/blob/main/projects/ch17_youtube_sentiment/yt_chrome_plugin_frontend/">yt_chrome_plugin_frontend/</a>
+  <a href="https://github.com/hemanthreddyllm/mlops-course-notes/blob/main/projects/ch17_youtube_sentiment/Dockerfile">Dockerfile</a>
+  <a href="https://github.com/hemanthreddyllm/mlops-course-notes/blob/main/projects/ch17_youtube_sentiment/.github/workflows/cicd.yaml">cicd.yaml</a>
+</div>
+<pre style="margin:0 0 12px"><code>projects/ch17_youtube_sentiment/
+├── notebooks/
+│   ├── 1_preprocessing_eda.ipynb   <span class="c"># checks, class balance, lengths, n-grams, cleaning, word clouds</span>
+│   └── 2_experiments.ipynb         <span class="c"># 6 rounds → MLflow (local server, port 5050)</span>
+├── pipeline_walkthrough.ipynb      <span class="c"># git+dvc init → dvc repro → caching → registry → API → pytest → Docker</span>
+├── src/common.py                   <span class="c"># preprocess_comment(): ONE cleaning function for training and serving</span>
+├── src/data/  data_ingestion.py · data_preprocessing.py
+├── src/model/ model_building.py · model_evaluation.py · register_model.py
+├── params.yaml · dvc.yaml
+├── flask_api/app.py                <span class="c"># 6 routes; loads models:/yt_chrome_plugin_model@staging, falls back to the pickle</span>
+├── tests/test_api.py               <span class="c"># 5 pytest tests with Flask's test client</span>
+├── yt_chrome_plugin_frontend/      <span class="c"># manifest.json (MV3) · popup.html · popup.js</span>
+│   └── dev_preview.html + dev/     <span class="c"># open the popup in a normal tab with fake comments</span>
+├── Dockerfile · .dockerignore · requirements-api.txt · requirements.txt
+└── .github/workflows/cicd.yaml     <span class="c"># test → ECR → EC2 (Chapter 18)</span></code></pre>
+<h4>Experiment results (our run)</h4>
+<div class="result" id="ho-exp">…</div>
+<h4>DVC pipeline → registry</h4>
+<div class="result" id="ho-pipe">…</div>
+<h4>API and tests</h4>
+<div class="result" id="ho-api">…</div>
+<div class="cols" style="margin-top:12px">
+  <figure style="margin:0"><img class="shot" src="assets/img/ch17_confusion_matrix.png" alt="Confusion matrix of the pipeline's LightGBM model on the test set" style="max-width:100%"><figcaption><b>The pipeline model's confusion matrix</b> (logged to MLflow by <code>model_evaluation</code>).</figcaption></figure>
+  <figure style="margin:0"><img class="shot" src="assets/img/ch17_api_trend.png" alt="Monthly sentiment share line chart generated by the API" style="max-width:100%"><img class="shot" src="assets/img/ch17_api_wordcloud.png" alt="Word cloud generated by the API from demo comments" style="max-width:100%;margin-top:8px"><figcaption><b><code>/generate_trend_graph</code> and <code>/generate_wordcloud</code></b> output for the demo comments.</figcaption></figure>
+</div>
+<p><strong>Not run here</strong> (it's on your <a href="todo_after_course.html">after-course to-do list</a>): the real EC2 + S3 MLflow server, the YouTube API key and loading the extension in Chrome, the Docker build (Docker isn't installed), and pushing to GitHub.</p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s15"><span class="num">15</span>Interview questions</h2>
+<details class="qa"><summary>Walk me through an end-to-end ML project you built.</summary>
+<p>Use this project as the answer: problem (summarise YouTube comment sentiment) → data (a labelled Reddit set, imbalanced) → EDA and a single shared cleaning function → experiments tracked on a self-hosted MLflow server (baseline → vectorizer and n-grams → feature count → imbalance → model selection with Optuna → stacking rejected for complexity) → DVC pipeline with params.yaml → evaluation logged to MLflow → registry alias → Flask API → Chrome extension client → Docker → GitHub Actions to ECR/EC2. Mention the weaknesses too (domain shift, label noise) and what you'd add next (monitoring, retraining on real YouTube data).</p></details>
+<details class="qa"><summary>Why save the TF-IDF vectorizer, and why must preprocessing be shared?</summary>
+<p>The model only understands the feature space it was trained on. The API has to turn new text into <em>exactly</em> the same columns, with the same vocabulary and IDF weights, so it loads the fitted vectorizer rather than fitting a new one. The cleaning function must also be identical, or you get <strong>training/serving skew</strong>: the model sees differently-cleaned text in production and quietly gets worse. Putting both in one shared module (or one sklearn <code>Pipeline</code> object) prevents that.</p></details>
+<details class="qa"><summary>Your classes are 43 / 35 / 22%. How do you evaluate and handle that?</summary>
+<p>Look at per-class precision and recall, macro-F1 and the confusion matrix, not just accuracy. Options: <code>class_weight</code>, oversampling (SMOTE or ADASYN), undersampling, or hybrids such as SMOTEENN. Apply them to the training data only, after the split (inside CV folds when cross-validating). Adjusting decision thresholds per class also helps.</p></details>
+<details class="qa"><summary>Bag of words vs TF-IDF vs embeddings?</summary>
+<p>BoW gives sparse counts; common words dominate. TF-IDF also gives sparse vectors, but down-weights terms that appear everywhere, which is usually better for linear and tree models. N-grams capture short phrases like "not good". Embeddings (Word2Vec, sentence transformers) are dense and capture meaning, handle synonyms, and generalise better, but cost more to compute. Transformers fine-tuned on the task usually do best on sentiment.</p></details>
+<details class="qa"><summary>How did you choose between LightGBM and a stacking ensemble?</summary>
+<p>Their scores were about the same, so the simpler model wins: it's faster to train and serve, has fewer components to break, is easier to explain, and is easier to retrain. An ensemble earns its complexity only with a clear, significant gain on held-out data.</p></details>
+<details class="qa"><summary>How do you host MLflow for a team?</summary>
+<p><code>mlflow server</code> on a VM or container, with:</p>
+<ul>
+  <li>a <strong>database</strong> backend store (e.g. PostgreSQL on RDS)</li>
+  <li>an <strong>object-store</strong> artifact root (S3), or <code>--artifacts-destination</code> to proxy uploads through the server</li>
+  <li>IAM roles instead of static keys</li>
+  <li>HTTPS and authentication, or a private network</li>
+  <li>backups</li>
+</ul>
+<p>Alternatives are managed services: Databricks, SageMaker MLflow, DagsHub.</p></details>
+<details class="qa"><summary>What does <code>dvc repro</code> do when you change only <code>n_estimators</code>?</summary>
+<p>DVC hashes each stage's deps and params. Only <code>model_building</code> declares <code>model_building.*</code> params, so ingestion and preprocessing are skipped. Building re-runs, and evaluation and registration re-run because their input changed. If you revert the param, DVC's run-cache restores the earlier outputs without retraining. Stages with external side effects, like registration, still re-run.</p></details>
+<details class="qa"><summary>How would you promote a model from staging to production safely?</summary>
+<ul>
+  <li>Automated checks on the candidate: metrics above thresholds and no worse than production on a fixed test set, the signature and schema unchanged, a latency budget met, and API contract tests passing.</li>
+  <li>Then move the <code>@production</code> alias (or stage), roll out gradually (canary or shadow), monitor, and keep the previous version for instant rollback.</li>
+</ul>
+<p>The course repo sketches this in <code>scripts/</code> (<code>test_model_performance.py</code>, <code>promote_model.py</code>).</p></details>
+<details class="qa"><summary>The extension works for you but not after deployment. What do you check?</summary>
+<ul>
+  <li><code>API_URL</code> in <code>popup.js</code> points to the server.</li>
+  <li><code>host_permissions</code> in the manifest includes that URL.</li>
+  <li>CORS is enabled on the API.</li>
+  <li>The security group allows the port.</li>
+  <li>The container publishes the right port (<code>-p 8080:8080</code>) and the app binds to 0.0.0.0.</li>
+  <li>HTTPS vs HTTP: mixed content, and Chrome's Private Network Access rules.</li>
+  <li>The container logs.</li>
+  <li>The YouTube API key's quota and restrictions.</li>
+</ul></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s16"><span class="num">16</span>Recap</h2>
+<ul>
+  <li><strong>Problem → solution:</strong> summarise YouTube comment sentiment with a Chrome extension (front end) and a Flask API (back end).</li>
+  <li><strong>Data:</strong> Reddit comments labelled 1 / 0 / −1, about 43 / 35 / 22% (imbalanced) and mostly political.</li>
+  <li><strong>Cleaning:</strong> drop missing values, duplicates and blanks; lowercase; strip; remove <code>\n</code> and special characters; remove stop words but keep negations; lemmatize. One shared function does it all.</li>
+  <li><strong>MLflow on EC2:</strong> IAM keys, an S3 artifact bucket, a t2.medium Ubuntu instance, pipenv installs, <code>mlflow server -h 0.0.0.0 --default-artifact-root s3://…</code>, and port 5000 opened. (Secure it properly.)</li>
+  <li><strong>Experiments:</strong> baseline (64%) → TF-IDF (1,3) → 1000 features → SMOTE → LightGBM (tuned with Optuna) → stacking gives no gain, so LightGBM stays.</li>
+  <li><strong>Pipeline:</strong> ingestion → preprocessing → building → evaluation (MLflow, <code>experiment_info.json</code>) → registration (Staging, or an alias in MLflow 3), driven by <code>dvc.yaml</code> and <code>params.yaml</code>.</li>
+  <li><strong>Serving:</strong> Flask routes for prediction and charts, tested in Postman. The extension needs a YouTube Data API key and is loaded with "Load unpacked". Change <code>API_URL</code> before deploying.</li>
+  <li><strong>Next:</strong> the Dockerfile and <code>.github/workflows/cicd.yaml</code>, then deploy to ECR and EC2 with GitHub Actions in <a href="18_cicd_github_actions.html">Chapter 18</a>.</li>
+</ul>
+
+<div class="pager">
+  <a href="16_docker.html"><small>← Previous</small>16 · Docker</a>
+  <a class="next" href="18_cicd_github_actions.html"><small>Next →</small>18 · CI/CD with GitHub Actions</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+<script>
+const EXP = {"runs": [{"experiment": "exp1-baseline", "run": "rf-bow-10k", "accuracy": 0.6431, "macro_f1": 0.4864, "fit_seconds": 0.3716, "negative_precision": 1.0, "negative_recall": 0.0042, "negative_f1": 0.0084, "neutral_precision": 0.6798, "neutral_recall": 0.7991, "neutral_f1": 0.7346, "positive_precision": 0.6175, "positive_recall": 0.8523, "positive_f1": 0.7161}, {"experiment": "exp2-bow-vs-tfidf", "run": "bow-(1, 1)", "accuracy": 0.6484, "macro_f1": 0.4995, "fit_seconds": 0.352, "negative_precision": 0.9722, "negative_recall": 0.0212, "negative_f1": 0.0415, "neutral_precision": 0.659, "neutral_recall": 0.8406, "neutral_f1": 0.7388, "positive_precision": 0.6372, "positive_recall": 0.8224, "positive_f1": 0.7181}, {"experiment": "exp2-bow-vs-tfidf", "run": "bow-(1, 2)", "accuracy": 0.6512, "macro_f1": 0.5031, "fit_seconds": 0.3578, "negative_precision": 0.9756, "negative_recall": 0.0242, "negative_f1": 0.0473, "neutral_precision": 0.6631, "neutral_recall": 0.8406, "neutral_f1": 0.7414, "positive_precision": 0.6385, "positive_recall": 0.8272, "positive_f1": 0.7207}, {"experiment": "exp2-bow-vs-tfidf", "run": "bow-(1, 3)", "accuracy": 0.6542, "macro_f1": 0.5165, "fit_seconds": 0.3576, "negative_precision": 0.9146, "negative_recall": 0.0455, "negative_f1": 0.0866, "neutral_precision": 0.6681, "neutral_recall": 0.8335, "neutral_f1": 0.7417, "positive_precision": 0.6382, "positive_recall": 0.8288, "positive_f1": 0.7211}, {"experiment": "exp2-bow-vs-tfidf", "run": "tfidf-(1, 1)", "accuracy": 0.6499, "macro_f1": 0.5012, "fit_seconds": 0.3991, "negative_precision": 0.9487, "negative_recall": 0.0224, "negative_f1": 0.0438, "neutral_precision": 0.6604, "neutral_recall": 0.8399, "neutral_f1": 0.7394, "positive_precision": 0.6388, "positive_recall": 0.8259, "positive_f1": 0.7204}, {"experiment": "exp2-bow-vs-tfidf", "run": "tfidf-(1, 2)", "accuracy": 0.6539, "macro_f1": 0.5082, "fit_seconds": 0.3996, "negative_precision": 0.9804, "negative_recall": 0.0303, "negative_f1": 0.0588, "neutral_precision": 0.6634, "neutral_recall": 0.8395, "neutral_f1": 0.7411, "positive_precision": 0.6423, "positive_recall": 0.8313, "positive_f1": 0.7247}, {"experiment": "exp2-bow-vs-tfidf", "run": "tfidf-(1, 3)", "accuracy": 0.6543, "macro_f1": 0.5183, "fit_seconds": 0.4037, "negative_precision": 0.9205, "negative_recall": 0.0491, "negative_f1": 0.0932, "neutral_precision": 0.6671, "neutral_recall": 0.8319, "neutral_f1": 0.7405, "positive_precision": 0.6387, "positive_recall": 0.8285, "positive_f1": 0.7213}, {"experiment": "exp3-tfidf-max-features", "run": "tfidf-trigram-1000", "accuracy": 0.6618, "macro_f1": 0.5618, "fit_seconds": 0.4499, "negative_precision": 0.8775, "negative_recall": 0.1345, "negative_f1": 0.2333, "neutral_precision": 0.623, "neutral_recall": 0.8932, "neutral_f1": 0.734, "positive_precision": 0.6867, "positive_recall": 0.7521, "positive_f1": 0.7179}, {"experiment": "exp3-tfidf-max-features", "run": "tfidf-trigram-2000", "accuracy": 0.6596, "macro_f1": 0.5417, "fit_seconds": 0.4298, "negative_precision": 0.8663, "negative_recall": 0.0903, "negative_f1": 0.1636, "neutral_precision": 0.6458, "neutral_recall": 0.8715, "neutral_f1": 0.7418, "positive_precision": 0.6628, "positive_recall": 0.7876, "positive_f1": 0.7198}, {"experiment": "exp3-tfidf-max-features", "run": "tfidf-trigram-3000", "accuracy": 0.6524, "macro_f1": 0.507, "fit_seconds": 0.4036, "negative_precision": 0.9804, "negative_recall": 0.0303, "negative_f1": 0.0588, "neutral_precision": 0.6456, "neutral_recall": 0.8664, "neutral_f1": 0.7398, "positive_precision": 0.6541, "positive_recall": 0.8063, "positive_f1": 0.7222}, {"experiment": "exp3-tfidf-max-features", "run": "tfidf-trigram-4000", "accuracy": 0.6531, "macro_f1": 0.5047, "fit_seconds": 0.4025, "negative_precision": 0.9762, "negative_recall": 0.0248, "negative_f1": 0.0485, "neutral_precision": 0.6551, "neutral_recall": 0.8533, "neutral_f1": 0.7412, "positive_precision": 0.648, "positive_recall": 0.8212, "positive_f1": 0.7244}, {"experiment": "exp3-tfidf-max-features", "run": "tfidf-trigram-5000", "accuracy": 0.6543, "macro_f1": 0.5183, "fit_seconds": 0.4184, "negative_precision": 0.9205, "negative_recall": 0.0491, "negative_f1": 0.0932, "neutral_precision": 0.6671, "neutral_recall": 0.8319, "neutral_f1": 0.7405, "positive_precision": 0.6387, "positive_recall": 0.8285, "positive_f1": 0.7213}, {"experiment": "exp3-tfidf-max-features", "run": "tfidf-trigram-6000", "accuracy": 0.6478, "macro_f1": 0.4978, "fit_seconds": 0.395, "negative_precision": 0.9394, "negative_recall": 0.0188, "negative_f1": 0.0368, "neutral_precision": 0.6655, "neutral_recall": 0.83, "neutral_f1": 0.7387, "positive_precision": 0.6319, "positive_recall": 0.8307, "positive_f1": 0.7178}, {"experiment": "exp3-tfidf-max-features", "run": "tfidf-trigram-7000", "accuracy": 0.6484, "macro_f1": 0.4972, "fit_seconds": 0.4138, "negative_precision": 0.9655, "negative_recall": 0.017, "negative_f1": 0.0334, "neutral_precision": 0.67, "neutral_recall": 0.8197, "neutral_f1": 0.7373, "positive_precision": 0.6304, "positive_recall": 0.8415, "positive_f1": 0.7208}, {"experiment": "exp3-tfidf-max-features", "run": "tfidf-trigram-8000", "accuracy": 0.6476, "macro_f1": 0.4955, "fit_seconds": 0.3902, "negative_precision": 0.96, "negative_recall": 0.0145, "negative_f1": 0.0287, "neutral_precision": 0.6745, "neutral_recall": 0.8201, "neutral_f1": 0.7402, "positive_precision": 0.6263, "positive_recall": 0.8405, "positive_f1": 0.7177}, {"experiment": "exp3-tfidf-max-features", "run": "tfidf-trigram-9000", "accuracy": 0.6448, "macro_f1": 0.492, "fit_seconds": 0.3979, "negative_precision": 1.0, "negative_recall": 0.0121, "negative_f1": 0.024, "neutral_precision": 0.6793, "neutral_recall": 0.8031, "neutral_f1": 0.736, "positive_precision": 0.6192, "positive_recall": 0.8488, "positive_f1": 0.7161}, {"experiment": "exp3-tfidf-max-features", "run": "tfidf-trigram-10000", "accuracy": 0.6418, "macro_f1": 0.4895, "fit_seconds": 0.3981, "negative_precision": 0.95, "negative_recall": 0.0115, "negative_f1": 0.0228, "neutral_precision": 0.6801, "neutral_recall": 0.7936, "neutral_f1": 0.7325, "positive_precision": 0.6144, "positive_recall": 0.8497, "positive_f1": 0.7131}, {"experiment": "exp4-imbalance", "run": "class_weight", "accuracy": 0.6765, "macro_f1": 0.65, "fit_seconds": 0.5449, "negative_precision": 0.6041, "negative_recall": 0.4642, "negative_f1": 0.525, "neutral_precision": 0.6041, "neutral_recall": 0.9257, "neutral_f1": 0.7311, "positive_precision": 0.8466, "positive_recall": 0.5878, "positive_f1": 0.6939}, {"experiment": "exp4-imbalance", "run": "oversampling_smote", "accuracy": 0.6713, "macro_f1": 0.6451, "fit_seconds": 0.643, "negative_precision": 0.5877, "negative_recall": 0.4648, "negative_f1": 0.5191, "neutral_precision": 0.6034, "neutral_recall": 0.9138, "neutral_f1": 0.7268, "positive_precision": 0.8394, "positive_recall": 0.585, "positive_f1": 0.6895}, {"experiment": "exp4-imbalance", "run": "adasyn", "accuracy": 0.6788, "macro_f1": 0.6479, "fit_seconds": 0.6252, "negative_precision": 0.6238, "negative_recall": 0.4291, "negative_f1": 0.5084, "neutral_precision": 0.6013, "neutral_recall": 0.934, "neutral_f1": 0.7316, "positive_precision": 0.8405, "positive_recall": 0.6049, "positive_f1": 0.7035}, {"experiment": "exp4-imbalance", "run": "undersampling", "accuracy": 0.673, "macro_f1": 0.6479, "fit_seconds": 0.3534, "negative_precision": 0.6015, "negative_recall": 0.4739, "negative_f1": 0.5302, "neutral_precision": 0.6003, "neutral_recall": 0.928, "neutral_f1": 0.729, "positive_precision": 0.8507, "positive_recall": 0.5726, "positive_f1": 0.6845}, {"experiment": "exp4-imbalance", "run": "smote_enn", "accuracy": 0.4487, "macro_f1": 0.3749, "fit_seconds": 0.3604, "negative_precision": 0.3375, "negative_recall": 0.7291, "negative_f1": 0.4614, "neutral_precision": 0.5536, "neutral_recall": 0.8248, "neutral_f1": 0.6625, "positive_precision": 1.0, "positive_recall": 0.0003, "positive_f1": 0.0006}, {"experiment": "exp5-algorithms-optuna", "run": "LogisticRegression", "accuracy": 0.7758, "macro_f1": 0.7564, "fit_seconds": 0.3794, "negative_precision": 0.6545, "negative_recall": 0.6291, "negative_f1": 0.6415, "neutral_precision": 0.7515, "neutral_recall": 0.8932, "neutral_f1": 0.8163, "positive_precision": 0.8727, "positive_recall": 0.7584, "positive_f1": 0.8115}, {"experiment": "exp5-algorithms-optuna", "run": "LinearSVC", "accuracy": 0.787, "macro_f1": 0.7676, "fit_seconds": 0.4907, "negative_precision": 0.7022, "negative_recall": 0.623, "negative_f1": 0.6602, "neutral_precision": 0.7472, "neutral_recall": 0.9209, "neutral_f1": 0.825, "positive_precision": 0.8772, "positive_recall": 0.7654, "positive_f1": 0.8175}, {"experiment": "exp5-algorithms-optuna", "run": "MultinomialNB", "accuracy": 0.6599, "macro_f1": 0.6441, "fit_seconds": 0.0073, "negative_precision": 0.4557, "negative_recall": 0.657, "negative_f1": 0.5381, "neutral_precision": 0.7119, "neutral_recall": 0.5726, "neutral_f1": 0.6347, "positive_precision": 0.7901, "positive_recall": 0.7315, "positive_f1": 0.7596}, {"experiment": "exp5-algorithms-optuna", "run": "KNN", "accuracy": 0.4769, "macro_f1": 0.4478, "fit_seconds": 3.9005, "negative_precision": 0.3202, "negative_recall": 0.8, "negative_f1": 0.4574, "neutral_precision": 0.6428, "neutral_recall": 0.7129, "neutral_f1": 0.676, "positive_precision": 0.9212, "positive_recall": 0.1186, "positive_f1": 0.2101}, {"experiment": "exp5-algorithms-optuna", "run": "RandomForest", "accuracy": 0.7215, "macro_f1": 0.6971, "fit_seconds": 1.2749, "negative_precision": 0.683, "negative_recall": 0.5067, "negative_f1": 0.5818, "neutral_precision": 0.6624, "neutral_recall": 0.9371, "neutral_f1": 0.7762, "positive_precision": 0.8238, "positive_recall": 0.6611, "positive_f1": 0.7335}, {"experiment": "exp5-algorithms-optuna", "run": "XGBoost", "accuracy": 0.7875, "macro_f1": 0.7682, "fit_seconds": 23.9698, "negative_precision": 0.7187, "negative_recall": 0.6164, "negative_f1": 0.6636, "neutral_precision": 0.7508, "neutral_recall": 0.9458, "neutral_f1": 0.8371, "positive_precision": 0.866, "positive_recall": 0.7502, "positive_f1": 0.8039}, {"experiment": "exp5-algorithms-optuna", "run": "LightGBM", "accuracy": 0.7788, "macro_f1": 0.7585, "fit_seconds": 6.3991, "negative_precision": 0.6917, "negative_recall": 0.6036, "negative_f1": 0.6447, "neutral_precision": 0.7698, "neutral_recall": 0.9098, "neutral_f1": 0.834, "positive_precision": 0.8313, "positive_recall": 0.7654, "positive_f1": 0.797}, {"experiment": "exp6-final-vs-stacking", "run": "lightgbm-params-yaml", "accuracy": 0.7884, "macro_f1": 0.7676, "fit_seconds": 9.3979, "negative_precision": 0.7141, "negative_recall": 0.6055, "negative_f1": 0.6553, "neutral_precision": 0.7611, "neutral_recall": 0.9348, "neutral_f1": 0.839, "positive_precision": 0.855, "positive_recall": 0.7666, "positive_f1": 0.8084}, {"experiment": "exp6-final-vs-stacking", "run": "stacking-lr-knn-lgbm", "accuracy": 0.7877, "macro_f1": 0.7687, "fit_seconds": 52.4559, "negative_precision": 0.6821, "negative_recall": 0.6345, "negative_f1": 0.6575, "neutral_precision": 0.7709, "neutral_recall": 0.9154, "neutral_f1": 0.8369, "positive_precision": 0.8637, "positive_recall": 0.7654, "positive_f1": 0.8116}], "agree": "Our run agrees with the video on four conclusions: the baseline scores about 64%, TF-IDF with trigrams gives the best negative recall, 1000 features is best, and stacking only matches LightGBM. It differs on two: in round 4 the sensible imbalance fixes land within about a point of each other (SMOTEENN collapses the positive class), and in round 5 a tuned linear SVM and XGBoost tie with LightGBM."};
+const HANDS_ON = {"ho-exp": "round                     best run (by accuracy)   accuracy  neg recall  macro F1\nexp1-baseline             rf-bow-10k                  0.643       0.004     0.486\nexp2-bow-vs-tfidf         tfidf-(1, 3)                0.654       0.049     0.518\nexp3-tfidf-max-features   tfidf-trigram-1000          0.662       0.135     0.562\nexp4-imbalance            adasyn                      0.679       0.429     0.648\nexp5-algorithms-optuna    XGBoost                     0.787       0.616     0.768\nexp6-final-vs-stacking    lightgbm-params-yaml        0.788       0.606     0.768\n\n31 runs logged to MLflow (local server, port 5050).\nRound 5 top 3 by accuracy: XGBoost 0.787, LinearSVC 0.787, LightGBM 0.779", "ho-pipe": "Running stage 'data_ingestion':\nRunning stage 'data_preprocessing':\nRunning stage 'model_building':\nRunning stage 'model_evaluation':\nRunning stage 'model_registration':\nmodel_evaluation | INFO | accuracy=0.7869 macro_f1=0.7667 run=a26c75d60e3e414f838bbcc38acd694c\ndvc repro (again)        → all 5 stages skipped: 'Data and pipelines are up to date.'\nparams.yaml  model_building.n_estimators  367     150\naccuracy with n_estimators=150: 0.7924  vs 367: 0.7869\nrevert → Stage 'model_building' is cached - skipping run, checking out outputs\nrevert → Stage 'model_evaluation' is cached - skipping run, checking out outputs\n\n  version    run_id n_estimators  accuracy    aliases\n0       1  a26c75d6          367    0.7869         []\n1       2  1b52df1e          150    0.7924         []\n2       3  a26c75d6          367    0.7869  [staging]\n@production → v2   @staging → v3", "ho-api": "{\"message\":\"YouTube Sentiment Insights API\",\"model_source\":\"mlflow registry: yt_chrome_plugin_model@staging\"}\n\nPOST /predict →\n                                   comment     label  sentiment\n0  This video is awesome! I loved it a lot  positive          1\n1         Very bad explanation. poor video  negative         -1\n2       the tutorial starts at minute five   neutral          0\n3        I don't think this is not helpful   neutral          0\n\ndemo comments: 99\npositive    51\nneutral     37\nnegative    11\napi_pie.png image/png 25415 bytes\napi_trend.png image/png 26392 bytes\napi_wordcloud.png image/png 166881 bytes\n\npytest → 5 passed in 2.95s", "api-result": "POST /predict  (our API, model loaded from models:/yt_chrome_plugin_model@staging)\n                                   comment     label  sentiment\n0  This video is awesome! I loved it a lot  positive          1\n1         Very bad explanation. poor video  negative         -1\n2       the tutorial starts at minute five   neutral          0\n3        I don't think this is not helpful   neutral          0"};
+
+// ---- experiment charts: one metric at a time, like switching the metric in MLflow's compare view
+(function () {
+  if (!EXP) return;
+  const METRICS = [["accuracy", "Accuracy"], ["negative_recall", "Negative recall"], ["macro_f1", "Macro F1"]];
+  const ROUNDS = {
+    "chart-exp1": ["exp1-baseline", "Experiment 1 · baseline (BoW 10k + Random Forest)", "negative_recall"],
+    "chart-exp2": ["exp2-bow-vs-tfidf", "Experiment 2 · vectorizer × n-gram range (5000 features, RF)", "negative_recall"],
+    "chart-exp3": ["exp3-tfidf-max-features", "Experiment 3 · TF-IDF (1,3) max_features (RF)", "negative_recall"],
+    "chart-exp4": ["exp4-imbalance", "Experiment 4 · imbalance handling (TF-IDF (1,3), 1000 features, RF)", "negative_recall"],
+    "chart-exp5": ["exp5-algorithms-optuna", "Experiment 5 · tuned algorithms (SMOTE)", "accuracy"],
+    "chart-exp6": ["exp6-final-vs-stacking", "Experiment 6 · LightGBM (params.yaml) vs stacking", "accuracy"],
+  };
+  const pct = v => (v * 100).toFixed(1) + "%";
+  for (const [id, [exp, title, start]] of Object.entries(ROUNDS)) {
+    const host = document.getElementById(id);
+    const rows = EXP.runs.filter(r => r.experiment === exp);
+    if (!host || !rows.length) continue;
+    host.className = "xchart";
+    host.innerHTML = `<div class="head"><b>${title}</b><span class="seg">${METRICS.map(([k, l]) => `<button data-k="${k}">${l}</button>`).join("")}</span></div><div class="bars"></div><div class="xnote">Our re-run, scored on the held-out test set. Green = best in this round for the selected metric. Hover a bar for all metrics.</div>`;
+    const bars = host.querySelector(".bars");
+    function draw(k) {
+      host.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.k === k)));
+      const best = Math.max(...rows.map(r => r[k]));
+      bars.innerHTML = rows.map(r => {
+        const tip = `<b>${r.run}</b><br>accuracy ${pct(r.accuracy)}<br>macro F1 ${pct(r.macro_f1)}<br>negative: precision ${pct(r.negative_precision)} · recall ${pct(r.negative_recall)}<br>neutral recall ${pct(r.neutral_recall)} · positive recall ${pct(r.positive_recall)}`;
+        return `<div class="xrow${r[k] === best && rows.length > 1 ? " best" : ""}" data-tip="${tip}"><span class="lab" title="${r.run}">${r.run}</span><span class="track"><span class="fill" style="display:block;width:${(r[k] * 100).toFixed(1)}%"></span></span><span class="val">${pct(r[k])}</span></div>`;
+      }).join("");
+    }
+    host.querySelectorAll("button").forEach(b => b.addEventListener("click", () => draw(b.dataset.k)));
+    draw(start);
+  }
+  const agree = document.getElementById("exp-agree");
+  if (agree && EXP.agree) agree.textContent = EXP.agree;
+})();
+
+// ---- hands-on result boxes
+(function () {
+  if (!HANDS_ON) return;
+  for (const [id, text] of Object.entries(HANDS_ON)) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+})();
+
+// ---- cleaning playground (a simplified JS copy of preprocess_comment)
+(function () {
+  const STOP = new Set("i me my myself we our ours ourselves you your yours yourself yourselves he him his himself she her hers herself it its itself they them their theirs themselves what which who whom this that these those am is are was were be been being have has had having do does did doing a an the and if or because as until while of at by for with about against between into through during before after above below to from up down in out on off over under again further then once here there when where why how all any both each few more most other some such only own same so than too very s t can will just don should now d ll m o re ve y ain aren couldn didn doesn hadn hasn haven isn ma mightn mustn needn shan shouldn wasn weren won wouldn".split(" "));
+  const KEEP = new Set(["not", "no", "but", "however", "yet", "nor", "never"]);
+  const IRREG = { were: "were", was: "wa", has: "ha", examples: "example", explanations: "explanation", videos: "video", comments: "comment", movies: "movie", helped: "helped" };
+  const lemma = w => IRREG[w] || (w.length > 4 && w.endsWith("ies") ? w.slice(0, -3) + "y" : w.length > 3 && w.endsWith("s") && !w.endsWith("ss") && !w.endsWith("us") ? w.slice(0, -1) : w);
+  const inp = document.getElementById("clean-in"), out = document.getElementById("clean-out");
+  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  function run() {
+    const raw = inp.value;
+    const s1 = raw.toLowerCase().trim();
+    const s2 = s1.replace(/\n/g, " ");
+    const s3 = s2.replace(/[^a-z0-9\s!?.,]/g, "");
+    const words = s3.split(/\s+/).filter(Boolean);
+    const marked = words.map(w => STOP.has(w) && !KEEP.has(w) ? `<span class="gone">${esc(w)}</span>` : KEEP.has(w) ? `<span class="kept">${esc(w)}</span>` : esc(w)).join(" ");
+    const kept = words.filter(w => !STOP.has(w) || KEEP.has(w));
+    const final = kept.map(lemma).join(" ");
+    out.innerHTML = [
+      ["lowercase + strip", `<code>${esc(s1)}</code>`],
+      ["newlines → spaces", `<code>${esc(s2)}</code>`],
+      ["remove characters other than a–z, 0–9, spaces and <code>!?.,</code>", `<code>${esc(s3)}</code>`],
+      ["drop stop words (<span class=\"gone\">struck</span>), keep negations (<span class=\"kept\">green</span>)", `<code>${marked}</code>`],
+      ["lemmatize (WordNet)", `<code>${esc(final)}</code>`],
+    ].map(([t, v]) => `<li><b>${t}</b><br>${v}</li>`).join("");
+  }
+  inp.addEventListener("input", run);
+  run();
+})();
+</script>
+</body>
+</html>

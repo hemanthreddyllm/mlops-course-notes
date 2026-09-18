@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>08 · Local & Remote Repository Setup — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .term { background: var(--code-bg); border-radius: 10px; overflow: hidden; margin: 14px 0; }
+  .term .bar { display: flex; gap: 6px; padding: 9px 12px; background: #2b2b29; }
+  .term .bar i { width: 10px; height: 10px; border-radius: 50%; background: #5b5a55; }
+  .term .bar span { margin-left: 8px; font: 12px var(--mono); color: #a8a79f; }
+  .term pre { margin: 0; border-radius: 0; }
+  .term .p { color: #7fc79a; }
+  .term .o { color: #c3c2b7; }
+  /* schematic form */
+  .form { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 18px; margin: 18px 0; }
+  .form .row { display: grid; grid-template-columns: 170px 1fr; gap: 14px; padding: 10px 0; border-bottom: 1px dashed var(--rule); align-items: start; }
+  .form .row:last-of-type { border-bottom: 0; }
+  @media (max-width: 560px) { .form .row { grid-template-columns: 1fr; gap: 4px; } }
+  .form .lbl { font-weight: 600; font-size: 14px; }
+  .form .lbl small { display: block; font-weight: 400; color: var(--ink-3); font-size: 12px; }
+  .form .val { font-size: 14px; }
+  .fake-input { display: inline-block; font: 13px var(--mono); border: 1px solid var(--rule); background: var(--bg); border-radius: 6px; padding: 5px 10px; }
+  .pill { display: inline-block; font-size: 12px; border: 1px solid var(--rule); border-radius: 999px; padding: 3px 10px; margin: 0 6px 6px 0; }
+  .pill.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .why { color: var(--ink-2); font-size: 13px; margin-top: 4px; }
+  .fakebtn { display: inline-block; background: var(--good); color: #fff; font-weight: 600; font-size: 13px; padding: 6px 14px; border-radius: 6px; }
+  /* gitignore tester */
+  .tester { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 16px; margin: 18px 0; }
+  .tester input { width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); font: 14px var(--mono); }
+  .verdict { margin-top: 10px; padding: 10px 14px; border-radius: 8px; font-size: 14px; }
+  .verdict.ign { background: var(--good-soft); color: var(--good); }
+  .verdict.trk { background: var(--warn-soft); color: var(--ink); }
+  .samples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .samples button { font: 12px var(--mono); padding: 4px 9px; border-radius: 999px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); cursor: pointer; }
+  .samples button:hover { border-color: var(--accent); }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 08</span></div>
+<div class="eyebrow">Chapter 08 · Local and Remote Repository Setup</div>
+<h1>Create a repo on GitHub and clone it locally</h1>
+<p class="lede">A short, practical chapter. The instructor creates a remote repository on GitHub (choosing public or private, a README, a Python <code>.gitignore</code> and an MIT license), copies its HTTPS link, runs <code>git clone</code> in Git Bash, and opens the local copy in VS Code. That local copy is where all the code for the next chapters gets written and pushed from.</p>
+<div class="meta">
+  <span class="chip">Video 02:08:22 – 02:13:16</span>
+  <span class="chip">Hands-on · GitHub website + Git Bash</span>
+  <span class="chip">Demo repo: GitHub learning test</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">Remote vs local repository</a></li>
+    <li><a href="#s2">Before you start: Git Bash</a></li>
+    <li><a href="#s3">Filling in the "New repository" form</a></li>
+    <li><a href="#s4">Public vs private</a></li>
+    <li><a href="#s5">README, .gitignore and license</a></li>
+    <li><a href="#s6">Try it: will .gitignore skip this file?</a></li>
+    <li><a href="#s7">Cloning the repo to your machine</a></li>
+    <li><a href="#s8">What you get: the hidden .git folder</a></li>
+    <li><a href="#s9">Opening the project in VS Code</a></li>
+    <li><a href="#s10">HTTPS login, SSH, and the other way round</a></li>
+    <li><a href="#hands-on">Hands-on files: what we built</a></li>
+    <li><a href="#s11">Interview questions</a></li>
+    <li><a href="#s12">Recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>Remote vs local repository</h2>
+<p>The whole chapter comes down to one picture: create the <strong>remote</strong> repo on GitHub first, then <strong>clone</strong> it to get a <strong>local</strong> repo you can work in.</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 230" role="img" aria-label="Step 1: create the remote repository on GitHub with README, gitignore and license. Step 2: git clone downloads it to your laptop as a local repository with a hidden .git folder. Later: push and pull keep them in sync">
+    <defs>
+      <marker id="h1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker>
+      <marker id="h2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker>
+    </defs>
+    <text x="20" y="22" class="t-xs t-b">① REMOTE · github.com</text>
+    <rect x="20" y="32" width="240" height="170" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+    <text x="140" y="60" text-anchor="middle" class="t-sm t-b">☁ github-learning-test</text>
+    <text x="40" y="92" class="t-xs">📄 README.md</text>
+    <text x="40" y="114" class="t-xs">📄 .gitignore  (Python template)</text>
+    <text x="40" y="136" class="t-xs">📄 LICENSE  (MIT)</text>
+    <text x="40" y="170" class="t-xs">🔗 HTTPS clone URL (Code button)</text>
+    <path d="M260,100 L498,100" class="edge-accent" marker-end="url(#h1)"/>
+    <text x="379" y="90" text-anchor="middle" class="t-sm t-b" style="fill:var(--accent)">② git clone &lt;url&gt;</text>
+    <text x="379" y="118" text-anchor="middle" class="t-xs">one-time download + history</text>
+    <path d="M498,160 L262,160" class="edge" marker-end="url(#h2)" stroke-dasharray="5 4"/>
+    <text x="379" y="152" text-anchor="middle" class="t-xs">later: push ↑ / pull ↓ (Ch 09)</text>
+    <text x="500" y="22" class="t-xs t-b">③ LOCAL · your laptop</text>
+    <rect x="500" y="32" width="240" height="170" rx="12" class="box"/>
+    <text x="620" y="60" text-anchor="middle" class="t-sm t-b">📁 github-learning-test/</text>
+    <text x="520" y="92" class="t-xs">📄 README.md</text>
+    <text x="520" y="114" class="t-xs">📄 .gitignore</text>
+    <text x="520" y="136" class="t-xs">📄 LICENSE</text>
+    <rect x="512" y="150" width="216" height="30" rx="6" class="box-2"/><text x="620" y="170" text-anchor="middle" class="t-xs t-b">📁 .git/  (hidden: tracks every change)</text>
+  </svg>
+  </div>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>Before you start: Git Bash <span class="ts">02:08:23</span></h2>
+<p>A new GitHub account has no repositories, only a green <strong>New</strong> button. Before using it, <strong>make sure Git is installed</strong> (Chapter 07).</p>
+<div class="grid">
+  <div class="card"><h4>Check on Windows</h4><p>Search the Start menu for <strong>Git Bash</strong> and open it. You get a <strong>bash terminal</strong> where every Git command works (and Linux-style commands from Chapter 06 too).</p></div>
+  <div class="card"><h4>Or use your usual terminal</h4><p>Once Git is installed, its commands also work in your normal terminal (PowerShell, the VS Code terminal, macOS Terminal). The instructor uses his terminal with Git Bash set up inside it.</p></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>Filling in the "New repository" form <span class="ts">02:08:23</span></h2>
+<p>Click <strong>New</strong> on GitHub. Below is a <em>schematic</em> of the form with the choices made in the video. It isn't a screenshot.</p>
+
+<div class="form" role="group" aria-label="Schematic of the new repository form">
+  <div class="row"><div class="lbl">Repository name<small>required</small></div>
+    <div class="val"><span class="fake-input">github-learning-test</span>
+    <div class="why">The instructor types "GitHub learning test". GitHub turns spaces into hyphens. Name it after the project, e.g. <code>kidney-disease-classification</code> for a kidney-disease classifier.</div></div></div>
+  <div class="row"><div class="lbl">Visibility</div>
+    <div class="val"><span class="pill on">● Public</span><span class="pill">○ Private</span>
+    <div class="why">Public in the demo. <a href="#s4">Comparison below.</a></div></div></div>
+  <div class="row"><div class="lbl">Add a README file</div>
+    <div class="val"><span class="pill on">☑ yes</span>
+    <div class="why">Its text is shown as the project description on the repo page.</div></div></div>
+  <div class="row"><div class="lbl">Add .gitignore</div>
+    <div class="val"><span class="pill on">template: Python</span>
+    <div class="why">Lists files Git should never push. Templates exist for C, Java and many other languages.</div></div></div>
+  <div class="row"><div class="lbl">Choose a license</div>
+    <div class="val"><span class="pill on">MIT License</span>
+    <div class="why">"You can take any license. It's up to you."</div></div></div>
+  <div class="row"><div class="lbl"></div><div class="val"><span class="fakebtn">Create repository</span></div></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>Public vs private <span class="ts">02:09:26</span></h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th></th><th>Public</th><th>Private</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Who can see it</strong></td><td>Anyone on the internet</td><td>Only you, plus people you <strong>give permission</strong> to</td></tr>
+    <tr><td><strong>Good for</strong></td><td>Portfolios, open source, course projects</td><td>Company code, unfinished work, anything sensitive</td></tr>
+    <tr><td><strong>Watch out</strong></td><td>Never commit secrets: AWS keys, <code>.env</code>, <code>.pem</code> files</td><td>Private is not a security boundary for secrets either. Use a secrets manager or CI secrets.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>You can change visibility later in the repo's <em>Settings</em>. Collaborators are added under <em>Settings → Collaborators</em>.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>README, .gitignore and license <span class="ts">02:09:26</span></h2>
+<div class="grid">
+  <div class="card"><span class="tag">README.md</span><h4>The project's front page</h4><p>Whatever you write here is rendered below the file list on GitHub. The instructor scrolls TensorFlow's repo to show a README with the description and installation guide. Written in <strong>Markdown</strong>.</p></div>
+  <div class="card"><span class="tag">.gitignore</span><h4>What Git should skip</h4><p>A list of files and folders you <strong>don't want pushed</strong> to GitHub. Picking the Python template pre-fills the usual Python clutter.</p></div>
+  <div class="card"><span class="tag">LICENSE</span><h4>How others may use your code</h4><p>The demo uses <strong>MIT</strong>. Without a license, others technically have no right to reuse your public code.</p></div>
+</div>
+
+<div class="cols">
+<div>
+<p class="fig-title">A good README for an ML project</p>
+<pre><code># Kidney Disease Classification
+CNN that classifies CT scans as normal / abnormal.
+
+## Demo
+Live API: http://&lt;host&gt;/docs
+
+## Architecture
+![pipeline](docs/architecture.png)
+
+## Run locally
+git clone …  &amp;&amp;  pip install -r requirements.txt
+dvc repro                 <span class="c"># rebuild the pipeline</span>
+uvicorn app:app --reload  <span class="c"># serve</span>
+
+## Stack
+DVC · MLflow · Docker · GitHub Actions · AWS</code></pre>
+<p class="fig-sub">Beyond the video: a suggested structure.</p>
+</div>
+<div>
+<p class="fig-title">Which license? (beyond the video)</p>
+<div class="table-wrap" style="margin-top:8px">
+<table>
+  <thead><tr><th>License</th><th>In short</th></tr></thead>
+  <tbody>
+    <tr><td><strong>MIT</strong></td><td>Do almost anything; keep the copyright notice. Short and very common.</td></tr>
+    <tr><td>Apache 2.0</td><td>Like MIT, plus an explicit patent grant. Used by TensorFlow.</td></tr>
+    <tr><td>GPL-3.0</td><td>Derivative work must also be open source under GPL.</td></tr>
+    <tr><td>None</td><td>All rights reserved by default.</td></tr>
+  </tbody>
+</table>
+</div>
+</div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>Try it: will .gitignore skip this file?</h2>
+<p>A few lines from GitHub's Python template, plus common MLOps additions. Type a path to see whether Git would ignore it.</p>
+<div class="cols">
+<pre><code><span class="c"># from the Python template (excerpt)</span>
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.egg-info/
+.env
+.venv
+venv/
+.ipynb_checkpoints
+.pytest_cache/
+*.log
+
+<span class="c"># MLOps additions (beyond the video)</span>
+data/
+artifacts/
+mlruns/
+*.pkl
+*.pem</code></pre>
+<div class="tester">
+  <p class="fig-title" style="margin-bottom:8px">.gitignore tester</p>
+  <input id="gi" type="text" value="src/__pycache__/utils.cpython-311.pyc" aria-label="File path to test" spellcheck="false">
+  <div id="gv" class="verdict" aria-live="polite"></div>
+  <div class="samples" id="gs">
+    <button type="button">app.py</button>
+    <button type="button">.env</button>
+    <button type="button">data/raw/train.csv</button>
+    <button type="button">models/model.pkl</button>
+    <button type="button">notebooks/eda.ipynb</button>
+    <button type="button">linux-test.pem</button>
+    <button type="button">mlruns/0/meta.yaml</button>
+    <button type="button">requirements.txt</button>
+    <button type="button">logs/app.log</button>
+    <button type="button">dvc.yaml</button>
+  </div>
+  <p class="fig-sub" style="margin-top:10px">A simplified matcher: it covers <code>*</code>, <code>[abc]</code> and <code>folder/</code> rules, but not negation (<code>!</code>) or anchored paths.</p>
+</div>
+</div>
+<div class="callout beyond"><span class="label">Beyond the video · why ML repos ignore data and models</span><p>Git is built for small text files. Datasets and <code>.pkl</code>/<code>.pt</code> models are large binaries that bloat the history forever, and GitHub rejects files over 100 MB. Track them with <strong>DVC</strong> (Chapter 11) instead. Git then stores only a tiny <code>.dvc</code> pointer file. Also ignore secrets (<code>.env</code>, <code>*.pem</code>): if one is ever pushed, <strong>rotate the key</strong>, because deleting it in a later commit leaves it in the history.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>Cloning the repo to your machine <span class="ts">02:10:30</span></h2>
+<ol>
+  <li>On the repo page, click the green <strong>Code</strong> button, make sure <strong>HTTPS</strong> is selected, and <strong>copy</strong> the URL.</li>
+  <li>Open the local folder where you keep projects.</li>
+  <li>Open a terminal there: in Windows Explorer, <em>right-click → Show more options → Open Git Bash here</em>, or use your terminal.</li>
+  <li>Type <code>git clone</code>, paste the URL (right-click pastes in Git Bash), and press Enter.</li>
+</ol>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>Git Bash · ~/projects</span></div>
+<pre><code><span class="p">$</span> git clone https://github.com/&lt;you&gt;/github-learning-test.git
+<span class="o">Cloning into 'github-learning-test'...
+remote: Enumerating objects: 5, done.
+remote: Total 5 (delta 0), reused 0 (delta 0)
+Receiving objects: 100% (5/5), done.</span>
+<span class="p">$</span> cd github-learning-test
+<span class="p">$</span> clear
+<span class="p">$</span> ls -a
+<span class="o">.  ..  .git  .gitignore  LICENSE  README.md</span>
+<span class="p">$</span> code .                       <span class="c"># open this folder in VS Code</span></code></pre></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>What you get: the hidden .git folder <span class="ts">02:11:34</span></h2>
+<p>The cloned folder contains <code>.gitignore</code>, <code>LICENSE</code>, <code>README.md</code> and a <strong><code>.git</code> folder</strong> that Git created. <strong>Git uses <code>.git</code> to track all changes.</strong> It is the version-control database. You don't need to understand what's inside it yet.</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 200" role="img" aria-label="Project folder contains your working files and the hidden .git folder, which holds objects (every version), refs (branches), HEAD (current branch) and config (remote URL)">
+    <rect x="20" y="20" width="300" height="160" rx="10" class="box"/>
+    <text x="40" y="46" class="t-sm t-b">📁 github-learning-test/</text>
+    <text x="60" y="74" class="t-xs">📄 README.md · LICENSE · .gitignore</text>
+    <text x="60" y="94" class="t-xs">📄 your code (from Chapter 09)</text>
+    <text x="60" y="114" class="t-xs t-mute">↑ the "working directory": what you edit</text>
+    <rect x="50" y="130" width="240" height="36" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+    <text x="170" y="153" text-anchor="middle" class="t-xs t-b">📁 .git/   (hidden)</text>
+    <path d="M290,148 L398,110" class="edge" stroke-dasharray="4 3"/>
+    <rect x="400" y="20" width="340" height="160" rx="10" class="box-2"/>
+    <text x="420" y="46" class="t-sm t-b">Inside .git (beyond the video)</text>
+    <text x="420" y="74" class="t-xs"><tspan class="t-b">objects/</tspan>  every saved version of every file</text>
+    <text x="420" y="96" class="t-xs"><tspan class="t-b">refs/</tspan>  branches and tags</text>
+    <text x="420" y="118" class="t-xs"><tspan class="t-b">HEAD</tspan>  which branch you're on now</text>
+    <text x="420" y="140" class="t-xs"><tspan class="t-b">config</tspan>  settings, incl. the remote "origin" URL</text>
+    <text x="420" y="162" class="t-xs t-mute">Delete .git and the folder is no longer a repo.</text>
+  </svg>
+  </div>
+</figure>
+<div class="callout key"><span class="label">Can't see .git?</span><p>It's a <strong>hidden</strong> folder (it starts with a dot, as covered in Chapter 06). In Windows Explorer: <strong>View → Show → Hidden items</strong>. In a terminal: <code>ls -a</code>. On macOS Finder: <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd></p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>Opening the project in VS Code <span class="ts">02:12:38</span></h2>
+<p>Move into the cloned folder with <code>cd github-learning-test</code> (the terminal shows you're inside it), clear the screen, and open the folder in <strong>VS Code</strong>, the editor most people use. The next chapter continues from here: write code, then commit and push it.</p>
+<div class="callout beyond"><span class="label">Tip</span><p><code>code .</code> opens the current folder in VS Code if the <code>code</code> command is installed (in VS Code: Command Palette → <em>Shell Command: Install 'code' command in PATH</em> on macOS; on Windows it's added automatically). The Source Control panel (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd>) shows the Git changes visually.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>HTTPS login, SSH, and the other way round</h2>
+<div class="callout beyond"><span class="label">Beyond the video · problems you'll hit on your first push</span>
+<div class="table-wrap" style="margin:8px 0 0">
+<table>
+  <thead><tr><th></th><th>HTTPS (used in the video)</th><th>SSH</th></tr></thead>
+  <tbody>
+    <tr><td>URL</td><td><code>https://github.com/you/repo.git</code></td><td><code>git@github.com:you/repo.git</code></td></tr>
+    <tr><td>Login on push</td><td>GitHub <strong>no longer accepts your account password</strong>. Git Credential Manager (bundled with Git for Windows) opens a browser login, or you paste a <strong>personal access token</strong>.</td><td>Uses a key pair: <code>ssh-keygen -t ed25519</code>, then add the <code>.pub</code> key under GitHub → Settings → SSH keys.</td></tr>
+    <tr><td>Best for</td><td>Getting started; laptops</td><td>Servers like EC2 and frequent pushes</td></tr>
+  </tbody>
+</table>
+</div>
+<p style="margin-top:12px"><strong>The other way round.</strong> If the code already exists on your machine, create an <em>empty</em> GitHub repo (no README) and connect it:</p>
+<pre><code>git init
+git add .
+git commit -m "initial commit"
+git branch -M main
+git remote add origin https://github.com/you/repo.git
+git push -u origin main</code></pre>
+<p>With the GitHub CLI installed, <code>gh repo create</code> does the web part from the terminal.</p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="hands-on"><span class="num">▶</span>Hands-on files: what we built</h2>
+<div class="handson">
+<span class="label">Hands-on notebook (Chapters 08–10) · already executed</span>
+<div class="files"><a href="https://github.com/hemanthreddyllm/mlops-course-notes/blob/main/projects/ch08_10_git/git_workflow_practice.ipynb">projects/ch08_10_git/git_workflow_practice.ipynb</a></div>
+<p>The notebook runs this chapter <strong>offline</strong>. A local <em>bare</em> repository stands in for GitHub, and your real <code>~/.gitconfig</code> is never touched. Part 8 covers:</p>
+<ul>
+  <li><strong>8.1</strong> creates the "GitHub" repo and makes the same <em>Initial commit</em> GitHub's form would (README.md, Python-style .gitignore, LICENSE).</li>
+  <li><strong>8.2</strong> <code>git clone</code> → <code>ls -a</code> shows the hidden <code>.git</code>, whose contents include <code>HEAD</code>, <code>config</code>, <code>objects</code>, <code>refs</code>. <code>git remote -v</code> shows <code>origin</code>.</li>
+  <li><strong>8.3</strong> <code>git check-ignore -v</code> proves which files .gitignore skips:</li>
+</ul>
+<div class="result">tracked  app.py
+IGNORED  .env  ← .gitignore:5:.env
+IGNORED  server.log  ← .gitignore:7:*.log
+IGNORED  src/__pycache__/utils.cpython-313.pyc  ← .gitignore:1:__pycache__/</div>
+<p>To use the real GitHub instead, create the repo on github.com and clone its HTTPS URL. Every other command stays the same.</p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s11"><span class="num">11</span>Interview questions</h2>
+<details class="qa"><summary>What is a .gitignore, and what should an ML project put in it?</summary>
+<p>A file listing path patterns Git should not track. For ML: Python clutter (<code>__pycache__/</code>, <code>*.pyc</code>, <code>.venv/</code>), notebook checkpoints, logs, secrets (<code>.env</code>, <code>*.pem</code>, credentials), raw and processed data, model binaries (<code>*.pkl</code>, <code>*.pt</code>), and experiment output (<code>mlruns/</code>, <code>artifacts/</code>). Data and models are versioned with DVC or a model registry instead.</p></details>
+<details class="qa"><summary>git clone vs downloading the ZIP vs forking?</summary>
+<p>Clone gives you a working repository with full history and a configured remote, so you can commit, pull and push. A ZIP download is just the files, with no history and no link to the remote. A fork is a copy of the repository under your GitHub account (server-side), which you then clone.</p></details>
+<details class="qa"><summary>What is the .git directory?</summary>
+<p>Git's database for the project: all objects (snapshots), refs (branches and tags), HEAD and config (including remotes). The working files are just a checkout of one version from it. Removing <code>.git</code> removes all version history.</p></details>
+<details class="qa"><summary>Public or private repo for a company ML project? And how do you handle secrets?</summary>
+<p>Private, with access given to specific collaborators or teams. Either way, secrets never go in the repo. Use environment variables, a secrets manager (for example AWS Secrets Manager), or CI secrets such as GitHub Actions secrets, and keep <code>.env</code> in <code>.gitignore</code>. If a secret leaks, rotate it immediately.</p></details>
+<details class="qa"><summary>You accidentally committed a 2 GB dataset. What now?</summary>
+<p>If it isn't pushed yet: <code>git rm --cached</code> the file, add it to <code>.gitignore</code>, and amend the commit. If it's already pushed, rewrite the history (for example with <code>git filter-repo</code>) and force-push after coordinating with the team, then track the data with DVC. GitHub blocks files over 100 MB anyway.</p></details>
+<details class="qa"><summary>HTTPS vs SSH for Git remotes?</summary>
+<p>HTTPS authenticates with a token or credential manager and works through most firewalls. SSH authenticates with a key pair, needs no token prompts, and is common on servers and CI machines. Both give the same repository access.</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s12"><span class="num">12</span>Recap</h2>
+<ul>
+  <li>Confirm Git is installed: open <strong>Git Bash</strong> (Windows) or any terminal.</li>
+  <li>GitHub → <strong>New</strong> → name it after the project → <strong>Public/Private</strong> → ☑ <strong>README</strong> → <strong>.gitignore: Python</strong> → <strong>License: MIT</strong> → <strong>Create repository</strong>.</li>
+  <li>README = the project description on its page. .gitignore = files that won't be pushed. License = how others may reuse the code.</li>
+  <li><strong>Code → HTTPS → copy</strong> → in your folder run <code>git clone &lt;url&gt;</code>.</li>
+  <li>The clone contains the files plus a hidden <strong><code>.git</code></strong> folder that tracks every change (turn on hidden items to see it).</li>
+  <li><code>cd</code> into the folder and open it in <strong>VS Code</strong>. Next: writing code, then committing and pushing it.</li>
+</ul>
+
+<div class="pager">
+  <a href="07_git_and_github_intro.html"><small>← Previous</small>07 · Getting started with Git &amp; GitHub</a>
+  <a class="next" href="09_code_management_with_git.html"><small>Next →</small>09 · Code management using Git</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+<script>
+// Simplified .gitignore matcher
+(function () {
+  const patterns = ['__pycache__/', '*.py[cod]', 'build/', 'dist/', '*.egg-info/', '.env', '.venv', 'venv/',
+    '.ipynb_checkpoints', '.pytest_cache/', '*.log', 'data/', 'artifacts/', 'mlruns/', '*.pkl', '*.pem'];
+  const toRe = g => new RegExp('^' + g.replace(/[.+^${}()|\\]/g, '\\$&').replace(/\*/g, '[^/]*').replace(/\?/g, '[^/]') + '$');
+  const rules = patterns.map(p => ({ p, dirOnly: p.endsWith('/'), re: toRe(p.replace(/\/$/, '')) }));
+  function check(path) {
+    const clean = path.trim().replace(/^\.?\//, '');
+    if (!clean) return null;
+    const isDir = clean.endsWith('/');
+    const segs = clean.replace(/\/$/, '').split('/');
+    for (const r of rules) {
+      for (let i = 0; i < segs.length; i++) {
+        const last = i === segs.length - 1;
+        if (r.dirOnly && last && !isDir) continue;
+        if (r.re.test(segs[i])) return { rule: r.p, seg: segs[i], viaParent: !last };
+      }
+    }
+    return false;
+  }
+  const inp = document.getElementById('gi'), out = document.getElementById('gv');
+  function render() {
+    const res = check(inp.value);
+    if (res === null) { out.className = 'verdict'; out.textContent = ''; return; }
+    if (res) {
+      out.className = 'verdict ign';
+      out.innerHTML = `✓ <b>Ignored</b>: matches <code>${res.rule}</code>` + (res.viaParent ? ` (the folder <code>${res.seg}</code> is ignored, so everything inside it is too)` : '') + '. It won\'t show in <code>git status</code> or be pushed.';
+    } else {
+      out.className = 'verdict trk';
+      out.innerHTML = '● <b>Tracked</b>: no rule matches, so Git will offer to commit this file.';
+    }
+  }
+  inp.addEventListener('input', render);
+  document.querySelectorAll('#gs button').forEach(b => b.addEventListener('click', () => { inp.value = b.textContent; render(); }));
+  render();
+})();
+</script>
+</body>
+</html>

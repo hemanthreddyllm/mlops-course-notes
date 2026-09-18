@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>13 · Fundamentals of Cloud for MLOps — MLOps Notes</title>
+<link rel="stylesheet" href="assets/notes.css">
+<style>
+  .cmd { font: 600 13px var(--mono); white-space: nowrap; }
+  .svc { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin: 16px 0; }
+  .svc .card h4 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .svc .card h4 small { font: 500 11px var(--mono); color: var(--ink-3); }
+  .where { font-size: 12.5px; color: var(--ink-3); margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumbs"><a href="index.html">MLOps Notes</a> <span>/</span> <span>Chapter 13</span></div>
+<div class="eyebrow">Chapter 13 · Fundamentals of Cloud for MLOps</div>
+<h1>The cloud services an MLOps engineer actually uses</h1>
+<p class="lede">Every pipeline component needs tools, and deployment needs somewhere to run. That somewhere is a cloud platform. The instructor explains why the cloud matters, compares AWS, GCP, Azure and Alibaba ("same services, different names"), tours the AWS and GCP consoles, lists the AWS services the course relies on (EC2, S3, ECR, IAM, SageMaker, CodePipeline, Elastic Beanstalk), and explains why IAM users beat the root account.</p>
+<div class="meta">
+  <span class="chip">Video 03:09:31 – 03:26:39</span>
+  <span class="chip">Console tour (AWS + GCP)</span>
+  <span class="chip">Hands-on: offline AWS with moto</span>
+</div>
+
+<nav class="toc">
+  <b>On this page</b>
+  <ol>
+    <li><a href="#s1">Why the cloud comes into an ML project</a></li>
+    <li><a href="#s2">The cloud providers</a></li>
+    <li><a href="#s3">Same services, different names</a></li>
+    <li><a href="#s4">The AWS services this course uses</a></li>
+    <li><a href="#s5">Account, free credit and regions</a></li>
+    <li><a href="#s6">A tour of the AWS console</a></li>
+    <li><a href="#s7">ECR vs Docker Hub</a></li>
+    <li><a href="#s8">GCP and Vertex AI</a></li>
+    <li><a href="#s9">What about Azure?</a></li>
+    <li><a href="#s10">IAM: why not just use the root account?</a></li>
+    <li><a href="#hands-on">Hands-on files: what we built</a></li>
+    <li><a href="#s11">Interview questions</a></li>
+    <li><a href="#s12">Recap</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────────────────── -->
+<h2 id="s1"><span class="num">01</span>Why the cloud comes into an ML project <span class="ts">03:09:31</span></h2>
+<p>Recap from Chapter 11: an end-to-end project is a <strong>pipeline of components</strong> that run in sequence. The instructor's point is that <strong>each component needs its own tools</strong>, and <strong>deployment needs a cloud platform</strong>, where you rent a machine and put your code into production so others can use it.</p>
+<figure>
+  <p class="fig-title">Each component brings its own tools, and deployment needs the cloud</p>
+  <p class="fig-sub">Hover a component.</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 250" role="img" aria-label="Pipeline components with the tools each needs: ingestion needs databases like MongoDB and MySQL, validation uses Evidently for data drift, deployment uses CI/CD tools Jenkins, CircleCI and GitHub Actions, and runs on a cloud platform: AWS, GCP, Azure, Alibaba">
+    <defs><marker id="c13a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g class="t-xs">
+      <g data-tip="<b>Data ingestion</b><br>Needs database skills: MongoDB, MySQL…"><rect x="6" y="20" width="112" height="44" rx="8" class="box"/><text x="62" y="46" text-anchor="middle" class="t-b">Ingestion</text></g>
+      <g data-tip="<b>Data validation</b><br>Data drift detection with a tool like Evidently"><rect x="130" y="20" width="112" height="44" rx="8" class="box"/><text x="186" y="46" text-anchor="middle" class="t-b">Validation</text></g>
+      <rect x="254" y="20" width="112" height="44" rx="8" class="box"/><text x="310" y="46" text-anchor="middle" class="t-b">Transformation</text>
+      <rect x="378" y="20" width="112" height="44" rx="8" class="box"/><text x="434" y="46" text-anchor="middle" class="t-b">Trainer</text>
+      <rect x="502" y="20" width="112" height="44" rx="8" class="box"/><text x="558" y="46" text-anchor="middle" class="t-b">Evaluation</text>
+      <rect x="626" y="20" width="128" height="44" rx="8" class="box"/><text x="690" y="46" text-anchor="middle" class="t-b">Prediction</text>
+      <rect x="6" y="84" width="112" height="44" rx="6" class="box-2"/><text x="62" y="102" text-anchor="middle">MongoDB</text><text x="62" y="118" text-anchor="middle">MySQL</text>
+      <rect x="130" y="84" width="112" height="44" rx="6" class="box-2"/><text x="186" y="102" text-anchor="middle">Evidently</text><text x="186" y="118" text-anchor="middle">(data drift)</text>
+      <rect x="378" y="84" width="112" height="44" rx="6" class="box-2"/><text x="434" y="102" text-anchor="middle">MLflow</text><text x="434" y="118" text-anchor="middle">(Ch 14–15)</text>
+      <rect x="254" y="84" width="112" height="44" rx="6" class="box-2"/><text x="310" y="102" text-anchor="middle">DVC</text><text x="310" y="118" text-anchor="middle">(Ch 11–12)</text>
+    </g>
+    <path d="M62,64 L62,82" class="edge"/><path d="M186,64 L186,82" class="edge"/><path d="M310,64 L310,82" class="edge"/><path d="M434,64 L434,82" class="edge"/>
+    <path d="M118,42 L128,42" class="edge" marker-end="url(#c13a)"/><path d="M242,42 L252,42" class="edge" marker-end="url(#c13a)"/><path d="M366,42 L376,42" class="edge" marker-end="url(#c13a)"/><path d="M490,42 L500,42" class="edge" marker-end="url(#c13a)"/><path d="M614,42 L624,42" class="edge" marker-end="url(#c13a)"/>
+    <g data-tip="<b>Deployment · CI/CD</b><br>Jenkins, CircleCI, GitHub Actions"><rect x="470" y="140" width="284" height="44" rx="8" fill="var(--warn-soft)" stroke="var(--s4)"/><text x="612" y="160" text-anchor="middle" class="t-sm t-b">Deployment (CI/CD)</text><text x="612" y="176" text-anchor="middle" class="t-xs">Jenkins · CircleCI · GitHub Actions</text></g>
+    <path d="M690,64 L690,138" class="edge" marker-end="url(#c13a)"/>
+    <g data-tip="<b>Cloud platform</b><br>Rent a machine and run the app in production so other people can reach it"><rect x="120" y="196" width="634" height="46" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="437" y="217" text-anchor="middle" class="t-sm t-b">☁ Cloud platform: AWS · GCP · Azure · Alibaba Cloud</text><text x="437" y="234" text-anchor="middle" class="t-xs">machines, storage, registries, permissions, managed ML</text></g>
+    <path d="M612,184 L612,194" class="edge" marker-end="url(#c13a)"/>
+  </svg>
+  </div>
+  <figcaption>The instructor's repeated line: <b>"MLOps is all about tools."</b> You build the pipeline by combining them, and the cloud is where it runs.</figcaption>
+</figure>
+
+<!-- ───────────────────────────── -->
+<h2 id="s2"><span class="num">02</span>The cloud providers <span class="ts">03:12:43</span></h2>
+<div class="grid">
+  <div class="card" style="border-color:var(--accent)"><span class="tag">USED IN THE COURSE</span><h4>AWS</h4><p>Very popular. The instructor's first choice, along with GCP. Most demos in the course run on AWS.</p></div>
+  <div class="card"><span class="tag">ALSO RECOMMENDED</span><h4>GCP</h4><p>Popular and easy to sign up for. Home of <strong>Vertex AI</strong>.</p></div>
+  <div class="card"><span class="tag">POPULAR</span><h4>Azure</h4><p>Also widely used. The instructor avoids it because, in his experience, sign-up and service activation ask for a lot of verification.</p></div>
+  <div class="card"><span class="tag">ALSO EXISTS</span><h4>Alibaba Cloud</h4><p>Mentioned as another provider. The instructor hasn't used it.</p></div>
+</div>
+<div class="callout key"><span class="label">The instructor's advice</span><p>You don't need to learn every cloud. <strong>Pick one and master the services you need.</strong> Switching to another cloud is then easy, because the building blocks are the same.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s3"><span class="num">03</span>Same services, different names <span class="ts">03:13:47</span></h2>
+<p>Every provider offers the same kinds of service. Only the <strong>names and the UI</strong> differ. The instructor gives virtual machines and storage buckets as examples.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>What you need</th><th>AWS</th><th>GCP</th><th>Azure</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Virtual machine</strong></td><td>EC2</td><td>Compute Engine ("VM instances")</td><td>Virtual Machines</td></tr>
+    <tr><td><strong>File/object storage</strong></td><td>S3 (buckets)</td><td>Cloud Storage (buckets)</td><td>Blob Storage</td></tr>
+    <tr><td><strong>Docker image registry</strong></td><td>ECR</td><td>Artifact Registry</td><td>Azure Container Registry</td></tr>
+    <tr><td><strong>Users &amp; permissions</strong></td><td>IAM</td><td>Cloud IAM</td><td>Microsoft Entra ID + RBAC</td></tr>
+    <tr><td><strong>Managed ML platform</strong></td><td>SageMaker</td><td>Vertex AI</td><td>Azure Machine Learning</td></tr>
+    <tr><td><strong>CI/CD pipelines</strong></td><td>CodePipeline</td><td>Cloud Build</td><td>Azure Pipelines</td></tr>
+    <tr><td><strong>Managed app hosting</strong></td><td>Elastic Beanstalk</td><td>App Engine</td><td>App Service</td></tr>
+    <tr><td><strong>Monitoring &amp; logs</strong></td><td>CloudWatch</td><td>Cloud Monitoring / Logging</td><td>Azure Monitor</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="fig-sub">Beyond the video: the rows past VMs and storage are general reference. The instructor calls GCP storage "G Bucket"; the official product name is <strong>Cloud Storage</strong>. Alibaba Cloud's storage is <strong>OSS</strong> (it also uses buckets) and its VMs are <strong>ECS</strong>.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s4"><span class="num">04</span>The AWS services this course uses <span class="ts">03:14:53</span></h2>
+<p>AWS has hundreds of services, but these are the ones you'll use most for deployment and MLOps:</p>
+<div class="svc">
+  <div class="card"><h4>EC2 <small>compute</small></h4><p>Virtual machines. Launch one, configure it and deploy your application on it.</p><div class="where">Used in: Ch 05 (Linux server), CI/CD deployments</div></div>
+  <div class="card"><h4>S3 <small>storage</small></h4><p>Store <strong>any</strong> file or data in buckets and retrieve it later: datasets, models, artifacts.</p><div class="where">Used in: DVC/MLflow artifact storage, SageMaker</div></div>
+  <div class="card"><h4>ECR <small>containers</small></h4><p><strong>Elastic Container Registry</strong>: stores your Docker images privately. Works like Docker Hub.</p><div class="where">Used in: CI/CD chapters (7:20:16)</div></div>
+  <div class="card"><h4>IAM <small>security</small></h4><p><strong>Identity and Access Management</strong>: create users and give each one only the permissions it needs.</p><div class="where">Used in: every chapter that connects code to AWS</div></div>
+  <div class="card"><h4>SageMaker <small>ML platform</small></h4><p>A complete MLOps platform to label data, build, train, tune and deploy models at scale. Paid.</p><div class="where">Used in: ML project with SageMaker (10:46:14)</div></div>
+  <div class="card"><h4>CodePipeline <small>CI/CD</small></h4><p>AWS's own CI/CD pipeline service.</p><div class="where">An alternative to Jenkins / CircleCI / GitHub Actions</div></div>
+  <div class="card"><h4>Elastic Beanstalk <small>app hosting</small></h4><p>Upload your app and AWS provisions and runs the servers for you.</p><div class="where">A simpler deployment path than raw EC2</div></div>
+  <div class="card" style="border-style:dashed"><h4>Also in the console <small>seen in video</small></h4><p><strong>CloudWatch</strong> (logs and metrics) and <strong>Billing &amp; Cost Management</strong>, which you should check often.</p></div>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s5"><span class="num">05</span>Account, free credit and regions <span class="ts">03:17:00</span></h2>
+<p>Sign up, fill in your details and <strong>add a card</strong>. AWS makes a small verification charge.</p>
+<div class="callout wrong"><span class="label">Check before relying on this · free credit (again)</span><p>The instructor repeats that you get <strong>"$300 free credit"</strong>. As noted in Chapter 05, $300 is Google Cloud's trial amount. AWS's free-tier offer is different and has changed over time, so check the current AWS Free Tier page and <strong>set a budget alert</strong> first.</p></div>
+
+<h3>Regions</h3>
+<p>Always check which <strong>region</strong> you're working in, shown at the top right of the console. The instructor uses <code>us-east-1</code> (N. Virginia). AWS has servers in many locations, such as Mumbai, Osaka and N. Virginia. <strong>Choose the region nearest to you</strong> for the fastest communication:</p>
+<figure>
+  <div class="scroll">
+  <svg viewBox="0 0 760 200" role="img" aria-label="Pick the nearest region: users in India use ap-south-1 Mumbai, users in the United States use us-east-1 N. Virginia, users in Europe use a European region such as eu-west-1 Ireland">
+    <defs><marker id="c13b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/></marker></defs>
+    <g class="t-sm">
+      <rect x="20" y="20" width="170" height="44" rx="8" class="box"/><text x="105" y="47" text-anchor="middle" class="t-b">👤 You're in India</text>
+      <rect x="20" y="78" width="170" height="44" rx="8" class="box"/><text x="105" y="105" text-anchor="middle" class="t-b">👤 You're in the US</text>
+      <rect x="20" y="136" width="170" height="44" rx="8" class="box"/><text x="105" y="163" text-anchor="middle" class="t-b">👤 You're in Europe</text>
+      <rect x="400" y="20" width="340" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="570" y="40" text-anchor="middle" class="t-b">ap-south-1 · Asia Pacific (Mumbai)</text><text x="570" y="56" text-anchor="middle" class="t-xs">the instructor's suggestion for India</text>
+      <rect x="400" y="78" width="340" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="570" y="98" text-anchor="middle" class="t-b">us-east-1 · US East (N. Virginia)</text><text x="570" y="114" text-anchor="middle" class="t-xs">the region used in the video</text>
+      <rect x="400" y="136" width="340" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="570" y="156" text-anchor="middle" class="t-b">eu-west-1 · Europe (Ireland), etc.</text><text x="570" y="172" text-anchor="middle" class="t-xs">several European regions to choose from</text>
+    </g>
+    <path d="M190,42 L398,42" class="edge-accent" marker-end="url(#c13b)"/><path d="M190,100 L398,100" class="edge-accent" marker-end="url(#c13b)"/><path d="M190,158 L398,158" class="edge-accent" marker-end="url(#c13b)"/>
+    <text x="294" y="34" text-anchor="middle" class="t-xs">nearest → lowest latency</text>
+  </svg>
+  </div>
+</figure>
+<div class="callout beyond"><span class="label">Beyond the video · three region rules that cost people money</span>
+<ul>
+  <li><strong>Resources are regional.</strong> An instance launched in Mumbai is invisible while the console is set to N. Virginia, but it's still running and still billing.</li>
+  <li><strong>Prices differ by region</strong>, and not every service or instance type exists everywhere.</li>
+  <li><strong>Keep related resources in one region</strong> (EC2 + S3 + ECR) to avoid cross-region data-transfer charges and latency. Some data must stay in-country for legal reasons (data residency).</li>
+</ul></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s6"><span class="num">06</span>A tour of the AWS console <span class="ts">03:18:03</span></h2>
+<p>The <strong>Services</strong> menu groups everything by category: analytics, machine learning and so on. You won't use most of them. For ML, the main one is <strong>SageMaker</strong>, which you can also find with the search bar.</p>
+<figure>
+  <p class="fig-title">What SageMaker covers: "build, train and deploy ML models at scale"</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 110" role="img" aria-label="SageMaker covers the whole lifecycle: label data, build, train, tune, deploy, discover">
+    <defs><marker id="c13c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g class="t-sm">
+      <rect x="6" y="30" width="112" height="44" rx="22" class="box"/><text x="62" y="57" text-anchor="middle" class="t-b">🏷 Label data</text>
+      <rect x="132" y="30" width="112" height="44" rx="22" class="box"/><text x="188" y="57" text-anchor="middle" class="t-b">🛠 Build</text>
+      <rect x="258" y="30" width="112" height="44" rx="22" class="box"/><text x="314" y="57" text-anchor="middle" class="t-b">🏋 Train</text>
+      <rect x="384" y="30" width="112" height="44" rx="22" class="box"/><text x="440" y="57" text-anchor="middle" class="t-b">🎛 Tune</text>
+      <rect x="510" y="30" width="112" height="44" rx="22" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="566" y="57" text-anchor="middle" class="t-b">🚀 Deploy</text>
+      <rect x="636" y="30" width="118" height="44" rx="22" class="box"/><text x="695" y="57" text-anchor="middle" class="t-b">🔍 Discover</text>
+    </g>
+    <path d="M118,52 L130,52" class="edge" marker-end="url(#c13c)"/><path d="M244,52 L256,52" class="edge" marker-end="url(#c13c)"/><path d="M370,52 L382,52" class="edge" marker-end="url(#c13c)"/><path d="M496,52 L508,52" class="edge" marker-end="url(#c13c)"/><path d="M622,52 L634,52" class="edge" marker-end="url(#c13c)"/>
+    <text x="380" y="100" text-anchor="middle" class="t-xs">one platform for the whole pipeline · not free · check the SageMaker pricing page before choosing instances</text>
+  </svg>
+  </div>
+</figure>
+<div class="callout key"><span class="label">On cost</span><p>"In production, nothing is free." You always pay for your project in the end. The instructor considers SageMaker reasonably priced, and says to check its pricing page before deciding which instances to use.</p></div>
+<p>The rest of the tour: <strong>EC2</strong> is the virtual machine service, where you pick an instance type, configure it and deploy (as in Chapter 05). <strong>S3</strong> stores and returns any kind of file. <strong>ECR</strong> stores Docker images (next section).</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s7"><span class="num">07</span>ECR vs Docker Hub <span class="ts">03:20:10</span></h2>
+<p>When you containerise an app with Docker, the resulting <strong>image</strong> has to be stored somewhere a server can pull it from. The instructor shows Docker Hub, which has ready-made images such as PyTorch that you can <code>docker pull</code> and run with Docker Desktop, and compares it with ECR.</p>
+<div class="grid">
+  <div class="card"><h4>🐳 Docker Hub</h4><p>The public image library: official images for Python, PyTorch, Ubuntu… The instructor describes it as <em>public</em>.</p></div>
+  <div class="card" style="border-color:var(--accent)"><h4>📦 AWS ECR</h4><p>A <strong>private</strong> registry for your own project images, inside your AWS account. EC2, ECS, EKS and SageMaker can pull from it directly using IAM permissions.</p></div>
+</div>
+<div class="callout wrong"><span class="label">Clarification</span><p>Docker Hub <strong>also offers private repositories</strong> (limited on the free plan). The practical reasons to choose ECR for AWS deployments are IAM-based access, staying in the same region and network as your servers, and integration with AWS deployment services.</p></div>
+<p>Docker itself is covered from 4:05:17.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s8"><span class="num">08</span>GCP and Vertex AI <span class="ts">03:22:15</span></h2>
+<p>To use GCP: create a Google (Gmail) account, sign up, and add a card. You work inside <strong>projects</strong>. The MLOps service is <strong>Vertex AI</strong>, which now includes generative AI too.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Area</th><th>Vertex AI features shown in the video</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Data &amp; training</strong></td><td>Feature Store, Datasets, Training, Experiments, Pipelines</td></tr>
+    <tr><td><strong>Deployment</strong></td><td>Model deployment, online prediction, batch prediction, monitoring</td></tr>
+    <tr><td><strong>Generative AI</strong></td><td>Vertex AI Studio (chat, vision and translation models, prompt gallery, prompt management, tuning), Vector Search</td></tr>
+    <tr><td><strong>Notebooks &amp; models</strong></td><td>Colab Enterprise, Workbench, Model Garden</td></tr>
+  </tbody>
+</table>
+</div>
+<p>GCP also has <strong>buckets</strong> (the same idea as S3) and <strong>VM instances</strong> (the same idea as EC2). The instructor's own GCP account had been closed when he recorded this, so he'll create a new one for later demos. <strong>Set up both an AWS and a GCP account</strong> to follow the MLOps chapters.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s9"><span class="num">09</span>What about Azure? <span class="ts">03:24:23</span></h2>
+<p>The instructor personally avoids Azure because he finds account creation complicated. Once you know AWS or GCP, though, Azure is easy to learn. It's up to you. Later, CI/CD with Jenkins will be set up on <strong>AWS</strong>, and the same setup would also work on GCP. The course also shows how to <strong>configure your local machine to access the cloud</strong>.</p>
+
+<!-- ───────────────────────────── -->
+<h2 id="s10"><span class="num">10</span>IAM: why not just use the root account? <span class="ts">03:25:26</span></h2>
+<p>Learners often ask why IAM is needed. To access AWS services <strong>from code</strong>, you use an <strong>access key and a secret key</strong>. If those keys belong to the <strong>root account or an administrator</strong>, your application can reach <em>every</em> service, and you could end up with a huge bill.</p>
+<figure>
+  <p class="fig-title">Root account vs IAM users with specific permissions</p>
+  <p class="fig-sub">The instructor's team example: a team lead with three developers, each given only the service they need. Hover the boxes.</p>
+  <div class="scroll">
+  <svg viewBox="0 0 760 240" role="img" aria-label="Instead of sharing root keys, the account owner creates IAM users: one with S3 only, one with EC2 only, one with ECR only; each can only use its service">
+    <defs><marker id="c13d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker></defs>
+    <g data-tip="<b>Root / admin keys</b><br>Can do anything on the account. Never put these in an application.">
+      <rect x="10" y="20" width="200" height="70" rx="10" fill="var(--bad-soft)" stroke="var(--bad)"/>
+      <text x="110" y="46" text-anchor="middle" class="t-sm t-b">⚠ Root / admin keys</text>
+      <text x="110" y="64" text-anchor="middle" class="t-xs">access to every service</text>
+      <text x="110" y="80" text-anchor="middle" class="t-xs">one leak = unlimited bill</text></g>
+    <g data-tip="<b>IAM</b><br>Create users, attach policies (what each may do), issue their own keys.">
+      <rect x="10" y="130" width="200" height="80" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="110" y="158" text-anchor="middle" class="t-sm t-b">🔐 IAM (team lead)</text>
+      <text x="110" y="176" text-anchor="middle" class="t-xs">create users + policies</text>
+      <text x="110" y="192" text-anchor="middle" class="t-xs">least privilege</text></g>
+    <g data-tip="<b>Developer 1</b><br>Policy: S3 only"><rect x="290" y="120" width="150" height="34" rx="8" class="box"/><text x="365" y="142" text-anchor="middle" class="t-sm">👤 dev1 · S3 only</text></g>
+    <g data-tip="<b>Developer 2</b><br>Policy: EC2 only"><rect x="290" y="163" width="150" height="34" rx="8" class="box"/><text x="365" y="185" text-anchor="middle" class="t-sm">👤 dev2 · EC2 only</text></g>
+    <g data-tip="<b>Developer 3</b><br>Policy: ECR only"><rect x="290" y="206" width="150" height="34" rx="8" class="box"/><text x="365" y="228" text-anchor="middle" class="t-sm">👤 dev3 · ECR only</text></g>
+    <path d="M210,160 L288,137" class="edge" marker-end="url(#c13d)"/><path d="M210,170 L288,180" class="edge" marker-end="url(#c13d)"/><path d="M210,182 L288,222" class="edge" marker-end="url(#c13d)"/>
+    <rect x="520" y="120" width="70" height="34" rx="8" fill="var(--good-soft)" stroke="var(--good)"/><text x="555" y="142" text-anchor="middle" class="t-sm t-b">S3 ✓</text>
+    <rect x="520" y="163" width="70" height="34" rx="8" fill="var(--good-soft)" stroke="var(--good)"/><text x="555" y="185" text-anchor="middle" class="t-sm t-b">EC2 ✓</text>
+    <rect x="520" y="206" width="70" height="34" rx="8" fill="var(--good-soft)" stroke="var(--good)"/><text x="555" y="228" text-anchor="middle" class="t-sm t-b">ECR ✓</text>
+    <path d="M440,137 L518,137" class="edge" marker-end="url(#c13d)"/><path d="M440,180 L518,180" class="edge" marker-end="url(#c13d)"/><path d="M440,223 L518,223" class="edge" marker-end="url(#c13d)"/>
+    <text x="620" y="142" class="t-xs">everything else</text><text x="620" y="158" class="t-xs" style="fill:var(--bad)">⛔ AccessDenied</text>
+    <path d="M210,55 Q400,55 540,95" class="edge" stroke-dasharray="5 4"/><text x="400" y="46" text-anchor="middle" class="t-xs" style="fill:var(--bad)">don't hand these to apps or teammates</text>
+  </svg>
+  </div>
+</figure>
+<p>So for every project, <strong>create a specific IAM user</strong> and attach only the permissions (a <strong>policy</strong>) it needs, instead of using root.</p>
+<div class="callout beyond"><span class="label">Beyond the video · IAM essentials for interviews and real deployments</span>
+<div class="table-wrap" style="margin:8px 0 0">
+<table>
+  <thead><tr><th>Concept</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><strong>User</strong></td><td>A person or app with long-term credentials (console password and/or access keys)</td></tr>
+    <tr><td><strong>Group</strong></td><td>A set of users that share policies (e.g. "data-scientists")</td></tr>
+    <tr><td><strong>Role</strong></td><td>Temporary credentials that a service assumes, e.g. an <em>EC2 instance role</em>, so no keys are stored on the server</td></tr>
+    <tr><td><strong>Policy</strong></td><td>A JSON document: <code>Effect</code> + <code>Action</code> + <code>Resource</code>. Anything not allowed is denied by default.</td></tr>
+  </tbody>
+</table>
+</div>
+<pre style="margin-top:12px"><code>{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": ["s3:ListBucket", "s3:GetObject", "s3:PutObject"],
+    "Resource": ["arn:aws:s3:::team-data-bucket", "arn:aws:s3:::team-data-bucket/*"]
+  }]
+}</code></pre>
+<ul>
+  <li>Turn on <strong>MFA</strong> for the root account, then stop using it day to day.</li>
+  <li>Never commit keys to Git. Use <code>aws configure</code> locally, <strong>GitHub Actions secrets</strong> in CI, and <strong>roles</strong> on EC2 and SageMaker.</li>
+  <li>If a key leaks, <strong>deactivate it immediately</strong> and create a new one.</li>
+</ul>
+</div>
+
+<div class="callout key"><span class="label">Mentor's note from the video</span><p>The instructor can show the path and the resources, but becoming a good developer takes your own exploration. Open the services, read the docs and practise.</p></div>
+
+<!-- ───────────────────────────── -->
+<h2 id="hands-on"><span class="num">▶</span>Hands-on files: what we built</h2>
+<div class="handson">
+<span class="label">Hands-on notebook · real boto3 code against a local fake AWS (no account, no cost)</span>
+<div class="files"><a href="https://github.com/hemanthreddyllm/mlops-course-notes/blob/main/projects/ch13_cloud_fundamentals/aws_services_offline.ipynb">projects/ch13_cloud_fundamentals/aws_services_offline.ipynb</a></div>
+<p>The video only tours the console. This notebook runs the same services from Python using <strong>moto</strong>, which simulates AWS on your laptop. The code is what you'd write for real AWS. What it did:</p>
+<div class="table-wrap" style="margin-top:6px">
+<table>
+  <thead><tr><th>Section</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>1 · Regions</td><td>34 commercial regions read from boto3's bundled data, with the video's regions highlighted (us-east-1, ap-south-1, ap-northeast-3 Osaka, eu-west-1)</td></tr>
+    <tr><td>2 · Name mapping</td><td>the AWS / GCP / Azure table above, as a DataFrame</td></tr>
+    <tr><td>3 · S3</td><td>created a bucket in <code>ap-south-1</code>, uploaded Chapter 12's <code>model.pkl</code> (176,818 bytes) and <code>metrics.json</code>, downloaded a byte-identical copy (MD5 match), and generated a 15-minute presigned URL</td></tr>
+    <tr><td>4 · EC2</td><td>security group with ports 22/80/443, key pair <code>linux-test</code>, a <code>t2.micro</code> instance, then running → stopped → running → terminated</td></tr>
+    <tr><td>5 · ECR</td><td>repository <code>emotion-api</code> → URI <code>123456789012.dkr.ecr.ap-south-1.amazonaws.com/emotion-api</code>, plus the docker login/tag/push commands</td></tr>
+    <tr><td>6 · IAM</td><td>a user with an S3-only policy, with permissions actually enforced:</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="result">action by dev-s3-only          result
+upload to team-data-bucket     ✅ allowed
+list team-data-bucket          ✅ allowed
+create a new bucket            ⛔ AccessDenied
+list EC2 instances             ⛔ AccessDenied
+create an IAM user             ⛔ AccessDenied</div>
+<p class="fig-sub">The notebook points boto3 at fake credentials and ignores <code>~/.aws</code>, so it can never touch a real AWS account.</p>
+</div>
+
+<!-- ───────────────────────────── -->
+<h2 id="s11"><span class="num">11</span>Interview questions</h2>
+<details class="qa"><summary>Why do ML projects need the cloud at all?</summary>
+<p>For on-demand compute (CPUs and GPUs for training), durable shared storage for data and artifacts, managed services (registries, pipelines, ML platforms), and above all a place to <strong>serve</strong> the model 24×7 to real users with scaling, monitoring and security, without buying and running your own hardware.</p></details>
+<details class="qa"><summary>Map these AWS services to their GCP equivalents: EC2, S3, ECR, SageMaker.</summary>
+<p>EC2 → Compute Engine · S3 → Cloud Storage · ECR → Artifact Registry · SageMaker → Vertex AI. (Azure: Virtual Machines, Blob Storage, ACR, Azure ML.)</p></details>
+<details class="qa"><summary>What's the difference between a region and an availability zone?</summary>
+<p>A region is a geographic area (e.g. ap-south-1, Mumbai). It contains several availability zones: isolated data centres with independent power and networking. Spread instances across AZs for high availability, and choose the region for latency, cost, service availability and data-residency rules.</p></details>
+<details class="qa"><summary>You need to deploy a model API on AWS. What are your options?</summary>
+<p>(1) EC2 running Docker, the most control. (2) Elastic Beanstalk, a managed platform. (3) ECS or EKS with an image from ECR, for container orchestration and scaling. (4) SageMaker endpoints, managed model hosting with autoscaling. (5) Lambda, for small, light, infrequent models. The choice depends on traffic, latency, team skills and cost.</p></details>
+<details class="qa"><summary>Explain IAM users, roles and policies. Why not use root keys?</summary>
+<p>Users hold long-term credentials. Roles give temporary credentials to services or federated users. Policies are JSON allow/deny rules attached to either. Root keys have unlimited power, so a leak or a bug can delete resources or run up huge bills. Follow least privilege and prefer roles, so no keys sit on servers.</p></details>
+<details class="qa"><summary>S3 vs EBS vs EFS?</summary>
+<p>S3 is object storage over HTTP (datasets, models, artifacts), effectively unlimited and cheap. EBS is a block disk attached to one EC2 instance (the OS and local files). EFS is a shared network file system that several instances can mount.</p></details>
+<details class="qa"><summary>How do you keep cloud costs under control while learning?</summary>
+<p>Set budgets and billing alerts, use free-tier or small instance types, stop or terminate instances when you're done, check <em>all</em> regions for forgotten resources, delete unused EBS volumes, snapshots and ECR images, and set lifecycle rules on S3.</p></details>
+
+<!-- ───────────────────────────── -->
+<h2 id="s12"><span class="num">12</span>Recap</h2>
+<ul>
+  <li>Each pipeline component uses tools (databases, Evidently, DVC, MLflow, Jenkins/CircleCI/GitHub Actions), and <strong>deployment runs on a cloud</strong>.</li>
+  <li>Providers: AWS, GCP, Azure, Alibaba. The instructor prefers <strong>AWS and GCP</strong>. The services are the same with different names, so master one cloud.</li>
+  <li>AWS for this course: <strong>EC2, S3, ECR, IAM, SageMaker, CodePipeline, Elastic Beanstalk</strong>. GCP's MLOps platform is <strong>Vertex AI</strong>.</li>
+  <li>Always check the <strong>region</strong> (the video uses us-east-1) and pick the nearest one. Verify the free-credit claim and set budget alerts.</li>
+  <li>ECR is a private Docker image registry, similar to Docker Hub. SageMaker is paid, since production is never free.</li>
+  <li><strong>IAM</strong>: never use root or admin keys in apps. Create users with specific policies (least privilege).</li>
+</ul>
+
+<div class="pager">
+  <a href="12_ml_pipelines_with_dvc.html"><small>← Previous</small>12 · Build &amp; track ML pipelines with DVC</a>
+  <a class="next" href="14_intro_to_mlflow_experiment_tracking.html"><small>Next →</small>14 · Introduction to MLflow &amp; experiment tracking</a>
+</div>
+</div>
+<script src="assets/notes.js"></script>
+</body>
+</html>
